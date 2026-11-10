@@ -29,7 +29,7 @@ public partial class BattleView : MonoBehaviour
     void StartBattle(RobotDef build)
     {
         logger?.Dispose();
-        battle = new Battle(content, System.Environment.TickCount, build.Clone());
+        battle = new Battle(content, System.Environment.TickCount, build.Clone(), Opponent.id);
         logger = new BattleLogger(battle, LogDir);
         pending = null;
     }
@@ -101,7 +101,7 @@ public partial class BattleView : MonoBehaviour
                        (r.overload > 0 ? $"   Sobrecarga {r.overload}" : "") + (r.aimPending ? "   [Mirando]" : "") + (r.pierceNext ? "   [Finta]" : "");
         GUI.Label(new Rect(area.x + 8, area.y + 26, area.width, 20), stats, small);
         float y = area.y + 50;
-        Bar(new Rect(area.x + 8, y, area.width - 16, 26), "Chassi", r.chassis, r.frame.chassis, new Color(0.5f, 0.5f, 0.6f), false);
+        Bar(new Rect(area.x + 8, y, area.width - 16, 26), "Chassi", r.chassis, r.chassisMax, new Color(0.5f, 0.5f, 0.6f), false);
         y += 32;
         foreach (var part in r.parts.Values)
         {
@@ -115,15 +115,18 @@ public partial class BattleView : MonoBehaviour
             }
             y += 36;
         }
-        GUI.Label(new Rect(area.x + 8, y, area.width, 20), $"Núcleo: {r.core.name} ({r.core.energy} energia/turno)", small);
+        GUI.Label(new Rect(area.x + 8, y, area.width, 20), $"Núcleo: {r.core.name} ({r.BaseEnergy} energia/turno)", small);
     }
 
     void DrawIntent(Rect area)
     {
-        string text = battle.enemyIntent.Count == 0 ? "Nenhuma ação." :
+        string text = battle.enemyIntent.Count == 0 && battle.enemyScraps.Count == 0 ? "Nenhuma ação." :
+            (battle.enemyScraps.Count > 0 ? $"Sucateia: {string.Join(", ", battle.enemyScraps.Select(c => c.def.name))} (+{battle.enemyScraps.Count} energia)\n" : "") +
             string.Join("\n", battle.enemyIntent.Select(battle.IntentText));
         if (battle.player.peek) text += "\nPróxima mão: " + string.Join(", ", battle.EnemyNextHand.Select(c => c.def.name));
-        GUI.Label(area, "<b>Intenção do inimigo</b>\n" + text, new GUIStyle(box) { richText = true });
+        var e = battle.enemy;
+        string phase = e.phasesDone > 0 ? $"  <color=#ff8040>Fase {e.phasesDone + 1}</color>" : "";
+        GUI.Label(area, $"<b>Intenção do inimigo</b> ({e.tier}){phase}\n" + text, new GUIStyle(box) { richText = true });
     }
 
     void DrawLog(Rect area)

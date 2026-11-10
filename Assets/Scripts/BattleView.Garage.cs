@@ -8,6 +8,11 @@ public partial class BattleView
 {
     GarageSave garage;
     Vector2 deckScroll;
+    int opponentIndex;
+
+    // Enemies with a category, easiest first.
+    RobotDef[] Opponents => content.robots.Where(r => !string.IsNullOrEmpty(r.tier)).OrderBy(r => Array.IndexOf(RobotDef.Tiers, r.tier)).ToArray();
+    RobotDef Opponent => Opponents[(opponentIndex % Opponents.Length + Opponents.Length) % Opponents.Length];
 
     static string SavePath => System.IO.Path.Combine(Application.persistentDataPath, "garage.json");
 
@@ -94,7 +99,7 @@ public partial class BattleView
 
         var deck = content.Deck(b);
         GUI.Label(new Rect(x + 10, 180, w - 20, 22), $"<b>Deck ({deck.Count} cartas)</b>", rich);
-        GUILayout.BeginArea(new Rect(x + 10, 204, w - 20, 380));
+        GUILayout.BeginArea(new Rect(x + 10, 204, w - 20, 330));
         deckScroll = GUILayout.BeginScrollView(deckScroll);
         foreach (var g in deck.GroupBy(c => c.id))
             GUILayout.Label($"{g.Count()}x {g.First().name} [{g.First().cost}] — {g.First().text}", small);
@@ -102,7 +107,16 @@ public partial class BattleView
         GUILayout.EndArea();
 
         if (errors.Count > 0)
-            GUI.Label(new Rect(x + 10, 590, w - 20, 50), "<color=#ff6060>" + string.Join("\n", errors) + "</color>", rich);
+            GUI.Label(new Rect(x + 10, 540, w - 20, 50), "<color=#ff6060>" + string.Join("\n", errors) + "</color>", rich);
+
+        // Opponent picker
+        var op = Opponent;
+        GUI.Label(new Rect(x + 10, 592, 90, 24), "<b>Adversário</b>", rich);
+        if (GUI.Button(new Rect(x + 100, 590, 28, 24), "<")) opponentIndex--;
+        GUI.Label(new Rect(x + 134, 592, 330, 24), $"{op.name} <color=#ffd060>({op.tier})</color>", rich);
+        if (GUI.Button(new Rect(x + 470, 590, 28, 24), ">")) opponentIndex++;
+        string strat = op.strategies.Length == 0 ? "joga cartas ao acaso" : "estratégias: " + string.Join(", ", op.strategies);
+        GUI.Label(new Rect(x + 10, 616, w - 20, 24), strat + (op.phases.Length > 0 ? $" · chefe com {op.phases.Length} fases" : ""), small);
         GUI.enabled = errors.Count == 0;
         if (GUI.Button(new Rect(x + w - 190, 646, 180, 46), "Lutar")) StartBattle(b);
         GUI.enabled = true;

@@ -35,11 +35,16 @@ namespace CardBattler.Combat
         public readonly int weight;
         public readonly Dictionary<Slot, Part> parts = new Dictionary<Slot, Part>();
         public readonly List<Card> deck = new List<Card>(), hand = new List<Card>(), discard = new List<Card>();
-        public readonly int maxCardsPerTurn;
+        public readonly int maxCardsPerTurn, chassisMax, bonusEnergy;
+        public readonly string tier;
+        public readonly HashSet<string> strategies;
+        public readonly PhaseDef[] phases;
+        public int phasesDone, phaseEnergy, phaseCards;
         public int chassis, armor, energy, heat, overload, dodge;
         public bool aimPending, scrappedThisTurn, pierceNext, chainEnergyUsed, peek;
         public int cardsPlayedThisTurn;
         public Slot? lastPlayed;
+        public Card forced; // boss signature card that must lead the next intent
 
         public Robot(Content c, RobotDef def, string id)
         {
@@ -49,7 +54,11 @@ namespace CardBattler.Combat
             core = c.Part(def.core);
             makers = c.ActiveMakers(def);
             weight = c.Weight(def);
-            chassis = frame.chassis;
+            chassisMax = chassis = frame.chassis + def.bonusChassis;
+            bonusEnergy = def.bonusEnergy;
+            tier = def.tier;
+            strategies = new HashSet<string>(def.strategies ?? new string[0]);
+            phases = (def.phases ?? new PhaseDef[0]).OrderByDescending(p => p.at).ToArray();
             maxCardsPerTurn = def.maxCardsPerTurn > 0 ? def.maxCardsPerTurn : 99;
             Add(c, Slot.Cabeca, def.head); Add(c, Slot.Torso, def.torso);
             Add(c, Slot.BracoEsq, def.armL); Add(c, Slot.BracoDir, def.armR); Add(c, Slot.Pernas, def.legs);
@@ -64,6 +73,11 @@ namespace CardBattler.Combat
         }
 
         public bool Dead => parts[Slot.Torso].hp <= 0 && chassis <= 0;
+        public int Life => Math.Max(0, parts[Slot.Torso].hp) + chassis;
+        public int LifeMax => parts[Slot.Torso].Max + chassisMax;
+        public int BaseEnergy => core.energy + bonusEnergy + phaseEnergy;
+        public int MaxCards => maxCardsPerTurn + phaseCards;
+        public bool Has(string strategy) => strategies.Contains(strategy);
         public bool IsBroken(Slot s) => s != Slot.Frame && parts[s].Broken;
         public bool HasBonus(string bonus) => makers.Any(m => m.bonus == bonus);
         public int CostOf(Card c) => Math.Max(0, c.def.cost + (IsBroken(c.source) ? 1 : 0)
@@ -111,7 +125,11 @@ namespace CardBattler.Combat
         public int turn;
         readonly Random rng;
 
-        public Battle(Content content, int seed, RobotDef playerBuild = null, string enemyId = "enemy")
+        public readonly List<Card> enemyScraps = new List<Card>(); // planned scraps, part of the visible intent
+        internal Random Rng => rng;
+
+        // basicEnemyAI: ignore the enemy's strategies (simulator uses it to measure their impact).
+        public Battle(Content content, int seed, RobotDef playerBuild = null, string enemyId = "enemy", bool basicEnemyAI = false)
         {
             this.content = content;
             this.seed = seed;
@@ -123,6 +141,7 @@ namespace CardBattler.Combat
             }
             player = new Robot(content, playerBuild ?? content.Robot("player"), "player");
             enemy = new Robot(content, content.Robot(enemyId), "enemy");
+            if (basicEnemyAI) enemy.strategies.Clear();
             foreach (var r in new[] { player, enemy })
                 Emit(r, "battle_start", $"{r.name}: frame {r.frame.name}, núcleo {r.core.name}, partes " +
                     string.Join(", ", r.parts.Values.Select(p => $"{SlotName(p.slot)}={p.def.name}({p.Max})")) + $". Seed {seed}.",
@@ -182,7 +201,7 @@ namespace CardBattler.Combat
             if (r.core.heatPerTurn > 0) Emit(r, "heat_tick", $"{r.name}: núcleo gera {r.core.heatPerTurn} Calor (total {r.heat}).", value: r.core.heatPerTurn, ui: false);
             bool hot = r.heat >= Robot.HeatLimit;
             // Sobrecarga = number of upcoming turns with -1 energy.
-            r.energy = Math.Max(0, r.core.energy - (r.overload > 0 ? 1 : 0) - (hot ? 1 : 0));
+            r.energy = Math.Max(0, r.BaseEnergy - (r.overload > 0 ? 1 : 0) - (hot ? 1 : 0));
             if (r.overload > 0) Emit(r, "overload_penalty", $"{r.name}: Sobrecarga, -1 energia ({r.overload - 1} turno(s) restante(s)).", value: 1);
             if (hot) Emit(r, "heat_penalty", $"{r.name}: superaquecido ({r.heat} Calor), -1 energia.", value: 1);
             r.overload = Math.Max(0, r.overload - 1);
@@ -233,7 +252,8 @@ namespace CardBattler.Combat
                 card: c.def.name, source: SlotName(c.source), cost: cost, target: target.HasValue ? SlotName(target.Value) : null);
             Resolve(user, c, target);
             user.cardsPlayedThisTurn++;
-            user.discard.Add(c);
+            if (!c.def.exhaust) user.discard.Add(c);
+            if (user.forced == c) user.forced = null;
             user.lastPlayed = c.source;
             CheckEnd();
             return true;
@@ -324,6 +344,7 @@ namespace CardBattler.Combat
             {
                 Emit(user, "intent_cancel", $"{user.name} cancela a intenção do inimigo.", card: d.name, cards: Names(enemyIntent));
                 enemyIntent.Clear();
+                enemyScraps.Clear();
             }
             if (d.weakPoint > 0)
             {
@@ -418,7 +439,7 @@ namespace CardBattler.Combat
             if (slot != Slot.Torso) { DamagePart(r, Slot.Torso, amount); return; }
             int ch = Math.Min(r.chassis, amount);
             r.chassis -= ch;
-            if (ch > 0) Emit(r, "damage", $"{r.name}: chassi perde {ch} ({r.chassis}/{r.frame.chassis}).", target: "Chassi", value: ch, ui: false);
+            if (ch > 0) Emit(r, "damage", $"{r.name}: chassi perde {ch} ({r.chassis}/{r.chassisMax}).", target: "Chassi", value: ch, ui: false);
         }
 
         void CheckEnd()
@@ -438,12 +459,13 @@ namespace CardBattler.Combat
             if (result != Result.None) return;
             EndTurn(player);
             StartTurn(enemy, false); // hand was already drawn when the intent was revealed
-            Emit(enemy, "intent_execute", $"{enemy.name} executa: {string.Join(", ", enemyIntent.Select(IntentText))}.", cards: Names(enemyIntent), ui: false);
+            Emit(enemy, "intent_execute", $"{enemy.name} executa: {IntentSummary()}.", cards: Names(enemyScraps.Concat(enemyIntent)), ui: false);
+            foreach (var c in enemyScraps.ToList()) Scrap(enemy, c);
             foreach (var c in enemyIntent.ToList())
             {
                 if (result != Result.None) break;
                 if (!CanPlay(enemy, c)) { Emit(enemy, "intent_skip", $"{enemy.name} não consegue usar {c.def.name}.", card: c.def.name); continue; }
-                Play(enemy, c, c.def.repair > 0 ? (Slot?)null : enemyAimTarget);
+                Play(enemy, c, c.def.repair > 0 ? (Slot?)null : c.def.weakPoint > 0 ? enemyWeakTarget : enemyAimTarget);
             }
             if (result != Result.None) return;
             EndTurn(enemy);
@@ -451,26 +473,37 @@ namespace CardBattler.Combat
             StartTurn(player, true);
         }
 
-        // Simple intent AI: draw a hand, pick random affordable cards (aim first) up to maxCardsPerTurn.
+        public Slot enemyWeakTarget = Slot.Torso;
+
+        // Draws the enemy hand, applies boss phases, then EnemyAI decides the whole turn up front so the intent shown is honest.
         void PlanEnemy()
         {
-            enemyIntent.Clear();
             Draw(enemy, enemy.frame.hand - enemy.hand.Count);
-            int budget = Math.Max(0, enemy.core.energy - (enemy.overload > 0 ? 1 : 0) - (enemy.heat + enemy.core.heatPerTurn >= Robot.HeatLimit ? 1 : 0));
-            foreach (var c in enemy.hand.OrderBy(_ => rng.Next()))
+            CheckPhases();
+            EnemyAI.Plan(this);
+            Emit(enemy, "intent_reveal", $"Intenção: {IntentSummary()}.", cards: Names(enemyScraps.Concat(enemyIntent)), target: SlotName(enemyAimTarget), ui: false);
+        }
+
+        public string IntentSummary() => string.Join(", ",
+            (enemyScraps.Count > 0 ? new[] { $"sucateia {string.Join(", ", Names(enemyScraps))}" } : new string[0]).Concat(enemyIntent.Select(IntentText)));
+
+        // Boss hook: each phase triggers once when torso+chassis drops to its threshold.
+        void CheckPhases()
+        {
+            while (enemy.phasesDone < enemy.phases.Length && enemy.Life <= enemy.phases[enemy.phasesDone].at * enemy.LifeMax)
             {
-                if (enemyIntent.Count >= enemy.maxCardsPerTurn) break;
-                enemy.cardsPlayedThisTurn = enemyIntent.Count; // so the Kagemori discount applies to the first planned card only
-                int cost = enemy.CostOf(c);
-                if (cost > budget) continue;
-                enemyIntent.Add(c); budget -= cost;
+                var ph = enemy.phases[enemy.phasesDone++];
+                enemy.phaseEnergy += ph.energy;
+                enemy.phaseCards += ph.cards;
+                enemy.armor += ph.armor;
+                Emit(enemy, "boss_phase", $"{enemy.name}: {ph.text}", value: enemy.phasesDone);
+                if (!string.IsNullOrEmpty(ph.signature))
+                {
+                    var sig = new Card(content.Card(ph.signature), Slot.Frame);
+                    enemy.hand.Insert(0, sig);
+                    enemy.forced = sig;
+                }
             }
-            enemy.cardsPlayedThisTurn = 0;
-            enemyIntent.Sort((a, b) => (b.def.aim ? 1 : 0) - (a.def.aim ? 1 : 0));
-            var alive = player.parts.Values.Where(p => !p.Broken && p.slot != Slot.Torso).ToList();
-            enemyAimTarget = alive.Count > 0 ? alive[rng.Next(alive.Count)].slot : Slot.Torso;
-            Emit(enemy, "intent_reveal", $"Intenção: {string.Join(", ", enemyIntent.Select(IntentText))}.",
-                cards: Names(enemyIntent), target: SlotName(enemyAimTarget), ui: false);
         }
 
         public string IntentText(Card c)

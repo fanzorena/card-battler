@@ -12,7 +12,7 @@ namespace CardBattler.Combat
         public string id, name, text;
         public int cost, damage, hits, armor, draw, repair, dodge, breakDraw, chainDraw, weakPoint;
         public int targetHeat, selfHeat, overload, corrosion;
-        public bool aim, chainImpact, pierce, pierceNext, armorDamage, secondPart, doubleCorrosion, cancelIntent, peek, clearHeat;
+        public bool aim, chainImpact, pierce, pierceNext, armorDamage, secondPart, doubleCorrosion, cancelIntent, peek, clearHeat, exhaust;
         public bool TargetsPart => damage > 0 || armorDamage || doubleCorrosion;
     }
 
@@ -38,14 +38,28 @@ namespace CardBattler.Combat
         public string id, bonus, text;
     }
 
-    // Also used as a garage build: frame + one part id per slot.
+    // Boss hook: when the enemy's torso+chassis drops to `at` (fraction of max), it gets these buffs once.
+    [Serializable]
+    public class PhaseDef
+    {
+        public float at;
+        public int energy, cards, armor;
+        public string signature, text; // signature: card id added to the hand and played first in that turn
+    }
+
+    // Also used as a garage build: frame + one part id per slot. Enemy-only fields tune the AI.
     [Serializable]
     public class RobotDef
     {
         public string id, name, frame, head, torso, armL, armR, legs, core;
         public int maxCardsPerTurn;
+        public string tier;                 // Fácil, Moderado, Difícil, Chefe (enemies only)
+        public string[] strategies = new string[0]; // sucateiro, combista, cirurgiao, defensivo, status, adaptativo
+        public int bonusChassis, bonusEnergy;       // fine-tuning only
+        public PhaseDef[] phases = new PhaseDef[0];
 
         public RobotDef Clone() => (RobotDef)MemberwiseClone();
+        public static readonly string[] Tiers = { "Fácil", "Moderado", "Difícil", "Chefe" };
         public string[] PartIds => new[] { head, torso, armL, armR, legs, core };
     }
 
