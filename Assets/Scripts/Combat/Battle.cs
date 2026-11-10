@@ -28,7 +28,7 @@ namespace CardBattler.Combat
     public class Robot
     {
         public const int HeatLimit = 10, HeatDissipation = 2, ImpactBonus = 4;
-        public readonly string name;
+        public readonly string id, name;
         public readonly FrameDef frame;
         public readonly PartDef core;
         public readonly Dictionary<Slot, Part> parts = new Dictionary<Slot, Part>();
@@ -38,8 +38,9 @@ namespace CardBattler.Combat
         public bool aimPending, scrappedThisTurn;
         public Slot? lastPlayed;
 
-        public Robot(Content c, RobotDef def)
+        public Robot(Content c, RobotDef def, string id)
         {
+            this.id = id;
             name = def.name;
             frame = c.Frame(def.frame);
             core = c.Part(def.core);
@@ -60,13 +61,43 @@ namespace CardBattler.Combat
         public bool Dead => parts[Slot.Torso].hp <= 0 && chassis <= 0;
         public bool IsBroken(Slot s) => s != Slot.Frame && parts[s].Broken;
         public int CostOf(Card c) => c.def.cost + (IsBroken(c.source) ? 1 : 0);
+
+        public RobotState Snapshot() => new RobotState
+        {
+            energy = energy, armor = armor, heat = heat, overload = overload, dodge = dodge, aimPending = aimPending,
+            chassis = chassis, head = parts[Slot.Cabeca].hp, torso = parts[Slot.Torso].hp, armL = parts[Slot.BracoEsq].hp,
+            armR = parts[Slot.BracoDir].hp, legs = parts[Slot.Pernas].hp,
+            hand = hand.Count, deck = deck.Count, discard = discard.Count
+        };
+    }
+
+    // One line of the battle log. Fields that don't apply to an event stay empty/0.
+    [Serializable]
+    public class RobotState
+    {
+        public int energy, armor, heat, overload, dodge, chassis, head, torso, armL, armR, legs, hand, deck, discard;
+        public bool aimPending;
+    }
+
+    [Serializable]
+    public class BattleEvent
+    {
+        public int seq, turn;
+        public string actor, evt, card, source, target, msg;
+        public int cost, value, absorbed, dodged;
+        public bool chained;
+        public string[] cards;
+        public RobotState player, enemy;
     }
 
     public class Battle
     {
         public readonly Content content;
         public readonly Robot player, enemy;
+        public readonly int seed;
         public readonly List<string> log = new List<string>();
+        public readonly List<BattleEvent> history = new List<BattleEvent>();
+        public event Action<BattleEvent> Logged;
         public readonly List<Card> enemyIntent = new List<Card>();
         public Slot enemyAimTarget = Slot.Torso;
         public Result result;
@@ -76,9 +107,14 @@ namespace CardBattler.Combat
         public Battle(Content content, int seed, string playerId = "player", string enemyId = "enemy")
         {
             this.content = content;
+            this.seed = seed;
             rng = new Random(seed);
-            player = new Robot(content, content.Robot(playerId));
-            enemy = new Robot(content, content.Robot(enemyId));
+            player = new Robot(content, content.Robot(playerId), "player");
+            enemy = new Robot(content, content.Robot(enemyId), "enemy");
+            foreach (var r in new[] { player, enemy })
+                Emit(r, "battle_start", $"{r.name}: frame {r.frame.name}, núcleo {r.core.name}, partes " +
+                    string.Join(", ", r.parts.Values.Select(p => $"{SlotName(p.slot)}={p.def.name}({p.Max})")) + $". Seed {seed}.",
+                    cards: Names(r.deck), value: seed);
             Shuffle(player.deck); Shuffle(enemy.deck);
             PlanEnemy();
             StartTurn(player, true);
@@ -90,6 +126,7 @@ namespace CardBattler.Combat
             Slot.BracoDir => "Braço Dir", Slot.Pernas => "Pernas", _ => "Frame"
         };
 
+        static string[] Names(IEnumerable<Card> cards) => cards.Select(c => c.def.name).ToArray();
         Robot Other(Robot r) => r == player ? enemy : player;
 
         void Shuffle(List<Card> l)
@@ -99,38 +136,55 @@ namespace CardBattler.Combat
 
         public void Draw(Robot r, int n)
         {
+            var drawn = new List<Card>();
             for (int i = 0; i < n; i++)
             {
-                if (r.deck.Count == 0) { r.deck.AddRange(r.discard); r.discard.Clear(); Shuffle(r.deck); }
-                if (r.deck.Count == 0) return;
-                r.hand.Add(r.deck[0]); r.deck.RemoveAt(0);
+                if (r.deck.Count == 0 && r.discard.Count > 0)
+                {
+                    r.deck.AddRange(r.discard); r.discard.Clear(); Shuffle(r.deck);
+                    Emit(r, "reshuffle", $"{r.name} embaralha o descarte no deck.");
+                }
+                if (r.deck.Count == 0) break;
+                drawn.Add(r.deck[0]); r.hand.Add(r.deck[0]); r.deck.RemoveAt(0);
             }
+            if (drawn.Count > 0) Emit(r, "draw", $"{r.name} compra {string.Join(", ", Names(drawn))}.", cards: Names(drawn), value: drawn.Count, ui: false);
         }
 
         // Armor lasts until its owner's next turn (Bastião passive: halves instead).
         void StartTurn(Robot r, bool draw)
         {
             if (r == player) turn++;
+            int oldArmor = r.armor;
             r.armor = r.frame.passive == "armorHalves" ? r.armor / 2 : 0;
+            if (oldArmor > 0) Emit(r, "armor_expire", $"{r.name}: blindagem {oldArmor} → {r.armor}.", value: oldArmor - r.armor, ui: false);
             r.heat += r.core.heatPerTurn;
-            r.energy = Math.Max(0, r.core.energy - r.overload - (r.heat >= Robot.HeatLimit ? 1 : 0));
-            if (r.overload > 0) Log($"{r.name}: Sobrecarga, -{r.overload} energia.");
-            if (r.heat >= Robot.HeatLimit) Log($"{r.name}: superaquecido, -1 energia.");
+            if (r.core.heatPerTurn > 0) Emit(r, "heat_tick", $"{r.name}: núcleo gera {r.core.heatPerTurn} Calor (total {r.heat}).", value: r.core.heatPerTurn, ui: false);
+            bool hot = r.heat >= Robot.HeatLimit;
+            r.energy = Math.Max(0, r.core.energy - r.overload - (hot ? 1 : 0));
+            if (r.overload > 0) Emit(r, "overload_penalty", $"{r.name}: Sobrecarga, -{r.overload} energia.", value: r.overload);
+            if (hot) Emit(r, "heat_penalty", $"{r.name}: superaquecido ({r.heat} Calor), -1 energia.", value: 1);
             r.overload = 0;
             r.scrappedThisTurn = false;
             r.lastPlayed = null;
+            Emit(r, "turn_start", $"Turno {turn}: {r.name} gera {r.energy} energia.", value: r.energy, ui: false);
             foreach (var p in r.parts.Values.Where(p => p.corrosion > 0).ToList())
             {
-                Log($"{r.name}: Corrosão causa {p.corrosion} em {SlotName(p.slot)}.");
+                Emit(r, "corrosion_tick", $"{r.name}: Corrosão causa {p.corrosion} em {SlotName(p.slot)}.", target: SlotName(p.slot), value: p.corrosion);
                 DamagePart(r, p.slot, p.corrosion);
                 p.corrosion--;
             }
             CheckEnd();
-            if (draw) Draw(r, r.frame.hand - r.hand.Count);
+            if (draw)
+            {
+                Draw(r, r.frame.hand - r.hand.Count);
+                Emit(r, "hand", $"{r.name} mão: {string.Join(", ", Names(r.hand))}.", cards: Names(r.hand), ui: false);
+            }
         }
 
         void EndTurn(Robot r)
         {
+            Emit(r, "turn_end", $"{r.name} encerra o turno com {r.energy} energia sobrando, descarta {r.hand.Count} carta(s).",
+                cards: Names(r.hand), value: r.energy, ui: false);
             r.discard.AddRange(r.hand); r.hand.Clear();
             r.heat = Math.Max(0, r.heat - Robot.HeatDissipation);
         }
@@ -143,9 +197,11 @@ namespace CardBattler.Combat
         public bool Play(Robot user, Card c, Slot? target = null)
         {
             if (!CanPlay(user, c)) return false;
-            user.energy -= user.CostOf(c);
+            int cost = user.CostOf(c);
+            user.energy -= cost;
             user.hand.Remove(c);
-            Log($"{user.name} joga {c.def.name}.");
+            Emit(user, "play", $"{user.name} joga {c.def.name} ({SlotName(c.source)}, custo {cost}).",
+                card: c.def.name, source: SlotName(c.source), cost: cost, target: target.HasValue ? SlotName(target.Value) : null);
             Resolve(user, c, target);
             user.discard.Add(c);
             user.lastPlayed = c.source;
@@ -158,7 +214,7 @@ namespace CardBattler.Combat
             if (result != Result.None || !user.hand.Remove(c)) return false;
             user.discard.Add(c);
             user.energy++;
-            Log($"{user.name} sucateia {c.def.name} (+1 energia).");
+            Emit(user, "scrap", $"{user.name} sucateia {c.def.name} (+1 energia).", card: c.def.name, source: SlotName(c.source), value: 1);
             if (user.frame.passive == "scrapDraw" && !user.scrappedThisTurn) Draw(user, 1);
             user.scrappedThisTurn = true;
             return true;
@@ -173,56 +229,84 @@ namespace CardBattler.Combat
             bool bonus = !user.IsBroken(c.source); // broken part: no bonus effects
             bool chained = bonus && user.lastPlayed is Slot last && last != c.source && IsLimb(last) && IsLimb(c.source);
 
-            if (d.armor > 0) user.armor += d.armor;
+            if (d.armor > 0)
+            {
+                user.armor += d.armor;
+                Emit(user, "armor", $"{user.name} ganha {d.armor} de blindagem.", card: d.name, value: d.armor, ui: false);
+            }
             if (d.repair > 0)
             {
                 var p = target.HasValue && target != Slot.Frame ? user.parts[target.Value]
                     : user.parts.Values.OrderByDescending(x => x.Max - x.hp).First();
+                int before = p.hp;
                 p.hp = Math.Min(p.Max, p.hp + d.repair);
-                Log($"{user.name} repara {SlotName(p.slot)}.");
+                Emit(user, "repair", $"{user.name} repara {p.hp - before} em {SlotName(p.slot)}.", card: d.name, target: SlotName(p.slot), value: p.hp - before);
             }
             if (d.draw > 0) Draw(user, d.draw);
             if (d.dodge > 0)
             {
-                if (user.IsBroken(Slot.Pernas)) Log("Pernas avariadas: esquiva anulada.");
-                else user.dodge = Math.Max(user.dodge, d.dodge);
+                if (user.IsBroken(Slot.Pernas)) Emit(user, "dodge_cancelled", "Pernas avariadas: esquiva anulada.", card: d.name);
+                else
+                {
+                    user.dodge = Math.Max(user.dodge, d.dodge);
+                    Emit(user, "dodge", $"{user.name} prepara esquiva de {user.dodge}.", card: d.name, value: user.dodge, ui: false);
+                }
             }
-            if (d.aim) user.aimPending = true;
-            user.heat += d.selfHeat;
+            if (d.aim)
+            {
+                user.aimPending = true;
+                Emit(user, "aim", $"{user.name} mira.", card: d.name, ui: false);
+            }
+            if (d.selfHeat > 0)
+            {
+                user.heat += d.selfHeat;
+                Emit(user, "heat_applied", $"{user.name} ganha {d.selfHeat} Calor (total {user.heat}).", card: d.name, target: user.id, value: d.selfHeat);
+            }
 
             if (d.damage > 0)
             {
                 var slot = Slot.Torso;
                 if (user.aimPending) { if (target.HasValue && target != Slot.Frame) slot = target.Value; user.aimPending = false; }
                 bool impact = d.chainImpact && chained;
-                if (impact) Log("Encadear: Impacto!");
-                bool broke = Attack(user, opp, slot, d.damage, Math.Max(1, d.hits), d.pierce, impact);
+                Attack(user, opp, c, slot, Math.Max(1, d.hits), impact, chained, out bool broke);
                 if (broke && bonus && d.breakDraw > 0) Draw(user, d.breakDraw);
-                opp.heat += d.targetHeat;
-                opp.overload += d.overload;
-                opp.parts[slot].corrosion += d.corrosion;
+                if (d.targetHeat > 0)
+                {
+                    opp.heat += d.targetHeat;
+                    Emit(opp, "heat_applied", $"{opp.name} recebe {d.targetHeat} Calor (total {opp.heat}).", card: d.name, value: d.targetHeat);
+                }
+                if (d.overload > 0)
+                {
+                    opp.overload += d.overload;
+                    Emit(opp, "overload_applied", $"{opp.name} recebe {d.overload} Sobrecarga.", card: d.name, value: d.overload);
+                }
+                if (d.corrosion > 0)
+                {
+                    opp.parts[slot].corrosion += d.corrosion;
+                    Emit(opp, "corrosion_applied", $"{opp.name} recebe {d.corrosion} Corrosão em {SlotName(slot)}.", card: d.name, target: SlotName(slot), value: d.corrosion);
+                }
             }
         }
 
-        // Returns true if this attack broke the targeted part.
-        bool Attack(Robot user, Robot def, Slot slot, int dmg, int hits, bool pierce, bool impact)
+        void Attack(Robot user, Robot def, Card c, Slot slot, int hits, bool impact, bool chained, out bool broke)
         {
+            var d = c.def;
             bool wasBroken = def.parts[slot].Broken;
             int dodge = def.IsBroken(Slot.Pernas) ? 0 : def.dodge;
             def.dodge = 0;
-            int total = 0;
+            int total = 0, absorbed = 0, dodged = 0;
             for (int h = 0; h < hits; h++)
             {
-                int amount = dmg + (impact && def.parts[slot].Broken ? Robot.ImpactBonus : 0);
-                int dodged = Math.Min(dodge, amount); dodge -= dodged; amount -= dodged;
-                if (!pierce) { int a = Math.Min(def.armor, amount); def.armor -= a; amount -= a; }
+                int amount = d.damage + (impact && def.parts[slot].Broken ? Robot.ImpactBonus : 0);
+                int dg = Math.Min(dodge, amount); dodge -= dg; amount -= dg; dodged += dg;
+                if (!d.pierce) { int a = Math.Min(def.armor, amount); def.armor -= a; amount -= a; absorbed += a; }
                 DamagePart(def, slot, amount);
                 total += amount;
             }
-            Log($"{def.name} sofre {total} em {SlotName(slot)}.");
-            bool broke = !wasBroken && def.parts[slot].Broken;
-            if (broke) Log($"{def.name}: {SlotName(slot)} avariada!");
-            return broke;
+            Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
+                (absorbed > 0 ? $", {absorbed} na blindagem" : "") + (dodged > 0 ? $", {dodged} esquivado" : "") + ".",
+                card: d.name, source: SlotName(c.source), target: SlotName(slot), value: total, absorbed: absorbed, dodged: dodged, chained: chained);
+            broke = !wasBroken && def.parts[slot].Broken;
         }
 
         // Excess damage on a limb/head spills into the torso; torso excess goes to the chassis.
@@ -230,18 +314,31 @@ namespace CardBattler.Combat
         {
             if (amount <= 0) return;
             var p = r.parts[slot];
+            bool wasBroken = p.Broken;
             int a = Math.Min(p.hp, amount); p.hp -= a; amount -= a;
-            if (slot == Slot.Pernas && p.Broken) r.dodge = 0;
+            if (a > 0) Emit(r, "damage", $"{r.name}: {SlotName(slot)} perde {a} ({p.hp}/{p.Max}).", target: SlotName(slot), value: a, ui: false);
+            if (!wasBroken && p.Broken)
+            {
+                Emit(r, "part_broken", $"{r.name}: {SlotName(slot)} avariada!", target: SlotName(slot));
+                if (slot == Slot.Pernas && r.dodge > 0) { r.dodge = 0; Emit(r, "dodge_cancelled", "Pernas avariadas: esquiva anulada."); }
+            }
             if (amount <= 0) return;
             if (slot != Slot.Torso) { DamagePart(r, Slot.Torso, amount); return; }
-            r.chassis = Math.Max(0, r.chassis - amount);
+            int ch = Math.Min(r.chassis, amount);
+            r.chassis -= ch;
+            if (ch > 0) Emit(r, "damage", $"{r.name}: chassi perde {ch} ({r.chassis}/{r.frame.chassis}).", target: "Chassi", value: ch, ui: false);
         }
 
         void CheckEnd()
         {
             if (result != Result.None) return;
-            if (enemy.Dead) { result = Result.Win; Log("Vitória!"); }
-            else if (player.Dead) { result = Result.Lose; Log("Derrota..."); }
+            if (enemy.Dead) result = Result.Win;
+            else if (player.Dead) result = Result.Lose;
+            else return;
+            var parts = string.Join("; ", new[] { player, enemy }.Select(r =>
+                $"{r.name}: chassi {r.chassis}, " + string.Join(", ", r.parts.Values.Select(p => $"{SlotName(p.slot)} {p.hp}/{p.Max}"))));
+            Emit(result == Result.Win ? player : enemy, "battle_end",
+                $"{(result == Result.Win ? "Vitória" : "Derrota")} no turno {turn}. {parts}", value: turn);
         }
 
         public void EndPlayerTurn()
@@ -249,14 +346,15 @@ namespace CardBattler.Combat
             if (result != Result.None) return;
             EndTurn(player);
             StartTurn(enemy, false); // hand was already drawn when the intent was revealed
+            Emit(enemy, "intent_execute", $"{enemy.name} executa: {string.Join(", ", enemyIntent.Select(IntentText))}.", cards: Names(enemyIntent), ui: false);
             foreach (var c in enemyIntent.ToList())
             {
                 if (result != Result.None) break;
-                if (!CanPlay(enemy, c)) { Log($"{enemy.name} não consegue usar {c.def.name}."); continue; }
+                if (!CanPlay(enemy, c)) { Emit(enemy, "intent_skip", $"{enemy.name} não consegue usar {c.def.name}.", card: c.def.name); continue; }
                 Play(enemy, c, c.def.repair > 0 ? (Slot?)null : enemyAimTarget);
             }
-            EndTurn(enemy);
             if (result != Result.None) return;
+            EndTurn(enemy);
             PlanEnemy();
             StartTurn(player, true);
         }
@@ -277,6 +375,8 @@ namespace CardBattler.Combat
             enemyIntent.Sort((a, b) => (b.def.aim ? 1 : 0) - (a.def.aim ? 1 : 0));
             var alive = player.parts.Values.Where(p => !p.Broken && p.slot != Slot.Torso).ToList();
             enemyAimTarget = alive.Count > 0 ? alive[rng.Next(alive.Count)].slot : Slot.Torso;
+            Emit(enemy, "intent_reveal", $"Intenção: {string.Join(", ", enemyIntent.Select(IntentText))}.",
+                cards: Names(enemyIntent), target: SlotName(enemyAimTarget), ui: false);
         }
 
         public string IntentText(Card c)
@@ -288,9 +388,19 @@ namespace CardBattler.Combat
             return $"{d.name}: {d.text}";
         }
 
-        void Log(string s)
+        void Emit(Robot actor, string evt, string msg, string card = null, string source = null, string target = null,
+            int cost = 0, int value = 0, int absorbed = 0, int dodged = 0, bool chained = false, string[] cards = null, bool ui = true)
         {
-            log.Add(s);
+            var e = new BattleEvent
+            {
+                seq = history.Count, turn = turn, actor = actor.id, evt = evt, msg = msg, card = card, source = source, target = target,
+                cost = cost, value = value, absorbed = absorbed, dodged = dodged, chained = chained, cards = cards ?? new string[0],
+                player = player?.Snapshot(), enemy = enemy?.Snapshot()
+            };
+            history.Add(e);
+            Logged?.Invoke(e);
+            if (!ui) return;
+            log.Add(msg);
             if (log.Count > 40) log.RemoveAt(0);
         }
     }
