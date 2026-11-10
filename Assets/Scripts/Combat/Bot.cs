@@ -41,7 +41,7 @@ namespace CardBattler.Combat
 
         // Damage the visible enemy intent will deal this turn (before armor).
         public static int Incoming(Battle b) => b.enemyIntent.Where(c => c.def.TargetsPart && !c.def.doubleCorrosion)
-            .Sum(c => (c.def.armorDamage ? b.enemy.armor / 2 : c.def.damage) * Math.Max(1, c.def.hits) * (c.def.secondPart ? 2 : 1));
+            .Sum(c => c.def.DamageFor(b.enemy.armor) * Math.Max(1, c.def.hits) * (c.def.secondPart ? 2 : 1));
 
         static bool IsLimb(Slot s) => s == Slot.BracoEsq || s == Slot.BracoDir || s == Slot.Pernas;
 
@@ -58,7 +58,13 @@ namespace CardBattler.Combat
             bool chains = p.lastPlayed is Slot last && last != c.source && IsLimb(last) && IsLimb(c.source);
             if (chains && (d.chainImpact || d.chainDraw > 0 || (p.frame.passive == "chainEnergy" && !p.chainEnergyUsed))) v += 3;
             v += 4 * (d.draw + d.chainDraw);
-            if (d.armor > 0) v += Math.Min(d.armor, unblocked) * 1.2f;
+            if (d.armor > 0)
+            {
+                // Armor blocks the visible intent; leftovers still matter if they persist (Bastião) or feed Investida.
+                int useful = Math.Min(d.armor, unblocked);
+                v += useful * 1.2f + (d.armor - useful) * (0.2f + (p.frame.passive == "armorHalves" ? 0.4f : 0)
+                    + (p.hand.Any(x => x != c && x.def.armorDamage) ? 0.5f : 0));
+            }
             if (d.dodge > 0 && p.dodge == 0 && !p.IsBroken(Slot.Pernas)) v += Math.Min(d.dodge, unblocked) * 1.2f;
             if (d.repair > 0) v += Math.Min(d.repair, p.parts.Values.Max(x => x.Max - x.hp));
             if (d.cancelIntent) v += Incoming(b) * 1.2f;
@@ -68,12 +74,12 @@ namespace CardBattler.Combat
             if (d.pierceNext && !p.pierceNext && e.armor > 0 && AttackAfter(b, c)) v += Math.Min(e.armor, 8);
             if (d.weakPoint > 0) v += d.weakPoint * p.hand.Count(x => x != c && x.def.TargetsPart);
             if (d.selfHeat > 0 && p.heat + d.selfHeat >= Robot.HeatLimit) v -= 3;
-            if (d.doubleCorrosion) v += e.parts[Slot.Torso].corrosion * 1.5f;
+            if (d.doubleCorrosion) v += e.parts[Slot.Torso].corrosion;
             else if (d.TargetsPart)
             {
-                int raw = (d.armorDamage ? p.armor / 2 : d.damage) * Math.Max(1, d.hits) * (d.secondPart ? 2 : 1);
+                int raw = d.DamageFor(p.armor) * Math.Max(1, d.hits) * (d.secondPart ? 2 : 1);
                 v += d.pierce || p.pierceNext ? raw : Math.Max(raw * 0.3f, raw - e.armor);
-                v += d.targetHeat + d.overload * 2 + d.corrosion * 1.5f;
+                v += d.targetHeat + d.overload * 2 + d.corrosion;
                 int landed = d.pierce || p.pierceNext ? raw : raw - e.armor;
                 if (landed >= e.parts[Slot.Torso].hp + e.chassis) v += 1000; // lethal
             }
@@ -90,7 +96,7 @@ namespace CardBattler.Combat
                 case Target.EnemyPart:
                     if (c.def.weakPoint > 0) return Slot.Torso;
                     // Break an enemy weapon arm if this hit can, otherwise go for the torso.
-                    int dmg = (c.def.armorDamage ? p.armor / 2 : c.def.damage) * Math.Max(1, c.def.hits);
+                    int dmg = c.def.DamageFor(p.armor) * Math.Max(1, c.def.hits);
                     var arm = b.enemy.parts.Values.Where(x => (x.slot == Slot.BracoEsq || x.slot == Slot.BracoDir) && !x.Broken && x.hp <= dmg)
                         .OrderByDescending(x => x.hp).FirstOrDefault();
                     return arm?.slot ?? Slot.Torso;

@@ -241,6 +241,14 @@ namespace CardBattler.Combat
             return win < t.min ? "⚠ abaixo da meta" : win > t.max ? "⚠ acima da meta" : "✔ na meta";
         }
 
+        public const float BuildTolerance = 0.10f;
+
+        // A build's win rate in a category, flagged when it is more than BuildTolerance away from the target range.
+        public static bool BuildInBand(string tier, float win) =>
+            !Targets.TryGetValue(tier, out var t) || (t.max >= 1 ? win >= t.min - BuildTolerance : Math.Abs(win - (t.min + t.max) / 2) <= BuildTolerance);
+
+        static string BuildCell(string tier, float win) => Pct(win) + (BuildInBand(tier, win) ? "" : " ⚠");
+
         static string Target(string tier) => Targets.TryGetValue(tier, out var t) ? (t.max >= 1 ? $"> {Pct(t.min)}" : $"{Pct(t.min)}–{Pct(t.max)}") : "-";
 
         // Category summary (greedy player, average over builds), decision gap and per-enemy strategy impact.
@@ -266,9 +274,9 @@ namespace CardBattler.Combat
             s.AppendLine("| Build | " + string.Join(" | ", tiers) + " |");
             s.AppendLine("|---|" + string.Concat(tiers.Select(_ => "---|")));
             foreach (var g in strat.Where(r => r.policy == "greedy").GroupBy(r => r.build))
-                s.AppendLine($"| {g.Key} | " + string.Join(" | ", tiers.Select(t => Pct(Avg(g.Where(r => r.tier == t))))) + " |");
+                s.AppendLine($"| {g.Key} | " + string.Join(" | ", tiers.Select(t => BuildCell(t, Avg(g.Where(r => r.tier == t))))) + " |");
             s.AppendLine();
-            s.AppendLine("A meta vale para a média; builds muito acima ou abaixo dela indicam desequilíbrio entre builds, não entre inimigos.");
+            s.AppendLine($"⚠ = build a mais de {Pct(BuildTolerance)} da meta da categoria. A meta vale para a média; builds fora da faixa indicam desequilíbrio entre builds, não entre inimigos.");
             s.AppendLine();
             s.AppendLine("## Inimigos");
             s.AppendLine();

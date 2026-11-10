@@ -126,7 +126,7 @@ public class CombatTests
         b.EndPlayerTurn();
         // heat 10 -> 8 after dissipation, so no heat penalty; overload costs 1
         Assert.AreEqual(2, P.energy);
-        Assert.AreEqual(6, P.parts[Slot.BracoEsq].hp);
+        Assert.AreEqual(7, P.parts[Slot.BracoEsq].hp); // Corrosão: 1 damage per turn
         Assert.AreEqual(1, P.parts[Slot.BracoEsq].corrosion);
 
         P.heat = 12;

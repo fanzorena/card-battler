@@ -66,6 +66,17 @@ public class SimulatorTests
     }
 
     [Test]
+    public void BuildBand_IsTargetCenterPlusMinusTenPoints()
+    {
+        Assert.IsTrue(Simulator.BuildInBand("Moderado", 0.61f));
+        Assert.IsFalse(Simulator.BuildInBand("Moderado", 0.59f));
+        Assert.IsFalse(Simulator.BuildInBand("Difícil", 0.68f));
+        Assert.IsTrue(Simulator.BuildInBand("Chefe", 0.48f));
+        Assert.IsTrue(Simulator.BuildInBand("Fácil", 1f));
+        Assert.IsFalse(Simulator.BuildInBand("Fácil", 0.69f));
+    }
+
+    [Test]
     public void RunAll_RejectsBadConfig()
     {
         Assert.Throws<ArgumentException>(() => Simulator.RunAll(content, new SimConfig { matches = 1, policies = new[] { "magic" } }));

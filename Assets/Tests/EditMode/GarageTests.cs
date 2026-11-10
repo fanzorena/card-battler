@@ -158,7 +158,8 @@ public class NewCardTests
     public void Choque_Overload_LastsOneTurn()
     {
         b.Play(P, Give("choque", Slot.BracoDir));
-        Assert.AreEqual(1, E.overload);
+        b.Play(P, Give("choque", Slot.BracoDir));
+        Assert.AreEqual(1, E.overload); // doesn't stack
         b.enemyIntent.Clear();
         b.EndPlayerTurn();
         Assert.AreEqual(4 - 1, E.energy); // Reator K 4, minus Sobrecarga
@@ -214,11 +215,12 @@ public class NewCardTests
     }
 
     [Test]
-    public void Investida_DealsHalfOwnArmor()
+    public void Investida_DealsDamageEqualToOwnArmor()
     {
         P.armor = 9;
         b.Play(P, Give("investida", Slot.BracoEsq));
-        Assert.AreEqual(20 - 4, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(20 - 9, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(9, P.armor); // armor is not spent
     }
 
     [Test]
