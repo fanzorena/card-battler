@@ -8,6 +8,7 @@ public class BattleView : MonoBehaviour
     const float W = 1280, H = 720;
     Content content;
     Battle battle;
+    BattleLogger logger;
     Card pending; // card waiting for a target choice
     Target pendingTarget;
     Vector2 logScroll;
@@ -27,9 +28,16 @@ public class BattleView : MonoBehaviour
 
     void Restart()
     {
+        logger?.Dispose();
         battle = new Battle(content, System.Environment.TickCount);
+        logger = new BattleLogger(battle, LogDir);
         pending = null;
     }
+
+    // Editor: <projeto>/Logs/Battles. Build: persistentDataPath/Battles.
+    static string LogDir => System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.isEditor ? System.IO.Path.Combine(Application.dataPath, "..", "Logs") : Application.persistentDataPath, "Battles"));
+
+    void OnDestroy() => logger?.Dispose();
 
     void Styles()
     {
@@ -61,6 +69,7 @@ public class BattleView : MonoBehaviour
             GUI.Label(new Rect(450, 310, 380, 40), $"{pending.def.name}: escolha uma parte {(pendingTarget == Target.OwnPart ? "sua" : "do inimigo")}.", box);
             if (GUI.Button(new Rect(450, 355, 120, 30), "Cancelar")) pending = null;
         }
+        BattleLogger.MirrorToConsole = GUI.Toggle(new Rect(W - 190, 510, 180, 24), BattleLogger.MirrorToConsole, " Log no console");
         if (battle.result == Result.None && pending == null && GUI.Button(new Rect(W - 190, 450, 180, 50), "Encerrar turno"))
             battle.EndPlayerTurn();
 
