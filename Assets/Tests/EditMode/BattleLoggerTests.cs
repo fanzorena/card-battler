@@ -56,6 +56,7 @@ public class BattleLoggerTests
         var logger = new BattleLogger(b, dir);
         b.enemy.parts[Slot.Torso].hp = 1;
         b.enemy.chassis = 0;
+        b.enemy.armor = 0;
         var soco = new Card(content.Card("soco"), Slot.BracoEsq);
         b.player.hand.Add(soco);
         b.player.energy = 1;

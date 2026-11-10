@@ -16,6 +16,7 @@ public class CombatTests
         b = new Battle(content, 1);
         P.hand.Clear();
         P.energy = 10;
+        E.armor = 0; // Bastion set bonus starts the enemy with 6 armor
     }
 
     Card Give(string id, Slot src)

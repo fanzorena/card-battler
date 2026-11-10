@@ -2,8 +2,8 @@ using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
 
-// Placeholder battle screen drawn with IMGUI. Spawns itself in any scene that has none.
-public class BattleView : MonoBehaviour
+// Placeholder garage + battle screens drawn with IMGUI. Spawns itself in any scene that has none.
+public partial class BattleView : MonoBehaviour
 {
     const float W = 1280, H = 720;
     Content content;
@@ -23,14 +23,22 @@ public class BattleView : MonoBehaviour
     void Start()
     {
         content = Content.Load();
-        Restart();
+        garage = GarageSave.Load(SavePath, content);
     }
 
-    void Restart()
+    void StartBattle(RobotDef build)
     {
         logger?.Dispose();
-        battle = new Battle(content, System.Environment.TickCount);
+        battle = new Battle(content, System.Environment.TickCount, build.Clone());
         logger = new BattleLogger(battle, LogDir);
+        pending = null;
+    }
+
+    void BackToGarage()
+    {
+        logger?.Dispose(); // writes the summary as "Interrompida" if the battle was abandoned
+        logger = null;
+        battle = null;
         pending = null;
     }
 
@@ -50,12 +58,14 @@ public class BattleView : MonoBehaviour
 
     void OnGUI()
     {
-        if (battle == null) return;
+        if (content == null) return;
         Styles();
         float s = Mathf.Min(Screen.width / W, Screen.height / H);
         GUI.matrix = Matrix4x4.Scale(new Vector3(s, s, 1));
 
         Rect(new Rect(0, 0, W, H), new Color(0.12f, 0.12f, 0.15f));
+        if (battle == null) { DrawGarage(); return; }
+        if (battle.result == Result.None && GUI.Button(new Rect(10, 10, 160, 30), "Desistir (garagem)")) { BackToGarage(); return; }
         DrawRobot(battle.enemy, new Rect(W - 430, 10, 420, 300), pendingTarget == Target.EnemyPart);
         DrawRobot(battle.player, new Rect(10, 250, 420, 300), pendingTarget == Target.OwnPart);
         DrawIntent(new Rect(W - 430, 320, 420, 110));
@@ -77,7 +87,8 @@ public class BattleView : MonoBehaviour
         {
             Rect(new Rect(0, 0, W, H), new Color(0, 0, 0, 0.75f));
             GUI.Label(new Rect(0, 220, W, 100), battle.result == Result.Win ? "VITÓRIA" : "DERROTA", big);
-            if (GUI.Button(new Rect(W / 2 - 100, 360, 200, 50), "Reiniciar")) Restart();
+            if (GUI.Button(new Rect(W / 2 - 210, 360, 200, 50), "Revanche")) StartBattle(garage.Current);
+            if (GUI.Button(new Rect(W / 2 + 10, 360, 200, 50), "Voltar à garagem")) BackToGarage();
         }
         if (pending == null) pendingTarget = Target.None;
     }
@@ -85,9 +96,9 @@ public class BattleView : MonoBehaviour
     void DrawRobot(Robot r, Rect area, bool targetable)
     {
         Rect(area, new Color(0.2f, 0.2f, 0.25f));
-        GUI.Label(new Rect(area.x + 8, area.y + 4, area.width, 22), $"<b>{r.name}</b>  ({r.frame.name})", new GUIStyle(small) { richText = true, fontSize = 16 });
+        GUI.Label(new Rect(area.x + 8, area.y + 4, area.width, 22), $"<b>{r.name}</b>  ({r.frame.name}{(r.makers.Length > 0 ? ", bônus " + Content.MakerNames(r.makers) : "")})", new GUIStyle(small) { richText = true, fontSize = 16 });
         string stats = $"Blindagem {r.armor}   Calor {r.heat}{(r.heat >= Robot.HeatLimit ? "!" : "")}   Esquiva {r.dodge}" +
-                       (r.overload > 0 ? $"   Sobrecarga {r.overload}" : "") + (r.aimPending ? "   [Mirando]" : "");
+                       (r.overload > 0 ? $"   Sobrecarga {r.overload}" : "") + (r.aimPending ? "   [Mirando]" : "") + (r.pierceNext ? "   [Finta]" : "");
         GUI.Label(new Rect(area.x + 8, area.y + 26, area.width, 20), stats, small);
         float y = area.y + 50;
         Bar(new Rect(area.x + 8, y, area.width - 16, 26), "Chassi", r.chassis, r.frame.chassis, new Color(0.5f, 0.5f, 0.6f), false);
@@ -95,7 +106,7 @@ public class BattleView : MonoBehaviour
         foreach (var part in r.parts.Values)
         {
             var row = new Rect(area.x + 8, y, area.width - 16, 30);
-            string label = $"{Battle.SlotName(part.slot)}: {part.def.name}" + (part.corrosion > 0 ? $"  (Corrosão {part.corrosion})" : "");
+            string label = $"{Battle.SlotName(part.slot)}: {part.def.name}" + (part.corrosion > 0 ? $"  (Corrosão {part.corrosion})" : "") + (part.weak > 0 ? $"  (Ponto Fraco +{part.weak})" : "");
             Bar(row, label, part.hp, part.Max, part.Broken ? new Color(0.5f, 0.15f, 0.15f) : new Color(0.2f, 0.6f, 0.3f), targetable);
             if (targetable && GUI.Button(row, GUIContent.none, GUIStyle.none))
             {
@@ -111,6 +122,7 @@ public class BattleView : MonoBehaviour
     {
         string text = battle.enemyIntent.Count == 0 ? "Nenhuma ação." :
             string.Join("\n", battle.enemyIntent.Select(battle.IntentText));
+        if (battle.player.peek) text += "\nPróxima mão: " + string.Join(", ", battle.EnemyNextHand.Select(c => c.def.name));
         GUI.Label(area, "<b>Intenção do inimigo</b>\n" + text, new GUIStyle(box) { richText = true });
     }
 

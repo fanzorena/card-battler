@@ -51,6 +51,8 @@ namespace CardBattler.Combat
             s.AppendLine($"Resultado: {res}   Turnos: {b.turn}   Seed: {b.seed}");
             foreach (var r in new[] { b.player, b.enemy })
             {
+                s.AppendLine($"  {r.name}: frame {r.frame.name}, peso {r.weight}/{r.frame.carry}, bônus {Content.MakerNames(r.makers)}, partes " +
+                    string.Join(", ", r.parts.Values.Select(p => p.def.name)) + $", núcleo {r.core.name}");
                 s.AppendLine($"  {r.name}: chassi {r.chassis}/{r.frame.chassis}, " +
                     string.Join(", ", r.parts.Values.Select(p => $"{Battle.SlotName(p.slot)} {p.hp}/{p.Max}")));
             }
@@ -60,7 +62,7 @@ namespace CardBattler.Combat
                 var mine = h.Where(e => e.actor == actor).ToList();
                 s.AppendLine();
                 s.AppendLine(actor == "player" ? "== Jogador ==" : "== Inimigo ==");
-                int generated = mine.Where(e => e.evt == "turn_start").Sum(e => e.value) + mine.Where(e => e.evt == "scrap").Sum(e => e.value);
+                int generated = mine.Where(e => e.evt == "turn_start").Sum(e => e.value) + mine.Where(e => e.evt == "scrap" || e.evt == "chain_energy").Sum(e => e.value);
                 int used = mine.Where(e => e.evt == "play").Sum(e => e.cost);
                 int wasted = mine.Where(e => e.evt == "turn_end").Sum(e => e.value);
                 s.AppendLine($"Energia: gerada {generated} (sucata {mine.Count(e => e.evt == "scrap")}), usada {used}, desperdiçada {wasted}");
