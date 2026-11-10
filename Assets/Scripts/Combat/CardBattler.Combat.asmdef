@@ -1,0 +1,6 @@
+{
+    "name": "CardBattler.Combat",
+    "rootNamespace": "CardBattler.Combat",
+    "references": [],
+    "autoReferenced": true
+}

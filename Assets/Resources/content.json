@@ -1,0 +1,48 @@
+{
+  "cards": [
+    { "id": "gambiarra", "name": "Gambiarra", "cost": 0, "repair": 3, "text": "Repara 3 de uma parte." },
+    { "id": "varredura", "name": "Varredura", "cost": 0, "draw": 1, "text": "Compre 1." },
+    { "id": "mirar", "name": "Mirar", "cost": 1, "aim": true, "text": "O próximo ataque escolhe a parte." },
+    { "id": "bloquear", "name": "Bloquear", "cost": 1, "armor": 5, "text": "5 de blindagem." },
+    { "id": "remendo", "name": "Remendo", "cost": 1, "repair": 4, "text": "Repara 4 de uma parte." },
+    { "id": "soco", "name": "Soco", "cost": 1, "damage": 6, "hits": 1, "text": "6 de dano." },
+    { "id": "gancho", "name": "Gancho", "cost": 2, "damage": 10, "hits": 1, "chainImpact": true, "text": "10 de dano. Encadear: Impacto." },
+    { "id": "serrar", "name": "Serrar", "cost": 1, "damage": 3, "hits": 2, "text": "3 de dano duas vezes." },
+    { "id": "desmontar", "name": "Desmontar", "cost": 2, "damage": 8, "hits": 1, "breakDraw": 2, "text": "8 de dano. Se avariar a parte, compre 2." },
+    { "id": "arrancada", "name": "Arrancada", "cost": 0, "draw": 1, "text": "Compre 1." },
+    { "id": "esquivar", "name": "Esquivar", "cost": 1, "dodge": 6, "text": "Anula até 6 do próximo ataque." },
+
+    { "id": "ancorar", "name": "Ancorar", "cost": 1, "armor": 8, "text": "8 de blindagem." },
+    { "id": "cabeca_dura", "name": "Cabeça Dura", "cost": 1, "armor": 5, "text": "5 de blindagem." },
+    { "id": "muralha", "name": "Muralha", "cost": 2, "armor": 12, "text": "12 de blindagem." },
+    { "id": "disparo", "name": "Disparo", "cost": 1, "damage": 5, "hits": 1, "text": "5 de dano." },
+    { "id": "rajada", "name": "Rajada", "cost": 2, "damage": 4, "hits": 3, "text": "4 de dano três vezes." },
+    { "id": "corte_plasma", "name": "Corte de Plasma", "cost": 1, "damage": 5, "hits": 1, "targetHeat": 1, "text": "5 de dano e 1 Calor no alvo." },
+    { "id": "corte_preciso", "name": "Corte Preciso", "cost": 2, "damage": 9, "hits": 1, "pierce": true, "text": "9 de dano, ignora blindagem." },
+    { "id": "firmar", "name": "Firmar", "cost": 1, "armor": 4, "text": "4 de blindagem." },
+    { "id": "esmagar", "name": "Esmagar", "cost": 2, "damage": 7, "hits": 1, "text": "7 de dano." }
+  ],
+  "parts": [
+    { "id": "otica_sucata", "name": "Ótica de Sucata", "slot": "Cabeca", "integrity": 6, "cards": ["varredura", "varredura", "mirar"] },
+    { "id": "carcaca_remendada", "name": "Carcaça Remendada", "slot": "Torso", "integrity": 14, "cards": ["bloquear", "bloquear", "bloquear", "remendo"] },
+    { "id": "punho_hidraulico", "name": "Punho Hidráulico", "slot": "Braco", "integrity": 8, "cards": ["soco", "soco", "soco", "gancho"] },
+    { "id": "serra_circular", "name": "Serra Circular", "slot": "Braco", "integrity": 7, "cards": ["serrar", "serrar", "serrar", "desmontar"] },
+    { "id": "rodas_entrega", "name": "Rodas de Entrega", "slot": "Pernas", "integrity": 8, "cards": ["arrancada", "arrancada", "esquivar", "esquivar"] },
+    { "id": "bateria_reciclada", "name": "Bateria Reciclada", "slot": "Nucleo", "energy": 3 },
+
+    { "id": "elmo_bastion", "name": "Elmo Bastion", "slot": "Cabeca", "integrity": 10, "cards": ["cabeca_dura", "cabeca_dura", "mirar"] },
+    { "id": "placa_m2", "name": "Placa M2", "slot": "Torso", "integrity": 20, "cards": ["bloquear", "bloquear", "bloquear", "muralha"] },
+    { "id": "canhao_30mm", "name": "Canhão 30mm", "slot": "Braco", "integrity": 9, "cards": ["disparo", "disparo", "disparo", "rajada"] },
+    { "id": "lamina_plasma", "name": "Lâmina de Plasma", "slot": "Braco", "integrity": 6, "cards": ["corte_plasma", "corte_plasma", "corte_plasma", "corte_preciso"] },
+    { "id": "esteiras", "name": "Esteiras", "slot": "Pernas", "integrity": 14, "cards": ["firmar", "firmar", "esmagar", "esmagar"] },
+    { "id": "reator_k", "name": "Reator K", "slot": "Nucleo", "energy": 4, "heatPerTurn": 1 }
+  ],
+  "frames": [
+    { "id": "vira_lata", "name": "Vira-lata", "chassis": 10, "hand": 5, "carry": 12, "passive": "scrapDraw", "signature": "gambiarra" },
+    { "id": "bastiao", "name": "Bastião", "chassis": 16, "hand": 4, "carry": 16, "passive": "armorHalves", "signature": "ancorar" }
+  ],
+  "robots": [
+    { "id": "player", "name": "Vira-lata (Rafa)", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
+    { "id": "enemy", "name": "Bastião de Patrulha", "frame": "bastiao", "head": "elmo_bastion", "torso": "placa_m2", "armL": "canhao_30mm", "armR": "lamina_plasma", "legs": "esteiras", "core": "reator_k", "maxCardsPerTurn": 2 }
+  ]
+}
