@@ -53,7 +53,7 @@ namespace CardBattler.Combat
             {
                 s.AppendLine($"  {r.name}: frame {r.frame.name}, peso {r.weight}/{r.frame.carry}, bônus {Content.MakerNames(r.makers)}, partes " +
                     string.Join(", ", r.parts.Values.Select(p => p.def.name)) + $", núcleo {r.core.name}");
-                s.AppendLine($"  {r.name}: chassi {r.chassis}/{r.frame.chassis}, " +
+                s.AppendLine($"  {r.name}: chassi {r.chassis}/{r.chassisMax}, " +
                     string.Join(", ", r.parts.Values.Select(p => $"{Battle.SlotName(p.slot)} {p.hp}/{p.Max}")));
             }
 

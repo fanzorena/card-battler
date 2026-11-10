@@ -1,99 +1,896 @@
 {
   "cards": [
-    { "id": "gambiarra", "name": "Gambiarra", "cost": 0, "repair": 3, "text": "Repara 3 de uma parte." },
-    { "id": "finta", "name": "Finta", "cost": 0, "pierceNext": true, "text": "O próximo ataque ignora blindagem." },
-    { "id": "ancorar", "name": "Ancorar", "cost": 1, "armor": 8, "text": "8 de blindagem." },
-
-    { "id": "varredura", "name": "Varredura", "cost": 0, "draw": 1, "text": "Compre 1." },
-    { "id": "mirar", "name": "Mirar", "cost": 1, "aim": true, "text": "O próximo ataque escolhe a parte." },
-    { "id": "analise", "name": "Análise", "cost": 0, "draw": 1, "peek": true, "text": "Compre 1 e veja a próxima mão do inimigo." },
-    { "id": "ponto_fraco", "name": "Ponto Fraco", "cost": 1, "weakPoint": 3, "text": "A parte alvo sofre +3 de cada ataque neste turno." },
-    { "id": "cabeca_dura", "name": "Cabeça Dura", "cost": 1, "armor": 5, "text": "5 de blindagem." },
-    { "id": "intrusao", "name": "Intrusão", "cost": 2, "cancelIntent": true, "text": "Cancela a intenção do inimigo." },
-
-    { "id": "bloquear", "name": "Bloquear", "cost": 1, "armor": 5, "text": "5 de blindagem." },
-    { "id": "remendo", "name": "Remendo", "cost": 1, "repair": 4, "text": "Repara 4 de uma parte." },
-    { "id": "muralha", "name": "Muralha", "cost": 2, "armor": 12, "text": "12 de blindagem." },
-    { "id": "defletir", "name": "Defletir", "cost": 1, "armor": 4, "draw": 1, "text": "4 de blindagem e compre 1." },
-    { "id": "dissipar", "name": "Dissipar", "cost": 1, "clearHeat": true, "text": "Remove todo o seu Calor." },
-
-    { "id": "soco", "name": "Soco", "cost": 1, "damage": 6, "hits": 1, "text": "6 de dano." },
-    { "id": "gancho", "name": "Gancho", "cost": 2, "damage": 10, "hits": 1, "chainImpact": true, "text": "10 de dano. Encadear: Impacto." },
-    { "id": "serrar", "name": "Serrar", "cost": 1, "damage": 3, "hits": 2, "text": "3 de dano duas vezes." },
-    { "id": "desmontar", "name": "Desmontar", "cost": 2, "damage": 8, "hits": 1, "breakDraw": 2, "text": "8 de dano. Se avariar a parte, compre 2." },
-    { "id": "disparo", "name": "Disparo", "cost": 1, "damage": 5, "hits": 1, "text": "5 de dano." },
-    { "id": "rajada", "name": "Rajada", "cost": 2, "damage": 4, "hits": 3, "text": "4 de dano três vezes." },
-    { "id": "aparar", "name": "Aparar", "cost": 1, "armor": 6, "text": "6 de blindagem." },
-    { "id": "investida", "name": "Investida", "cost": 1, "armorDamage": true, "hits": 1, "text": "Dano igual à metade da sua blindagem." },
-    { "id": "corte_plasma", "name": "Corte de Plasma", "cost": 1, "damage": 5, "hits": 1, "targetHeat": 1, "text": "5 de dano e 1 Calor no alvo." },
-    { "id": "corte_preciso", "name": "Corte Preciso", "cost": 2, "damage": 9, "hits": 1, "pierce": true, "text": "9 de dano, ignora blindagem." },
-    { "id": "choque", "name": "Choque", "cost": 1, "damage": 4, "hits": 1, "overload": 1, "text": "4 de dano e Sobrecarga." },
-    { "id": "arco", "name": "Arco", "cost": 2, "damage": 6, "hits": 1, "secondPart": true, "text": "6 de dano em duas partes." },
-    { "id": "acido", "name": "Ácido", "cost": 1, "damage": 3, "hits": 1, "corrosion": 2, "text": "3 de dano e 2 de Corrosão." },
-    { "id": "toxico", "name": "Tóxico", "cost": 2, "doubleCorrosion": true, "text": "Dobra a Corrosão da parte." },
-    { "id": "labareda", "name": "Labareda", "cost": 1, "damage": 4, "hits": 1, "targetHeat": 2, "text": "4 de dano e 2 Calor no alvo." },
-    { "id": "inferno", "name": "Inferno", "cost": 3, "damage": 12, "hits": 1, "selfHeat": 2, "text": "12 de dano, você ganha 2 Calor." },
-
-    { "id": "arrancada", "name": "Arrancada", "cost": 0, "draw": 1, "text": "Compre 1." },
-    { "id": "esquivar", "name": "Esquivar", "cost": 1, "dodge": 6, "text": "Anula até 6 do próximo ataque." },
-    { "id": "firmar", "name": "Firmar", "cost": 1, "armor": 4, "text": "4 de blindagem." },
-    { "id": "esmagar", "name": "Esmagar", "cost": 2, "damage": 7, "hits": 1, "text": "7 de dano." },
-    { "id": "salto", "name": "Salto", "cost": 1, "dodge": 6, "chainDraw": 1, "text": "Esquivar. Encadear: compre 1." },
-    { "id": "chute", "name": "Chute", "cost": 1, "damage": 5, "hits": 1, "text": "5 de dano." },
-    { "id": "deslizar", "name": "Deslizar", "cost": 1, "armor": 3, "draw": 1, "text": "3 de blindagem e compre 1." }
+    {
+      "id": "gambiarra",
+      "name": "Gambiarra",
+      "cost": 0,
+      "repair": 3,
+      "text": "Repara 3 de uma parte."
+    },
+    {
+      "id": "finta",
+      "name": "Finta",
+      "cost": 0,
+      "pierceNext": true,
+      "text": "O próximo ataque ignora blindagem."
+    },
+    {
+      "id": "ancorar",
+      "name": "Ancorar",
+      "cost": 1,
+      "armor": 8,
+      "text": "8 de blindagem."
+    },
+    {
+      "id": "varredura",
+      "name": "Varredura",
+      "cost": 0,
+      "draw": 1,
+      "text": "Compre 1."
+    },
+    {
+      "id": "mirar",
+      "name": "Mirar",
+      "cost": 1,
+      "aim": true,
+      "text": "O próximo ataque escolhe a parte."
+    },
+    {
+      "id": "analise",
+      "name": "Análise",
+      "cost": 0,
+      "draw": 1,
+      "peek": true,
+      "text": "Compre 1 e veja a próxima mão do inimigo."
+    },
+    {
+      "id": "ponto_fraco",
+      "name": "Ponto Fraco",
+      "cost": 1,
+      "weakPoint": 3,
+      "text": "A parte alvo sofre +3 de cada ataque neste turno."
+    },
+    {
+      "id": "cabeca_dura",
+      "name": "Cabeça Dura",
+      "cost": 1,
+      "armor": 5,
+      "text": "5 de blindagem."
+    },
+    {
+      "id": "intrusao",
+      "name": "Intrusão",
+      "cost": 2,
+      "cancelIntent": true,
+      "text": "Cancela a intenção do inimigo."
+    },
+    {
+      "id": "bloquear",
+      "name": "Bloquear",
+      "cost": 1,
+      "armor": 5,
+      "text": "5 de blindagem."
+    },
+    {
+      "id": "remendo",
+      "name": "Remendo",
+      "cost": 1,
+      "repair": 4,
+      "text": "Repara 4 de uma parte."
+    },
+    {
+      "id": "muralha",
+      "name": "Muralha",
+      "cost": 2,
+      "armor": 12,
+      "text": "12 de blindagem."
+    },
+    {
+      "id": "defletir",
+      "name": "Defletir",
+      "cost": 1,
+      "armor": 4,
+      "draw": 1,
+      "text": "4 de blindagem e compre 1."
+    },
+    {
+      "id": "dissipar",
+      "name": "Dissipar",
+      "cost": 1,
+      "clearHeat": true,
+      "text": "Remove todo o seu Calor."
+    },
+    {
+      "id": "soco",
+      "name": "Soco",
+      "cost": 1,
+      "damage": 6,
+      "hits": 1,
+      "text": "6 de dano."
+    },
+    {
+      "id": "gancho",
+      "name": "Gancho",
+      "cost": 2,
+      "damage": 10,
+      "hits": 1,
+      "chainImpact": true,
+      "text": "10 de dano. Encadear: Impacto."
+    },
+    {
+      "id": "serrar",
+      "name": "Serrar",
+      "cost": 1,
+      "damage": 3,
+      "hits": 2,
+      "text": "3 de dano duas vezes."
+    },
+    {
+      "id": "desmontar",
+      "name": "Desmontar",
+      "cost": 2,
+      "damage": 8,
+      "hits": 1,
+      "breakDraw": 2,
+      "text": "8 de dano. Se avariar a parte, compre 2."
+    },
+    {
+      "id": "disparo",
+      "name": "Disparo",
+      "cost": 1,
+      "damage": 5,
+      "hits": 1,
+      "text": "5 de dano."
+    },
+    {
+      "id": "rajada",
+      "name": "Rajada",
+      "cost": 2,
+      "damage": 4,
+      "hits": 3,
+      "text": "4 de dano três vezes."
+    },
+    {
+      "id": "aparar",
+      "name": "Aparar",
+      "cost": 1,
+      "armor": 6,
+      "text": "6 de blindagem."
+    },
+    {
+      "id": "investida",
+      "name": "Investida",
+      "cost": 1,
+      "armorDamage": true,
+      "hits": 1,
+      "text": "Dano igual à metade da sua blindagem."
+    },
+    {
+      "id": "corte_plasma",
+      "name": "Corte de Plasma",
+      "cost": 1,
+      "damage": 5,
+      "hits": 1,
+      "targetHeat": 1,
+      "text": "5 de dano e 1 Calor no alvo."
+    },
+    {
+      "id": "corte_preciso",
+      "name": "Corte Preciso",
+      "cost": 2,
+      "damage": 9,
+      "hits": 1,
+      "pierce": true,
+      "text": "9 de dano, ignora blindagem."
+    },
+    {
+      "id": "choque",
+      "name": "Choque",
+      "cost": 1,
+      "damage": 4,
+      "hits": 1,
+      "overload": 1,
+      "text": "4 de dano e Sobrecarga."
+    },
+    {
+      "id": "arco",
+      "name": "Arco",
+      "cost": 2,
+      "damage": 6,
+      "hits": 1,
+      "secondPart": true,
+      "text": "6 de dano em duas partes."
+    },
+    {
+      "id": "acido",
+      "name": "Ácido",
+      "cost": 1,
+      "damage": 3,
+      "hits": 1,
+      "corrosion": 2,
+      "text": "3 de dano e 2 de Corrosão."
+    },
+    {
+      "id": "toxico",
+      "name": "Tóxico",
+      "cost": 2,
+      "doubleCorrosion": true,
+      "text": "Dobra a Corrosão da parte."
+    },
+    {
+      "id": "labareda",
+      "name": "Labareda",
+      "cost": 1,
+      "damage": 4,
+      "hits": 1,
+      "targetHeat": 2,
+      "text": "4 de dano e 2 Calor no alvo."
+    },
+    {
+      "id": "inferno",
+      "name": "Inferno",
+      "cost": 3,
+      "damage": 12,
+      "hits": 1,
+      "selfHeat": 2,
+      "text": "12 de dano, você ganha 2 Calor."
+    },
+    {
+      "id": "arrancada",
+      "name": "Arrancada",
+      "cost": 0,
+      "draw": 1,
+      "text": "Compre 1."
+    },
+    {
+      "id": "esquivar",
+      "name": "Esquivar",
+      "cost": 1,
+      "dodge": 6,
+      "text": "Anula até 6 do próximo ataque."
+    },
+    {
+      "id": "firmar",
+      "name": "Firmar",
+      "cost": 1,
+      "armor": 4,
+      "text": "4 de blindagem."
+    },
+    {
+      "id": "esmagar",
+      "name": "Esmagar",
+      "cost": 2,
+      "damage": 7,
+      "hits": 1,
+      "text": "7 de dano."
+    },
+    {
+      "id": "salto",
+      "name": "Salto",
+      "cost": 1,
+      "dodge": 6,
+      "chainDraw": 1,
+      "text": "Esquivar. Encadear: compre 1."
+    },
+    {
+      "id": "chute",
+      "name": "Chute",
+      "cost": 1,
+      "damage": 5,
+      "hits": 1,
+      "text": "5 de dano."
+    },
+    {
+      "id": "mordida_campeao",
+      "name": "Mordida do Campeão",
+      "cost": 0,
+      "damage": 9,
+      "hits": 1,
+      "pierce": true,
+      "exhaust": true,
+      "text": "Chefe: 9 de dano, ignora blindagem. Usada uma vez por fase."
+    },
+    {
+      "id": "deslizar",
+      "name": "Deslizar",
+      "cost": 1,
+      "armor": 3,
+      "draw": 1,
+      "text": "3 de blindagem e compre 1."
+    }
   ],
   "parts": [
-    { "id": "otica_sucata", "name": "Ótica de Sucata", "slot": "Cabeca", "maker": "Ferrovelho", "element": "", "integrity": 6, "weight": 1, "cards": ["varredura", "varredura", "mirar"] },
-    { "id": "sensor_k7", "name": "Sensor K-7", "slot": "Cabeca", "maker": "Kagemori", "element": "Elétrico", "integrity": 5, "weight": 2, "cards": ["analise", "analise", "ponto_fraco"] },
-    { "id": "elmo_bastion", "name": "Elmo Bastion", "slot": "Cabeca", "maker": "Bastion", "element": "Cinético", "integrity": 10, "weight": 3, "cards": ["cabeca_dura", "cabeca_dura", "mirar"] },
-    { "id": "coroa_nyx", "name": "Coroa Nyx", "slot": "Cabeca", "maker": "Nyx", "element": "Químico", "integrity": 4, "weight": 1, "cards": ["varredura", "varredura", "intrusao"] },
-
-    { "id": "carcaca_remendada", "name": "Carcaça Remendada", "slot": "Torso", "maker": "Ferrovelho", "element": "", "integrity": 14, "weight": 3, "cards": ["bloquear", "bloquear", "bloquear", "remendo"] },
-    { "id": "placa_m2", "name": "Placa M2", "slot": "Torso", "maker": "Bastion", "element": "Cinético", "integrity": 20, "weight": 5, "cards": ["bloquear", "bloquear", "bloquear", "muralha"] },
-    { "id": "chassi_aero", "name": "Chassi Aero", "slot": "Torso", "maker": "Kagemori", "element": "Elétrico", "integrity": 12, "weight": 2, "cards": ["bloquear", "bloquear", "defletir", "defletir"] },
-    { "id": "torax_refrigerado", "name": "Tórax Refrigerado", "slot": "Torso", "maker": "Nyx", "element": "Térmico", "integrity": 13, "weight": 3, "cards": ["bloquear", "bloquear", "bloquear", "dissipar"] },
-
-    { "id": "punho_hidraulico", "name": "Punho Hidráulico", "slot": "Braco", "maker": "Ferrovelho", "element": "Cinético", "integrity": 8, "weight": 2, "cards": ["soco", "soco", "soco", "gancho"] },
-    { "id": "serra_circular", "name": "Serra Circular", "slot": "Braco", "maker": "Ferrovelho", "element": "Cinético", "integrity": 7, "weight": 2, "cards": ["serrar", "serrar", "serrar", "desmontar"] },
-    { "id": "canhao_30mm", "name": "Canhão 30mm", "slot": "Braco", "maker": "Bastion", "element": "Cinético", "integrity": 9, "weight": 4, "cards": ["disparo", "disparo", "disparo", "rajada"] },
-    { "id": "escudo_braco", "name": "Escudo de Braço", "slot": "Braco", "maker": "Bastion", "element": "", "integrity": 12, "weight": 3, "cards": ["aparar", "aparar", "investida", "investida"] },
-    { "id": "lamina_plasma", "name": "Lâmina de Plasma", "slot": "Braco", "maker": "Kagemori", "element": "Térmico", "integrity": 6, "weight": 2, "cards": ["corte_plasma", "corte_plasma", "corte_plasma", "corte_preciso"] },
-    { "id": "pulso_tesla", "name": "Pulso Tesla", "slot": "Braco", "maker": "Kagemori", "element": "Elétrico", "integrity": 6, "weight": 2, "cards": ["choque", "choque", "choque", "arco"] },
-    { "id": "injetor", "name": "Injetor", "slot": "Braco", "maker": "Nyx", "element": "Químico", "integrity": 6, "weight": 1, "cards": ["acido", "acido", "acido", "toxico"] },
-    { "id": "lanca_chamas", "name": "Lança-chamas", "slot": "Braco", "maker": "Nyx", "element": "Térmico", "integrity": 7, "weight": 3, "cards": ["labareda", "labareda", "labareda", "inferno"] },
-
-    { "id": "rodas_entrega", "name": "Rodas de Entrega", "slot": "Pernas", "maker": "Ferrovelho", "element": "", "integrity": 8, "weight": 1, "cards": ["arrancada", "arrancada", "esquivar", "esquivar"] },
-    { "id": "esteiras", "name": "Esteiras", "slot": "Pernas", "maker": "Bastion", "element": "Cinético", "integrity": 14, "weight": 5, "cards": ["firmar", "firmar", "esmagar", "esmagar"] },
-    { "id": "pernas_digitigradas", "name": "Pernas Digitígradas", "slot": "Pernas", "maker": "Kagemori", "element": "", "integrity": 9, "weight": 2, "cards": ["salto", "salto", "chute", "chute"] },
-    { "id": "hover", "name": "Hover", "slot": "Pernas", "maker": "Nyx", "element": "", "integrity": 7, "weight": 2, "ignoresTerrain": true, "cards": ["deslizar", "deslizar", "deslizar", "deslizar"] },
-
-    { "id": "bateria_reciclada", "name": "Bateria Reciclada", "slot": "Nucleo", "maker": "Ferrovelho", "element": "", "weight": 1, "energy": 3 },
-    { "id": "reator_k", "name": "Reator K", "slot": "Nucleo", "maker": "Kagemori", "element": "Térmico", "weight": 3, "energy": 4, "heatPerTurn": 1 }
+    {
+      "id": "otica_sucata",
+      "name": "Ótica de Sucata",
+      "slot": "Cabeca",
+      "maker": "Ferrovelho",
+      "element": "",
+      "integrity": 6,
+      "weight": 1,
+      "cards": [
+        "varredura",
+        "varredura",
+        "mirar"
+      ]
+    },
+    {
+      "id": "sensor_k7",
+      "name": "Sensor K-7",
+      "slot": "Cabeca",
+      "maker": "Kagemori",
+      "element": "Elétrico",
+      "integrity": 5,
+      "weight": 2,
+      "cards": [
+        "analise",
+        "analise",
+        "ponto_fraco"
+      ]
+    },
+    {
+      "id": "elmo_bastion",
+      "name": "Elmo Bastion",
+      "slot": "Cabeca",
+      "maker": "Bastion",
+      "element": "Cinético",
+      "integrity": 10,
+      "weight": 3,
+      "cards": [
+        "cabeca_dura",
+        "cabeca_dura",
+        "mirar"
+      ]
+    },
+    {
+      "id": "coroa_nyx",
+      "name": "Coroa Nyx",
+      "slot": "Cabeca",
+      "maker": "Nyx",
+      "element": "Químico",
+      "integrity": 4,
+      "weight": 1,
+      "cards": [
+        "varredura",
+        "varredura",
+        "intrusao"
+      ]
+    },
+    {
+      "id": "carcaca_remendada",
+      "name": "Carcaça Remendada",
+      "slot": "Torso",
+      "maker": "Ferrovelho",
+      "element": "",
+      "integrity": 14,
+      "weight": 3,
+      "cards": [
+        "bloquear",
+        "bloquear",
+        "bloquear",
+        "remendo"
+      ]
+    },
+    {
+      "id": "placa_m2",
+      "name": "Placa M2",
+      "slot": "Torso",
+      "maker": "Bastion",
+      "element": "Cinético",
+      "integrity": 20,
+      "weight": 5,
+      "cards": [
+        "bloquear",
+        "bloquear",
+        "bloquear",
+        "muralha"
+      ]
+    },
+    {
+      "id": "chassi_aero",
+      "name": "Chassi Aero",
+      "slot": "Torso",
+      "maker": "Kagemori",
+      "element": "Elétrico",
+      "integrity": 12,
+      "weight": 2,
+      "cards": [
+        "bloquear",
+        "bloquear",
+        "defletir",
+        "defletir"
+      ]
+    },
+    {
+      "id": "torax_refrigerado",
+      "name": "Tórax Refrigerado",
+      "slot": "Torso",
+      "maker": "Nyx",
+      "element": "Térmico",
+      "integrity": 13,
+      "weight": 3,
+      "cards": [
+        "bloquear",
+        "bloquear",
+        "bloquear",
+        "dissipar"
+      ]
+    },
+    {
+      "id": "punho_hidraulico",
+      "name": "Punho Hidráulico",
+      "slot": "Braco",
+      "maker": "Ferrovelho",
+      "element": "Cinético",
+      "integrity": 8,
+      "weight": 2,
+      "cards": [
+        "soco",
+        "soco",
+        "soco",
+        "gancho"
+      ]
+    },
+    {
+      "id": "serra_circular",
+      "name": "Serra Circular",
+      "slot": "Braco",
+      "maker": "Ferrovelho",
+      "element": "Cinético",
+      "integrity": 7,
+      "weight": 2,
+      "cards": [
+        "serrar",
+        "serrar",
+        "serrar",
+        "desmontar"
+      ]
+    },
+    {
+      "id": "canhao_30mm",
+      "name": "Canhão 30mm",
+      "slot": "Braco",
+      "maker": "Bastion",
+      "element": "Cinético",
+      "integrity": 9,
+      "weight": 4,
+      "cards": [
+        "disparo",
+        "disparo",
+        "disparo",
+        "rajada"
+      ]
+    },
+    {
+      "id": "escudo_braco",
+      "name": "Escudo de Braço",
+      "slot": "Braco",
+      "maker": "Bastion",
+      "element": "",
+      "integrity": 12,
+      "weight": 3,
+      "cards": [
+        "aparar",
+        "aparar",
+        "investida",
+        "investida"
+      ]
+    },
+    {
+      "id": "lamina_plasma",
+      "name": "Lâmina de Plasma",
+      "slot": "Braco",
+      "maker": "Kagemori",
+      "element": "Térmico",
+      "integrity": 6,
+      "weight": 2,
+      "cards": [
+        "corte_plasma",
+        "corte_plasma",
+        "corte_plasma",
+        "corte_preciso"
+      ]
+    },
+    {
+      "id": "pulso_tesla",
+      "name": "Pulso Tesla",
+      "slot": "Braco",
+      "maker": "Kagemori",
+      "element": "Elétrico",
+      "integrity": 6,
+      "weight": 2,
+      "cards": [
+        "choque",
+        "choque",
+        "choque",
+        "arco"
+      ]
+    },
+    {
+      "id": "injetor",
+      "name": "Injetor",
+      "slot": "Braco",
+      "maker": "Nyx",
+      "element": "Químico",
+      "integrity": 6,
+      "weight": 1,
+      "cards": [
+        "acido",
+        "acido",
+        "acido",
+        "toxico"
+      ]
+    },
+    {
+      "id": "lanca_chamas",
+      "name": "Lança-chamas",
+      "slot": "Braco",
+      "maker": "Nyx",
+      "element": "Térmico",
+      "integrity": 7,
+      "weight": 3,
+      "cards": [
+        "labareda",
+        "labareda",
+        "labareda",
+        "inferno"
+      ]
+    },
+    {
+      "id": "rodas_entrega",
+      "name": "Rodas de Entrega",
+      "slot": "Pernas",
+      "maker": "Ferrovelho",
+      "element": "",
+      "integrity": 8,
+      "weight": 1,
+      "cards": [
+        "arrancada",
+        "arrancada",
+        "esquivar",
+        "esquivar"
+      ]
+    },
+    {
+      "id": "esteiras",
+      "name": "Esteiras",
+      "slot": "Pernas",
+      "maker": "Bastion",
+      "element": "Cinético",
+      "integrity": 14,
+      "weight": 5,
+      "cards": [
+        "firmar",
+        "firmar",
+        "esmagar",
+        "esmagar"
+      ]
+    },
+    {
+      "id": "pernas_digitigradas",
+      "name": "Pernas Digitígradas",
+      "slot": "Pernas",
+      "maker": "Kagemori",
+      "element": "",
+      "integrity": 9,
+      "weight": 2,
+      "cards": [
+        "salto",
+        "salto",
+        "chute",
+        "chute"
+      ]
+    },
+    {
+      "id": "hover",
+      "name": "Hover",
+      "slot": "Pernas",
+      "maker": "Nyx",
+      "element": "",
+      "integrity": 7,
+      "weight": 2,
+      "ignoresTerrain": true,
+      "cards": [
+        "deslizar",
+        "deslizar",
+        "deslizar",
+        "deslizar"
+      ]
+    },
+    {
+      "id": "bateria_reciclada",
+      "name": "Bateria Reciclada",
+      "slot": "Nucleo",
+      "maker": "Ferrovelho",
+      "element": "",
+      "weight": 1,
+      "energy": 3
+    },
+    {
+      "id": "reator_k",
+      "name": "Reator K",
+      "slot": "Nucleo",
+      "maker": "Kagemori",
+      "element": "Térmico",
+      "weight": 3,
+      "energy": 4,
+      "heatPerTurn": 1
+    }
   ],
   "frames": [
-    { "id": "vira_lata", "name": "Vira-lata", "chassis": 10, "hand": 5, "carry": 12, "passive": "scrapDraw", "passiveText": "A primeira sucata de cada turno compra 1 carta.", "signature": "gambiarra" },
-    { "id": "duelista", "name": "Duelista", "chassis": 6, "hand": 5, "carry": 9, "passive": "chainEnergy", "passiveText": "O primeiro Encadear de cada turno gera 1 energia.", "signature": "finta" },
-    { "id": "bastiao", "name": "Bastião", "chassis": 16, "hand": 4, "carry": 16, "passive": "armorHalves", "passiveText": "Blindagem não some no fim do turno, só cai pela metade.", "signature": "ancorar" }
+    {
+      "id": "vira_lata",
+      "name": "Vira-lata",
+      "chassis": 10,
+      "hand": 5,
+      "carry": 12,
+      "passive": "scrapDraw",
+      "passiveText": "A primeira sucata de cada turno compra 1 carta.",
+      "signature": "gambiarra"
+    },
+    {
+      "id": "duelista",
+      "name": "Duelista",
+      "chassis": 6,
+      "hand": 5,
+      "carry": 9,
+      "passive": "chainEnergy",
+      "passiveText": "O primeiro Encadear de cada turno gera 1 energia.",
+      "signature": "finta"
+    },
+    {
+      "id": "bastiao",
+      "name": "Bastião",
+      "chassis": 16,
+      "hand": 4,
+      "carry": 16,
+      "passive": "armorHalves",
+      "passiveText": "Blindagem não some no fim do turno, só cai pela metade.",
+      "signature": "ancorar"
+    }
   ],
   "makers": [
-    { "id": "Ferrovelho", "bonus": "scrapArmor", "text": "Cada sucata do turno também dá 2 de blindagem." },
-    { "id": "Bastion", "bonus": "startArmor", "text": "Começa a luta com 6 de blindagem." },
-    { "id": "Kagemori", "bonus": "firstCardDiscount", "text": "A primeira carta de cada turno custa 1 a menos." },
-    { "id": "Nyx", "bonus": "longerStatus", "text": "Status aplicados duram 1 turno a mais." }
+    {
+      "id": "Ferrovelho",
+      "bonus": "scrapArmor",
+      "text": "Cada sucata do turno também dá 2 de blindagem."
+    },
+    {
+      "id": "Bastion",
+      "bonus": "startArmor",
+      "text": "Começa a luta com 6 de blindagem."
+    },
+    {
+      "id": "Kagemori",
+      "bonus": "firstCardDiscount",
+      "text": "A primeira carta de cada turno custa 1 a menos."
+    },
+    {
+      "id": "Nyx",
+      "bonus": "longerStatus",
+      "text": "Status aplicados duram 1 turno a mais."
+    }
   ],
   "robots": [
-    { "id": "player", "name": "Vira-lata (Rafa)", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
-    { "id": "enemy", "name": "Bastião de Patrulha", "frame": "bastiao", "head": "elmo_bastion", "torso": "placa_m2", "armL": "canhao_30mm", "armR": "lamina_plasma", "legs": "esteiras", "core": "reator_k", "maxCardsPerTurn": 2 },
-    { "id": "enemy_kagemori", "name": "Lâmina Corporativa", "frame": "duelista", "head": "sensor_k7", "torso": "chassi_aero", "armL": "lamina_plasma", "armR": "pulso_tesla", "legs": "pernas_digitigradas", "core": "reator_k", "maxCardsPerTurn": 2 },
-    { "id": "enemy_nyx", "name": "Rato de Laboratório", "frame": "vira_lata", "head": "coroa_nyx", "torso": "torax_refrigerado", "armL": "injetor", "armR": "lanca_chamas", "legs": "hover", "core": "reator_k", "maxCardsPerTurn": 2 },
-    { "id": "enemy_sucata", "name": "Sucateiro do Fosso", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada", "maxCardsPerTurn": 2 }
+    {
+      "id": "player",
+      "name": "Vira-lata (Rafa)",
+      "frame": "vira_lata",
+      "head": "otica_sucata",
+      "torso": "carcaca_remendada",
+      "armL": "punho_hidraulico",
+      "armR": "serra_circular",
+      "legs": "rodas_entrega",
+      "core": "bateria_reciclada"
+    },
+    {
+      "id": "enemy_sucata",
+      "name": "Sucateiro do Fosso",
+      "tier": "Fácil",
+      "strategies": [],
+      "frame": "vira_lata",
+      "head": "otica_sucata",
+      "torso": "carcaca_remendada",
+      "armL": "punho_hidraulico",
+      "armR": "serra_circular",
+      "legs": "rodas_entrega",
+      "core": "bateria_reciclada",
+      "maxCardsPerTurn": 2
+    },
+    {
+      "id": "enemy_nyx",
+      "name": "Rato de Laboratório",
+      "tier": "Fácil",
+      "strategies": [],
+      "frame": "vira_lata",
+      "head": "coroa_nyx",
+      "torso": "torax_refrigerado",
+      "armL": "injetor",
+      "armR": "lanca_chamas",
+      "legs": "hover",
+      "core": "reator_k",
+      "maxCardsPerTurn": 2
+    },
+    {
+      "id": "enemy",
+      "name": "Bastião de Patrulha",
+      "tier": "Moderado",
+      "strategies": [
+        "defensivo",
+        "cirurgiao"
+      ],
+      "frame": "bastiao",
+      "head": "elmo_bastion",
+      "torso": "placa_m2",
+      "armL": "canhao_30mm",
+      "armR": "lamina_plasma",
+      "legs": "esteiras",
+      "core": "reator_k",
+      "maxCardsPerTurn": 3,
+      "bonusChassis": 6
+    },
+    {
+      "id": "enemy_kagemori",
+      "name": "Lâmina Corporativa",
+      "tier": "Moderado",
+      "strategies": [
+        "combista",
+        "sucateiro"
+      ],
+      "frame": "duelista",
+      "head": "sensor_k7",
+      "torso": "chassi_aero",
+      "armL": "lamina_plasma",
+      "armR": "pulso_tesla",
+      "legs": "pernas_digitigradas",
+      "core": "reator_k",
+      "maxCardsPerTurn": 3,
+      "bonusChassis": 17
+    },
+    {
+      "id": "enemy_kiro",
+      "name": "Kiro Sato (rival)",
+      "tier": "Difícil",
+      "strategies": [
+        "combista",
+        "cirurgiao",
+        "adaptativo",
+        "sucateiro"
+      ],
+      "frame": "duelista",
+      "head": "sensor_k7",
+      "torso": "chassi_aero",
+      "armL": "lamina_plasma",
+      "armR": "pulso_tesla",
+      "legs": "pernas_digitigradas",
+      "core": "reator_k",
+      "maxCardsPerTurn": 4,
+      "bonusChassis": 12
+    },
+    {
+      "id": "enemy_acido",
+      "name": "Rainha do Ácido",
+      "tier": "Difícil",
+      "strategies": [
+        "status",
+        "sucateiro",
+        "adaptativo"
+      ],
+      "frame": "bastiao",
+      "head": "coroa_nyx",
+      "torso": "torax_refrigerado",
+      "armL": "injetor",
+      "armR": "lanca_chamas",
+      "legs": "hover",
+      "core": "reator_k",
+      "maxCardsPerTurn": 4,
+      "bonusChassis": 15
+    },
+    {
+      "id": "boss_mandibula",
+      "name": "Mandíbula, Campeão dos Fossos",
+      "tier": "Chefe",
+      "strategies": [
+        "cirurgiao",
+        "adaptativo",
+        "sucateiro",
+        "combista",
+        "defensivo"
+      ],
+      "frame": "bastiao",
+      "head": "elmo_bastion",
+      "torso": "placa_m2",
+      "armL": "punho_hidraulico",
+      "armR": "canhao_30mm",
+      "legs": "esteiras",
+      "core": "reator_k",
+      "maxCardsPerTurn": 3,
+      "phases": [
+        {
+          "at": 0.5,
+          "energy": 1,
+          "cards": 0,
+          "armor": 0,
+          "signature": "mordida_campeao",
+          "text": "Fase 2: o campeão entra em fúria! (+1 energia, Mordida do Campeão)"
+        },
+        {
+          "at": 0.2,
+          "energy": 0,
+          "armor": 0,
+          "signature": "mordida_campeao",
+          "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
+        }
+      ],
+      "bonusChassis": -8
+    }
   ],
   "presets": [
-    { "id": "inicial", "name": "Inicial (Vira-lata Ferrovelho)", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
-    { "id": "kagemori", "name": "Vira-lata Kagemori", "frame": "vira_lata", "head": "sensor_k7", "torso": "chassi_aero", "armL": "lamina_plasma", "armR": "pulso_tesla", "legs": "pernas_digitigradas", "core": "bateria_reciclada" },
-    { "id": "nyx", "name": "Vira-lata Nyx", "frame": "vira_lata", "head": "coroa_nyx", "torso": "torax_refrigerado", "armL": "injetor", "armR": "lanca_chamas", "legs": "hover", "core": "bateria_reciclada" },
-    { "id": "bastion", "name": "Bastião Bastion", "frame": "bastiao", "head": "elmo_bastion", "torso": "carcaca_remendada", "armL": "canhao_30mm", "armR": "escudo_braco", "legs": "rodas_entrega", "core": "bateria_reciclada" },
-    { "id": "duelista", "name": "Duelista Ferrovelho", "frame": "duelista", "head": "otica_sucata", "torso": "chassi_aero", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
-    { "id": "duelista_misto", "name": "Duelista Kagemori + Ferrovelho", "frame": "duelista", "head": "otica_sucata", "torso": "chassi_aero", "armL": "lamina_plasma", "armR": "pulso_tesla", "legs": "rodas_entrega", "core": "bateria_reciclada" }
+    {
+      "id": "inicial",
+      "name": "Inicial (Vira-lata Ferrovelho)",
+      "frame": "vira_lata",
+      "head": "otica_sucata",
+      "torso": "carcaca_remendada",
+      "armL": "punho_hidraulico",
+      "armR": "serra_circular",
+      "legs": "rodas_entrega",
+      "core": "bateria_reciclada"
+    },
+    {
+      "id": "kagemori",
+      "name": "Vira-lata Kagemori",
+      "frame": "vira_lata",
+      "head": "sensor_k7",
+      "torso": "chassi_aero",
+      "armL": "lamina_plasma",
+      "armR": "pulso_tesla",
+      "legs": "pernas_digitigradas",
+      "core": "bateria_reciclada"
+    },
+    {
+      "id": "nyx",
+      "name": "Vira-lata Nyx",
+      "frame": "vira_lata",
+      "head": "coroa_nyx",
+      "torso": "torax_refrigerado",
+      "armL": "injetor",
+      "armR": "lanca_chamas",
+      "legs": "hover",
+      "core": "bateria_reciclada"
+    },
+    {
+      "id": "bastion",
+      "name": "Bastião Bastion",
+      "frame": "bastiao",
+      "head": "elmo_bastion",
+      "torso": "carcaca_remendada",
+      "armL": "canhao_30mm",
+      "armR": "escudo_braco",
+      "legs": "rodas_entrega",
+      "core": "bateria_reciclada"
+    },
+    {
+      "id": "duelista",
+      "name": "Duelista Ferrovelho",
+      "frame": "duelista",
+      "head": "otica_sucata",
+      "torso": "chassi_aero",
+      "armL": "punho_hidraulico",
+      "armR": "serra_circular",
+      "legs": "rodas_entrega",
+      "core": "bateria_reciclada"
+    },
+    {
+      "id": "duelista_misto",
+      "name": "Duelista Kagemori + Ferrovelho",
+      "frame": "duelista",
+      "head": "otica_sucata",
+      "torso": "chassi_aero",
+      "armL": "lamina_plasma",
+      "armR": "pulso_tesla",
+      "legs": "rodas_entrega",
+      "core": "bateria_reciclada"
+    }
   ]
 }
