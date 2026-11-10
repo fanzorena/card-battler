@@ -137,7 +137,7 @@ namespace CardBattler.Combat
             foreach (var r in new[] { player, enemy }.Where(r => r.HasBonus("startArmor")))
             {
                 r.armor += 6;
-                Emit(r, "armor", $"{r.name} começa com 6 de blindagem (Bastion).", value: 6, ui: false);
+                Emit(r, "bonus", $"{r.name} começa com 6 de blindagem (Bastion).", target: "Bastion", value: 6, ui: false);
             }
         }
 
@@ -226,6 +226,8 @@ namespace CardBattler.Combat
             if (!CanPlay(user, c)) return false;
             int cost = user.CostOf(c);
             user.energy -= cost;
+            int fullCost = c.def.cost + (user.IsBroken(c.source) ? 1 : 0);
+            if (fullCost > cost) Emit(user, "bonus", $"{user.name}: {c.def.name} custa 1 a menos (Kagemori).", card: c.def.name, target: "Kagemori", value: fullCost - cost, ui: false);
             user.hand.Remove(c);
             Emit(user, "play", $"{user.name} joga {c.def.name} ({SlotName(c.source)}, custo {cost}).",
                 card: c.def.name, source: SlotName(c.source), cost: cost, target: target.HasValue ? SlotName(target.Value) : null);
@@ -246,7 +248,7 @@ namespace CardBattler.Combat
             if (user.HasBonus("scrapArmor"))
             {
                 user.armor += 2;
-                Emit(user, "armor", $"{user.name} ganha 2 de blindagem (Ferrovelho).", card: c.def.name, value: 2, ui: false);
+                Emit(user, "bonus", $"{user.name} ganha 2 de blindagem (Ferrovelho).", card: c.def.name, target: "Ferrovelho", value: 2, ui: false);
             }
             if (user.frame.passive == "scrapDraw" && !user.scrappedThisTurn) Draw(user, 1);
             user.scrappedThisTurn = true;
@@ -357,6 +359,7 @@ namespace CardBattler.Combat
                 if (d.corrosion > 0)
                 {
                     opp.parts[slot].corrosion += d.corrosion + statusExtra;
+                    if (statusExtra > 0) Emit(user, "bonus", "Nyx: +1 de Corrosão.", card: d.name, target: "Nyx", value: 1, ui: false);
                     Emit(opp, "corrosion_applied", $"{opp.name} recebe {d.corrosion + statusExtra} Corrosão em {SlotName(slot)}.", card: d.name, target: SlotName(slot), value: d.corrosion + statusExtra);
                 }
             }
@@ -368,6 +371,7 @@ namespace CardBattler.Combat
             if (d.overload > 0)
             {
                 opp.overload += d.overload + statusExtra;
+                if (statusExtra > 0) Emit(user, "bonus", "Nyx: Sobrecarga dura +1 turno.", card: d.name, target: "Nyx", value: 1, ui: false);
                 Emit(opp, "overload_applied", $"{opp.name} recebe Sobrecarga por {d.overload + statusExtra} turno(s).", card: d.name, value: d.overload + statusExtra);
             }
         }

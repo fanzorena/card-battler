@@ -83,6 +83,17 @@
   ],
   "robots": [
     { "id": "player", "name": "Vira-lata (Rafa)", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
-    { "id": "enemy", "name": "Bastião de Patrulha", "frame": "bastiao", "head": "elmo_bastion", "torso": "placa_m2", "armL": "canhao_30mm", "armR": "lamina_plasma", "legs": "esteiras", "core": "reator_k", "maxCardsPerTurn": 2 }
+    { "id": "enemy", "name": "Bastião de Patrulha", "frame": "bastiao", "head": "elmo_bastion", "torso": "placa_m2", "armL": "canhao_30mm", "armR": "lamina_plasma", "legs": "esteiras", "core": "reator_k", "maxCardsPerTurn": 2 },
+    { "id": "enemy_kagemori", "name": "Lâmina Corporativa", "frame": "duelista", "head": "sensor_k7", "torso": "chassi_aero", "armL": "lamina_plasma", "armR": "pulso_tesla", "legs": "pernas_digitigradas", "core": "reator_k", "maxCardsPerTurn": 2 },
+    { "id": "enemy_nyx", "name": "Rato de Laboratório", "frame": "vira_lata", "head": "coroa_nyx", "torso": "torax_refrigerado", "armL": "injetor", "armR": "lanca_chamas", "legs": "hover", "core": "reator_k", "maxCardsPerTurn": 2 },
+    { "id": "enemy_sucata", "name": "Sucateiro do Fosso", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada", "maxCardsPerTurn": 2 }
+  ],
+  "presets": [
+    { "id": "inicial", "name": "Inicial (Vira-lata Ferrovelho)", "frame": "vira_lata", "head": "otica_sucata", "torso": "carcaca_remendada", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
+    { "id": "kagemori", "name": "Vira-lata Kagemori", "frame": "vira_lata", "head": "sensor_k7", "torso": "chassi_aero", "armL": "lamina_plasma", "armR": "pulso_tesla", "legs": "pernas_digitigradas", "core": "bateria_reciclada" },
+    { "id": "nyx", "name": "Vira-lata Nyx", "frame": "vira_lata", "head": "coroa_nyx", "torso": "torax_refrigerado", "armL": "injetor", "armR": "lanca_chamas", "legs": "hover", "core": "bateria_reciclada" },
+    { "id": "bastion", "name": "Bastião Bastion", "frame": "bastiao", "head": "elmo_bastion", "torso": "carcaca_remendada", "armL": "canhao_30mm", "armR": "escudo_braco", "legs": "rodas_entrega", "core": "bateria_reciclada" },
+    { "id": "duelista", "name": "Duelista Ferrovelho", "frame": "duelista", "head": "otica_sucata", "torso": "chassi_aero", "armL": "punho_hidraulico", "armR": "serra_circular", "legs": "rodas_entrega", "core": "bateria_reciclada" },
+    { "id": "duelista_misto", "name": "Duelista Kagemori + Ferrovelho", "frame": "duelista", "head": "otica_sucata", "torso": "chassi_aero", "armL": "lamina_plasma", "armR": "pulso_tesla", "legs": "rodas_entrega", "core": "bateria_reciclada" }
   ]
 }

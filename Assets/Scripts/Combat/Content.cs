@@ -58,6 +58,7 @@ namespace CardBattler.Combat
         public FrameDef[] frames;
         public MakerDef[] makers;
         public RobotDef[] robots;
+        public RobotDef[] presets; // player builds used by the simulator
 
         public CardDef Card(string id) => cards.FirstOrDefault(c => c.id == id) ?? throw new ArgumentException("Carta desconhecida: " + id);
         public PartDef Part(string id) => parts.FirstOrDefault(p => p.id == id) ?? throw new ArgumentException("Parte desconhecida: " + id);
