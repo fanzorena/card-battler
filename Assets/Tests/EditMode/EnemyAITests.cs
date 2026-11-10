@@ -126,11 +126,11 @@ public class EnemyAITests
         b = new Battle(content, 1, null, "boss_mandibula");
         Assert.AreEqual(0, E.phasesDone);
         E.parts[Slot.Torso].hp = 3;
-        E.chassis = 8; // life 11 of 28: below 50%, above 20%
+        E.chassis = 8; // life 11 of 30: below 50%, above 20%
         b.enemyIntent.Clear(); b.enemyScraps.Clear();
         b.EndPlayerTurn();
         Assert.AreEqual(1, E.phasesDone);
-        Assert.AreEqual(1, E.phaseEnergy);
+        Assert.AreEqual(0, E.phaseEnergy); // phase 2 only brings the signature move
         Assert.AreEqual("mordida_campeao", b.enemyIntent[0].def.id);
         Assert.AreEqual(1, b.history.Count(e => e.evt == "boss_phase"));
 

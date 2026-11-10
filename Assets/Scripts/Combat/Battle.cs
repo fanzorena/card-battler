@@ -80,6 +80,7 @@ namespace CardBattler.Combat
         public bool Has(string strategy) => strategies.Contains(strategy);
         public bool IsBroken(Slot s) => s != Slot.Frame && parts[s].Broken;
         public bool HasBonus(string bonus) => makers.Any(m => m.bonus == bonus);
+        public int BonusValue(string bonus) => makers.FirstOrDefault(m => m.bonus == bonus)?.value ?? 0;
         public int CostOf(Card c) => Math.Max(0, c.def.cost + (IsBroken(c.source) ? 1 : 0)
             - (HasBonus("firstCardDiscount") && cardsPlayedThisTurn == 0 ? 1 : 0));
 
@@ -155,8 +156,9 @@ namespace CardBattler.Combat
             StartTurn(player, true);
             foreach (var r in new[] { player, enemy }.Where(r => r.HasBonus("startArmor")))
             {
-                r.armor += 6;
-                Emit(r, "bonus", $"{r.name} começa com 6 de blindagem (Bastion).", target: "Bastion", value: 6, ui: false);
+                int v = r.BonusValue("startArmor");
+                r.armor += v;
+                Emit(r, "bonus", $"{r.name} começa com {v} de blindagem (Bastion).", target: "Bastion", value: v, ui: false);
             }
         }
 
@@ -212,8 +214,9 @@ namespace CardBattler.Combat
             Emit(r, "turn_start", $"Turno {turn}: {r.name} gera {r.energy} energia.", value: r.energy, ui: false);
             foreach (var p in r.parts.Values.Where(p => p.corrosion > 0).ToList())
             {
-                Emit(r, "corrosion_tick", $"{r.name}: Corrosão causa {p.corrosion} em {SlotName(p.slot)}.", target: SlotName(p.slot), value: p.corrosion);
-                DamagePart(r, p.slot, p.corrosion);
+                // Corrosão = turns left; 1 damage per turn ("um dano por turno" in the design doc).
+                Emit(r, "corrosion_tick", $"{r.name}: Corrosão causa 1 em {SlotName(p.slot)} ({p.corrosion - 1} turno(s) restante(s)).", target: SlotName(p.slot), value: 1);
+                DamagePart(r, p.slot, 1);
                 p.corrosion--;
             }
             CheckEnd();
@@ -267,8 +270,9 @@ namespace CardBattler.Combat
             Emit(user, "scrap", $"{user.name} sucateia {c.def.name} (+1 energia).", card: c.def.name, source: SlotName(c.source), value: 1);
             if (user.HasBonus("scrapArmor"))
             {
-                user.armor += 2;
-                Emit(user, "bonus", $"{user.name} ganha 2 de blindagem (Ferrovelho).", card: c.def.name, target: "Ferrovelho", value: 2, ui: false);
+                int v = user.BonusValue("scrapArmor");
+                user.armor += v;
+                Emit(user, "bonus", $"{user.name} ganha {v} de blindagem (Ferrovelho).", card: c.def.name, target: "Ferrovelho", value: v, ui: false);
             }
             if (user.frame.passive == "scrapDraw" && !user.scrappedThisTurn) Draw(user, 1);
             user.scrappedThisTurn = true;
@@ -363,7 +367,7 @@ namespace CardBattler.Combat
                 p.corrosion *= 2;
                 return;
             }
-            int dmg = d.armorDamage ? user.armor / 2 : d.damage;
+            int dmg = d.DamageFor(user.armor);
             bool pierce = d.pierce || user.pierceNext;
             user.pierceNext = false;
             var slots = new List<Slot> { main };
@@ -391,7 +395,7 @@ namespace CardBattler.Combat
             }
             if (d.overload > 0)
             {
-                opp.overload += d.overload + statusExtra;
+                opp.overload = Math.Max(opp.overload, d.overload + statusExtra); // doesn't stack: "1 energia a menos no próximo turno"
                 if (statusExtra > 0) Emit(user, "bonus", "Nyx: Sobrecarga dura +1 turno.", card: d.name, target: "Nyx", value: 1, ui: false);
                 Emit(opp, "overload_applied", $"{opp.name} recebe Sobrecarga por {d.overload + statusExtra} turno(s).", card: d.name, value: d.overload + statusExtra);
             }
@@ -510,7 +514,7 @@ namespace CardBattler.Combat
         {
             var d = c.def;
             bool aimed = enemyIntent.Any(x => x.def.aim) && d.TargetsPart && enemyIntent.First(x => x.def.TargetsPart) == c;
-            if (d.armorDamage) return $"{d.name}: {enemy.armor / 2} em {SlotName(aimed ? enemyAimTarget : Slot.Torso)}";
+            if (d.armorDamage) return $"{d.name}: {d.DamageFor(enemy.armor)} em {SlotName(aimed ? enemyAimTarget : Slot.Torso)}";
             if (d.damage > 0) return $"{d.name}: {d.damage}{(d.hits > 1 ? "x" + d.hits : "")} em {SlotName(aimed ? enemyAimTarget : Slot.Torso)}{(d.secondPart ? " + outra parte" : "")}";
             if (d.aim) return $"{d.name} → {SlotName(enemyAimTarget)}";
             return $"{d.name}: {d.text}";

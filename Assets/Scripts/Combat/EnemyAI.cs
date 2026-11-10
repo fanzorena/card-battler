@@ -75,7 +75,7 @@ namespace CardBattler.Combat
         static bool IsLimb(Slot s) => s == Slot.BracoEsq || s == Slot.BracoDir || s == Slot.Pernas;
 
         public static int Raw(Robot user, Card c) =>
-            (c.def.armorDamage ? user.armor / 2 : c.def.damage) * Math.Max(1, c.def.hits) * (c.def.secondPart ? 2 : 1);
+            c.def.DamageFor(user.armor) * Math.Max(1, c.def.hits) * (c.def.secondPart ? 2 : 1);
 
         // Damage the player dealt in its last turn: what an adaptive enemy expects next.
         public static int PlayerThreat(Battle b)

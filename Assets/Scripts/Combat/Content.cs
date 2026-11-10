@@ -13,7 +13,9 @@ namespace CardBattler.Combat
         public int cost, damage, hits, armor, draw, repair, dodge, breakDraw, chainDraw, weakPoint;
         public int targetHeat, selfHeat, overload, corrosion;
         public bool aim, chainImpact, pierce, pierceNext, armorDamage, secondPart, doubleCorrosion, cancelIntent, peek, clearHeat, exhaust;
+        public int armorPct; // armorDamage: % of your armor dealt as damage (0 = 50%)
         public bool TargetsPart => damage > 0 || armorDamage || doubleCorrosion;
+        public int DamageFor(int userArmor) => armorDamage ? userArmor * (armorPct > 0 ? armorPct : 50) / 100 : damage;
     }
 
     [Serializable]
@@ -36,6 +38,7 @@ namespace CardBattler.Combat
     public class MakerDef
     {
         public string id, bonus, text;
+        public int value; // armor amount for scrapArmor/startArmor
     }
 
     // Boss hook: when the enemy's torso+chassis drops to `at` (fraction of max), it gets these buffs once.

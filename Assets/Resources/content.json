@@ -129,10 +129,11 @@
       "id": "desmontar",
       "name": "Desmontar",
       "cost": 2,
-      "damage": 8,
+      "damage": 7,
       "hits": 1,
       "breakDraw": 2,
-      "text": "8 de dano. Se avariar a parte, compre 2."
+      "text": "7 de dano, ignora blindagem. Se avariar a parte, compre 2.",
+      "pierce": true
     },
     {
       "id": "disparo",
@@ -163,7 +164,8 @@
       "cost": 1,
       "armorDamage": true,
       "hits": 1,
-      "text": "Dano igual à metade da sua blindagem."
+      "text": "Dano igual à sua blindagem.",
+      "armorPct": 100
     },
     {
       "id": "corte_plasma",
@@ -177,7 +179,7 @@
     {
       "id": "corte_preciso",
       "name": "Corte Preciso",
-      "cost": 2,
+      "cost": 3,
       "damage": 9,
       "hits": 1,
       "pierce": true,
@@ -187,10 +189,10 @@
       "id": "choque",
       "name": "Choque",
       "cost": 1,
-      "damage": 4,
+      "damage": 3,
       "hits": 1,
       "overload": 1,
-      "text": "4 de dano e Sobrecarga."
+      "text": "3 de dano e Sobrecarga."
     },
     {
       "id": "arco",
@@ -653,12 +655,14 @@
     {
       "id": "Ferrovelho",
       "bonus": "scrapArmor",
-      "text": "Cada sucata do turno também dá 2 de blindagem."
+      "text": "Cada sucata do turno também dá 2 de blindagem.",
+      "value": 2
     },
     {
       "id": "Bastion",
       "bonus": "startArmor",
-      "text": "Começa a luta com 6 de blindagem."
+      "text": "Começa a luta com 6 de blindagem.",
+      "value": 6
     },
     {
       "id": "Kagemori",
@@ -716,8 +720,8 @@
       "name": "Bastião de Patrulha",
       "tier": "Moderado",
       "strategies": [
-        "defensivo",
-        "cirurgiao"
+        "cirurgiao",
+        "sucateiro"
       ],
       "frame": "bastiao",
       "head": "elmo_bastion",
@@ -727,7 +731,7 @@
       "legs": "esteiras",
       "core": "reator_k",
       "maxCardsPerTurn": 3,
-      "bonusChassis": 6
+      "bonusChassis": 4
     },
     {
       "id": "enemy_kagemori",
@@ -745,7 +749,7 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 3,
-      "bonusChassis": 17
+      "bonusChassis": 22
     },
     {
       "id": "enemy_kiro",
@@ -765,7 +769,7 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 12
+      "bonusChassis": 13
     },
     {
       "id": "enemy_acido",
@@ -780,11 +784,12 @@
       "head": "coroa_nyx",
       "torso": "torax_refrigerado",
       "armL": "injetor",
-      "armR": "lanca_chamas",
+      "armR": "lamina_plasma",
       "legs": "hover",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 15
+      "bonusChassis": 34,
+      "bonusEnergy": 1
     },
     {
       "id": "boss_mandibula",
@@ -808,11 +813,11 @@
       "phases": [
         {
           "at": 0.5,
-          "energy": 1,
+          "energy": 0,
           "cards": 0,
           "armor": 0,
           "signature": "mordida_campeao",
-          "text": "Fase 2: o campeão entra em fúria! (+1 energia, Mordida do Campeão)"
+          "text": "Fase 2: o campeão entra em fúria! (Mordida do Campeão)"
         },
         {
           "at": 0.2,
@@ -822,7 +827,7 @@
           "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
         }
       ],
-      "bonusChassis": -8
+      "bonusChassis": -6
     }
   ],
   "presets": [
