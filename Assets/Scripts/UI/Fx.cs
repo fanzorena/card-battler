@@ -15,7 +15,8 @@ namespace CardBattler.UI
 
         static float Ease(float t) => 1 - Mathf.Pow(1 - Mathf.Clamp01(t), 3);
 
-        public static Coroutine Run(IEnumerator routine) => I ? I.StartCoroutine(routine) : null;
+        // Effects only run in Play mode (EditMode tests build screens without animating them).
+        public static Coroutine Run(IEnumerator routine) => I && Application.isPlaying ? I.StartCoroutine(routine) : null;
 
         public static Coroutine Delay(float seconds, Action then) => Run(DelayRoutine(seconds, then));
         static IEnumerator DelayRoutine(float s, Action then) { yield return new WaitForSeconds(s); then?.Invoke(); }

@@ -47,7 +47,7 @@ namespace CardBattler.UI
         // ---- Build ----
         public void Build(Content c, RobotDef def)
         {
-            foreach (Transform child in transform) Destroy(child.gameObject);
+            Theme.ClearChildren(transform);
             parts.Clear();
             foreach (var s in sparks.Values) if (s != null && Fx.I) Fx.I.StopCoroutine(s);
             sparks.Clear();
@@ -303,7 +303,7 @@ namespace CardBattler.UI
 
         public void SetBadges(IEnumerable<(string text, Color color)> items)
         {
-            foreach (Transform child in badges) Destroy(child.gameObject);
+            Theme.ClearChildren(badges);
             foreach (var (text, color) in items)
             {
                 var t = Theme.Chip(badges, text, color, 16);

@@ -155,7 +155,7 @@ namespace CardBattler.UI
         // ---- Panels ----
         void Panel(RectTransform parent, Robot r, bool enemy)
         {
-            foreach (Transform t in parent) UnityEngine.Object.Destroy(t.gameObject);
+            Theme.ClearChildren(parent);
             var bg = Theme.Box(parent, "Bg", Theme.Alpha(Theme.Panel, 0.92f));
             bg.rectTransform.Fill();
             bg.gameObject.AddComponent<Outline>().effectColor = Theme.Alpha(Theme.Line, 1);
@@ -189,7 +189,7 @@ namespace CardBattler.UI
 
         void Intents()
         {
-            foreach (Transform t in intents) UnityEngine.Object.Destroy(t.gameObject);
+            Theme.ClearChildren(intents);
             foreach (var (kind, text, target) in IntentChips(b))
             {
                 var color = Kinds.ColorOf(kind);
@@ -232,7 +232,7 @@ namespace CardBattler.UI
         {
             foreach (var gone in views.Keys.Where(c => !b.player.hand.Contains(c)).ToList())
             {
-                if (views[gone]) UnityEngine.Object.Destroy(views[gone].gameObject);
+                if (views[gone]) Theme.Kill(views[gone].gameObject);
                 views.Remove(gone);
             }
             var p = b.player;
@@ -354,7 +354,7 @@ namespace CardBattler.UI
             hint.text = ""; cancel.gameObject.SetActive(false);
             var v = views.TryGetValue(c, out var view) ? view : null;
             views.Remove(c);
-            if (!b.Play(b.player, c, target)) { if (v) UnityEngine.Object.Destroy(v.gameObject); Refresh(); return; }
+            if (!b.Play(b.player, c, target)) { if (v) Theme.Kill(v.gameObject); Refresh(); return; }
             var aimAt = c.def.TargetsPart ? enemyBot.PosOf(target ?? Slot.Torso) : c.def.repair > 0 ? playerBot.PosOf(target ?? Slot.Torso) : Fx.PosOf(playerBot.Rect);
             if (v) v.FlyAway(aimAt, 0.4f);
             busy = true;
@@ -391,8 +391,8 @@ namespace CardBattler.UI
 
         void Quit()
         {
-            if (!quitArmed) { quitArmed = true; Say("<color=#FFC24A>Clique em Desistir de novo para voltar à garagem.</color>"); Fx.Delay(3, () => quitArmed = false); return; }
-            app.ShowGarage();
+            if (!quitArmed) { quitArmed = true; Say("<color=#FFC24A>Clique em Desistir de novo para sair da luta.</color>"); Fx.Delay(3, () => quitArmed = false); return; }
+            app.ShowOpponents();
         }
 
         // ---- Feedback from log events ----
@@ -460,7 +460,7 @@ namespace CardBattler.UI
             var slot = string.IsNullOrEmpty(slotName) ? null : SlotFrom(slotName);
             lines.Add((StripSlotNames(line), slot.HasValue ? (slot == Slot.Chassi ? "Chassi" : SlotIcons.Key(slot.Value)) : null));
             while (lines.Count > 5) lines.RemoveAt(0);
-            foreach (Transform t in textRows) UnityEngine.Object.Destroy(t.gameObject);
+            Theme.ClearChildren(textRows);
             float y = 0;
             foreach (var (text, icon) in lines)
             {
@@ -506,9 +506,10 @@ namespace CardBattler.UI
             Theme.Label(shade.transform, win ? "VITÓRIA" : "DERROTA", 110, win ? Theme.Good : Theme.Bad, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(960, 400, 1200, 140);
             Theme.Label(shade.transform, $"{b.enemy.name} · turno {b.turn}", Theme.Title, Theme.TextDim, TextAnchor.MiddleCenter).rectTransform.Center(960, 490, 1200, 50);
             var build = app.garage.Current;
-            var enemyId = b.content.robots.First(r => r.name == b.enemy.name).id;
-            ((RectTransform)Theme.Button(shade.transform, "REVANCHE", () => app.StartBattle(build, enemyId), Theme.PanelHi, 28).transform).Center(820, 600, 260, 76);
-            ((RectTransform)Theme.Button(shade.transform, "GARAGEM", app.ShowGarage, Theme.PanelHi, 28).transform).Center(1100, 600, 260, 76);
+            var enemyId = app.lastEnemy;
+            ((RectTransform)Theme.Button(shade.transform, "REVANCHE", () => app.StartBattle(build, enemyId), Theme.PanelHi, 26).transform).Center(640, 600, 320, 76);
+            ((RectTransform)Theme.Button(shade.transform, "OUTRO ADVERSÁRIO", app.ShowOpponents, Theme.PanelHi, 26).transform).Center(960, 600, 320, 76);
+            ((RectTransform)Theme.Button(shade.transform, "VOLTAR À GARAGEM", app.ShowGarage, Theme.PanelHi, 26).transform).Center(1280, 600, 320, 76);
         }
     }
 }
