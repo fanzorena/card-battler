@@ -112,3 +112,45 @@ Capturas em 1920x1080:
 - `RobotView`, `CardView` e `Fx` são os blocos de tela e efeitos; `GameUI`, `GarageScreen` e `BattleScreen` são as telas.
 - As regras não mudaram. Os testes de regras e o simulador continuam iguais.
 - Novos testes de UI cobrem o destaque de palavras-chave, o tipo das cartas, as fichas de intenção (alvo aleatório "?" e alvo escolhido) e o robô montado com as 22 partes e seus estados.
+
+## Segundo passe — ícones de parte e área de sucata
+
+Pedido do dono: trocar os nomes das partes (Braço Esq, Braço Dir...) por ícones, colocar os ícones também na interface para o jogador ligar carta ↔ parte, e trocar o botão de sucata em cada carta por uma área dedicada onde a carta é arrastada.
+
+Capturas em `screenshots/`:
+- `depois2_garagem.png`
+- `depois2_batalha.png`
+- `depois2_batalha_720p.png`
+- `depois2_arrastando.png` (carta sendo arrastada para a sucata)
+
+**Ícones de parte**
+- Cada ícone é um mini-robô com a parte em destaque: Cabeça, Torso, Braço esquerdo, Braço direito, Pernas, Núcleo, Chassi e Frame (este para a carta assinatura).
+- Os braços têm uma marca **E** / **D**, então esquerdo e direito nunca dependem só da cor.
+- O ícone fica na cor do fabricante, com anel e parte destacada maior, e continua legível em 1280x720.
+- Ao passar o mouse aparece o nome completo, para acessibilidade.
+- O mesmo ícone aparece:
+  - no canto da carta, no lugar do texto da origem;
+  - nas barras de integridade dos painéis, no lugar do nome do slot;
+  - **no próprio robô**, ao lado de cada parte;
+  - na intenção do inimigo ("6 → [ícone]"; aleatório continua "?");
+  - na caixa de texto, no início da linha, com o nome da parte removido do texto;
+  - ao lado do número de dano;
+  - nos slots da garagem e nas mini-cartas do deck.
+- O inimigo não é mais espelhado: o braço esquerdo está sempre à esquerda, como no ícone.
+
+**Área de sucata e arrastar cartas**
+- A aba de sucata das cartas saiu. Agora há uma lixeira "SUCATA" ao lado da energia, que mostra o efeito do momento: "+1 ENERGIA", ou "COMPRA 1 CARTA" na primeira sucata do Vira-lata, mais "+N BLINDAGEM" com o bônus Ferrovelho.
+- Arrastar uma carta:
+  - soltar na **sucata** sucateia;
+  - soltar numa **parte válida do inimigo** (ou numa parte sua, para reparo) joga a carta naquele alvo; as partes válidas brilham durante o arraste;
+  - soltar **acima da mão** joga a carta, ou abre a escolha de alvo se a carta escolhe a parte;
+  - soltar em qualquer outro lugar cancela e a carta volta para a mão.
+- O clique continua funcionando como alternativa.
+- A sucata destaca e cresce quando a carta passa por cima. A carta voa para a lixeira e aparece "+1" ou "+1 CARTA" na energia.
+
+**Testes de UI novos:**
+- ícones distintos, com E/D nos braços;
+- decisão do que acontece ao soltar a carta (sucata, parte, área de jogo, cancelar);
+- troca dos nomes de parte pelos ícones na caixa de texto, sem estragar nomes de carta como "Cabeça Dura".
+
+O arrastar até a sucata também foi verificado de ponta a ponta no Play mode.

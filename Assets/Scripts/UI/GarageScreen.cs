@@ -23,12 +23,13 @@ namespace CardBattler.UI
 
         static readonly (string label, string slot, Func<RobotDef, string> get, Action<RobotDef, string> set, float x, float y)[] Slots =
         {
-            ("CABEÇA", "Cabeca", b => b.head, (b, v) => b.head = v, 410, 120),
-            ("NÚCLEO", "Nucleo", b => b.core, (b, v) => b.core = v, 760, 120),
-            ("BRAÇO ESQ", "Braco", b => b.armL, (b, v) => b.armL = v, 60, 300),
-            ("BRAÇO DIR", "Braco", b => b.armR, (b, v) => b.armR = v, 760, 300),
-            ("TORSO", "Torso", b => b.torso, (b, v) => b.torso = v, 60, 480),
-            ("PERNAS", "Pernas", b => b.legs, (b, v) => b.legs = v, 760, 480),
+            // first item: slot icon key (the icon replaces the slot name)
+            ("Cabeca", "Cabeca", b => b.head, (b, v) => b.head = v, 410, 120),
+            (SlotIcons.Nucleo, "Nucleo", b => b.core, (b, v) => b.core = v, 760, 120),
+            ("BracoEsq", "Braco", b => b.armL, (b, v) => b.armL = v, 60, 300),
+            ("BracoDir", "Braco", b => b.armR, (b, v) => b.armR = v, 760, 300),
+            ("Torso", "Torso", b => b.torso, (b, v) => b.torso = v, 60, 480),
+            ("Pernas", "Pernas", b => b.legs, (b, v) => b.legs = v, 760, 480),
         };
 
         void Changed() { G.Save(GameUI.SavePath); Rebuild(); }
@@ -70,7 +71,7 @@ namespace CardBattler.UI
             robot.Build(C, b);
 
             // Frame selector (top-left slot)
-            SlotWidget(60, 120, "FRAME", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}",
+            SlotWidget(60, 120, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}",
                 frame.passiveText, () => { b.frame = Cycle(C.frames.Select(f => f.id).ToArray(), b.frame, -1); Changed(); },
                 () => { b.frame = Cycle(C.frames.Select(f => f.id).ToArray(), b.frame, 1); Changed(); });
 
@@ -141,33 +142,33 @@ namespace CardBattler.UI
             "Fácil" => Theme.Good, "Moderado" => Theme.Warn, "Difícil" => Theme.Exposed, "Chefe" => Theme.Bad, _ => Theme.TextDim,
         };
 
-        void SlotWidget(float x, float y, string label, string name, string maker, string stats, string cards, Action prev, Action next)
+        void SlotWidget(float x, float y, string iconKey, string name, string maker, string stats, string cards, Action prev, Action next)
         {
             var accent = maker == null ? Theme.TextDim : Theme.Maker(maker);
-            var box = Theme.Box(root, "Slot:" + label, Theme.Panel);
+            var box = Theme.Box(root, "Slot:" + iconKey, Theme.Panel);
             box.rectTransform.Place(x, y, 300, 170);
             var o = box.gameObject.AddComponent<Outline>(); o.effectColor = Theme.Alpha(accent, 0.5f); o.effectDistance = new Vector2(2, -2);
             Theme.Solid(box.transform, "Stripe", accent).rectTransform.Place(0, 10, 5, 150);
-            Theme.Label(box.transform, label, 16, Theme.TextDim, style: FontStyle.Bold).rectTransform.Place(16, 8, 200, 22);
+            SlotIcons.Icon(box.transform, iconKey, 52, maker == null ? Theme.Warn : accent).Place(12, 8, 52, 52);
+            var n = Theme.Label(box.transform, name, 24, Theme.Ink, style: FontStyle.Bold);
+            n.rectTransform.Place(72, 6, 156, 32);
+            n.resizeTextForBestFit = true; n.resizeTextMinSize = 15; n.resizeTextMaxSize = 24;
             if (maker != null)
             {
                 var chip = Theme.Chip(box.transform, maker.ToUpperInvariant(), accent, 14);
-                ((RectTransform)chip.transform.parent).Place(166, 6, 124, 24);
+                ((RectTransform)chip.transform.parent).Place(72, 40, 124, 22);
             }
-            var n = Theme.Label(box.transform, name, 24, Theme.Ink, style: FontStyle.Bold);
-            n.rectTransform.Place(16, 32, 220, 34);
-            n.resizeTextForBestFit = true; n.resizeTextMinSize = 16; n.resizeTextMaxSize = 24;
             Theme.Label(box.transform, stats, 16, Theme.Ink).rectTransform.Place(16, 70, 276, 40);
             Theme.Label(box.transform, cards, 15, Theme.TextDim).rectTransform.Place(16, 112, 276, 54);
-            ((RectTransform)Theme.Button(box.transform, "<", prev, Theme.PanelHi).transform).Place(232, 34, 30, 32);
-            ((RectTransform)Theme.Button(box.transform, ">", next, Theme.PanelHi).transform).Place(264, 34, 30, 32);
+            ((RectTransform)Theme.Button(box.transform, "<", prev, Theme.PanelHi).transform).Place(232, 8, 30, 32);
+            ((RectTransform)Theme.Button(box.transform, ">", next, Theme.PanelHi).transform).Place(264, 8, 30, 32);
         }
 
         void DeckGrid(RectTransform parent, System.Collections.Generic.List<CardDef> deck)
         {
             const float s = 0.58f;
             int col = 0, row = 0;
-            var srcs = new[] { (G.Current.head, "Cabeça"), (G.Current.torso, "Torso"), (G.Current.armL, "Braço Esq"), (G.Current.armR, "Braço Dir"), (G.Current.legs, "Pernas") };
+            var srcs = new[] { (G.Current.head, "Cabeca"), (G.Current.torso, "Torso"), (G.Current.armL, "BracoEsq"), (G.Current.armR, "BracoDir"), (G.Current.legs, "Pernas") };
             foreach (var d in deck)
             {
                 var src = srcs.FirstOrDefault(p => C.Part(p.Item1).cards.Contains(d.id));

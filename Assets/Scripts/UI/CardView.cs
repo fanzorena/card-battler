@@ -102,12 +102,16 @@ namespace CardBattler.UI
         public static void Hide() { if (box) box.gameObject.SetActive(false); }
     }
 
-    public class CardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+    public class CardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         public const float W = 200, H = 280;
         public Card card;
         public CardDef def;
-        public Action<CardView> onClick;
+        public Action<CardView> onClick, onDragStart;
+        public Action<CardView, Vector2, Vector2> onDragMove, onDrop; // overlay position, screen position
+        public string sourceKey;
+        bool dragging;
+        Transform handParent;
         public bool interactive = true;
         public bool animating; // sliding in from the deck: hover must not fight the animation
         public RectTransform Rect => (RectTransform)transform;
@@ -118,12 +122,13 @@ namespace CardBattler.UI
         Vector2 home;
         bool playable = true;
 
-        public static CardView Create(Transform parent, CardDef def, string maker, string source, Card card = null)
+        // sourceKey: slot key of the part the card comes from (SlotIcons), e.g. "BracoEsq" or "Frame".
+        public static CardView Create(Transform parent, CardDef def, string maker, string sourceKey, Card card = null)
         {
             var rt = Theme.Node(parent, "Card:" + def.name);
             rt.sizeDelta = new Vector2(W, H);
             var v = rt.gameObject.AddComponent<CardView>();
-            v.card = card; v.def = def;
+            v.card = card; v.def = def; v.sourceKey = sourceKey;
             v.group = rt.gameObject.AddComponent<CanvasGroup>();
             var accent = Theme.Maker(maker);
 
@@ -137,7 +142,8 @@ namespace CardBattler.UI
             var band = Theme.Box(rt, "Band", Theme.Mix(Theme.Panel, accent, 0.35f));
             band.rectTransform.Place(6, 6, W - 12, 46);
             var name = Theme.Label(rt, def.name, 21, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold);
-            name.rectTransform.Place(62, 6, W - 70, 46);
+            name.rectTransform.Place(62, 6, W - 112, 46);
+            SlotIcons.Icon(rt, sourceKey, 40, accent).Place(W - 48, 9, 40, 40);
             name.resizeTextForBestFit = true; name.resizeTextMinSize = 14; name.resizeTextMaxSize = 21;
 
             var costBg = Theme.Box(rt, "Cost", Theme.Bg, Theme.Circle);
@@ -146,8 +152,6 @@ namespace CardBattler.UI
             v.costText = Theme.Label(costBg.transform, def.cost.ToString(), 34, Theme.Energy, TextAnchor.MiddleCenter, FontStyle.Bold);
             v.costText.rectTransform.Fill();
 
-            var srcText = Theme.Label(rt, source.ToUpperInvariant(), 15, Theme.Alpha(accent, 0.95f), TextAnchor.MiddleCenter, FontStyle.Bold);
-            srcText.rectTransform.Place(6, 54, W - 12, 20);
 
             var kind = Kinds.Of(def);
             var art = Theme.Box(rt, "Art", Theme.Mix(Theme.Bg, Kinds.ColorOf(kind), 0.12f));
@@ -181,7 +185,9 @@ namespace CardBattler.UI
 
         public void OnPointerEnter(PointerEventData e)
         {
-            Tooltip.Show(Fx.PosOf(Rect), Theme.HelpFor(def.text).Concat(def.TargetsPart ? new[] { "Custo 1: parte aleatória. Custo 2 ou mais (ou Mirar): você escolhe a parte." } : new string[0]));
+            if (dragging) return;
+            Tooltip.Show(Fx.PosOf(Rect), new[] { "Origem: " + SlotIcons.Name(sourceKey) }.Concat(Theme.HelpFor(def.text))
+                .Concat(def.TargetsPart ? new[] { "Custo 1: parte aleatória. Custo 2 ou mais (ou Mirar): você escolhe a parte." } : new string[0]));
             if (!interactive || animating) return;
             transform.SetAsLastSibling();
             Fx.Move(Rect, home + new Vector2(0, 40), 0.12f);
@@ -191,13 +197,57 @@ namespace CardBattler.UI
         public void OnPointerExit(PointerEventData e)
         {
             Tooltip.Hide();
-            if (!interactive || animating) return;
+            if (!interactive || animating || dragging) return;
             Fx.Move(Rect, home, 0.12f);
             Fx.Scale(transform, 1f, 0.12f);
         }
 
+        // ---- Drag: the card follows the pointer on the overlay; the screen decides what a drop means. ----
+        public void OnBeginDrag(PointerEventData e)
+        {
+            if (!interactive || animating || !Fx.I) return;
+            dragging = true;
+            Tooltip.Hide();
+            handParent = transform.parent;
+            var from = Fx.PosOf(Rect);
+            transform.SetParent(Fx.I.overlay, false);
+            Rect.Center(from.x, from.y, W, H);
+            transform.localScale = new Vector3(0.85f, 0.85f, 1);
+            group.blocksRaycasts = false; // let the drop see what is under the pointer
+            onDragStart?.Invoke(this);
+        }
+
+        public void OnDrag(PointerEventData e)
+        {
+            if (!dragging) return;
+            var p = Fx.ScreenToOverlay(e.position);
+            Rect.anchoredPosition = new Vector2(p.x, -p.y);
+            onDragMove?.Invoke(this, p, e.position);
+        }
+
+        public void OnEndDrag(PointerEventData e)
+        {
+            if (!dragging) return;
+            dragging = false;
+            group.blocksRaycasts = true;
+            onDrop?.Invoke(this, Fx.ScreenToOverlay(e.position), e.position);
+        }
+
+        // Puts a dragged card back in the hand at its home position.
+        public void ReturnToHand()
+        {
+            if (!handParent) return;
+            transform.SetParent(handParent, false);
+            Rect.anchorMin = Rect.anchorMax = new Vector2(0, 1);
+            Rect.pivot = new Vector2(0.5f, 0.5f);
+            Rect.sizeDelta = new Vector2(W, H);
+            transform.localScale = Vector3.one;
+            Rect.anchoredPosition = home;
+        }
+
         public void OnPointerClick(PointerEventData e)
         {
+            if (e.dragging) return;
             if (interactive && playable) onClick?.Invoke(this);
             else if (interactive) Fx.Shake(Rect, 6, 0.15f);
         }
