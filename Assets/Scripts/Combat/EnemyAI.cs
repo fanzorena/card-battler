@@ -27,8 +27,10 @@ namespace CardBattler.Combat
             int budget = Math.Max(0, e.BaseEnergy - (e.overload > 0 ? 1 : 0) - (e.heat + e.core.heatPerTurn >= Robot.HeatLimit ? 1 : 0));
             int maxCards = e.MaxCards;
             int threat = PlayerThreat(b);
-            int lethalNeed = p.Life + p.armor + p.dodge;
-            bool lethal = e.Has("adaptativo") && e.hand.Where(c => c.def.TargetsPart).Sum(c => Raw(e, c)) >= lethalNeed;
+            // Lethal only through the chassis, which needs an exposed chassis and attacks that choose their target.
+            int lethalNeed = p.ChassisOpen ? p.chassis + p.armor + p.dodge : int.MaxValue;
+            bool canAim = e.hand.Any(c => c.def.aim);
+            bool lethal = e.Has("adaptativo") && e.hand.Where(c => c.def.TargetsPart && (Chooses(c.def) || canAim)).Sum(c => Raw(e, c)) >= lethalNeed;
 
             var scores = e.hand.ToDictionary(c => c, c => smart ? Score(b, c, threat, lethal) : (float)rng.NextDouble());
             if (e.forced != null) scores[e.forced] = 10000;
@@ -45,10 +47,12 @@ namespace CardBattler.Combat
                 if (cost > budget && e.Has("sucateiro"))
                 {
                     // Scrap the weakest cards not yet used to pay for this better one.
-                    int need = cost - budget;
+                    // Vira-lata's first scrap draws instead of giving energy, so it needs one extra card.
+                    int free = e.frame.passive == "scrapDraw" && scraps.Count == 0 ? 1 : 0;
+                    int need = cost - budget + free;
                     var junk = pool.Where(x => x != c && !chosen.Contains(x) && !scraps.Contains(x) && scores[x] < scores[c])
                         .OrderBy(x => scores[x]).Take(need).ToList();
-                    if (junk.Count == need) { scraps.AddRange(junk); budget += need; }
+                    if (junk.Count == need) { scraps.AddRange(junk); budget += need - free; }
                 }
                 if (cost > budget) continue;
                 chosen.Add(c); budget -= cost;
@@ -57,20 +61,24 @@ namespace CardBattler.Combat
 
             b.enemyIntent.AddRange(Order(e, chosen));
 
-            // Targets
-            int planned = b.enemyIntent.Where(c => c.def.TargetsPart).Sum(c => Raw(e, c));
-            if (e.Has("cirurgiao"))
+            // Target for the attacks that choose (cost 2+, or after Mirar). Cost-1 attacks stay random.
+            bool aimed = b.enemyIntent.Any(c => c.def.aim);
+            int planned = b.enemyIntent.Where(c => c.def.TargetsPart && (Chooses(c.def) || aimed)).Sum(c => Raw(e, c));
+            var intact = p.parts.Values.Where(x => !x.Broken).ToList();
+            var weakest = intact.OrderBy(x => x.hp).FirstOrDefault()?.slot ?? Slot.Chassi;
+            if (!smart)
             {
-                b.enemyAimTarget = planned >= lethalNeed ? Slot.Torso : StrategicPart(b, planned);
-                b.enemyWeakTarget = b.enemyIntent.Any(c => c.def.aim) ? b.enemyAimTarget : Slot.Torso;
+                var options = intact.Select(x => x.slot).ToList();
+                if (p.ChassisOpen || options.Count == 0) options.Add(Slot.Chassi);
+                b.enemyAimTarget = options[rng.Next(options.Count)];
             }
-            else
-            {
-                var alive = p.parts.Values.Where(x => !x.Broken && x.slot != Slot.Torso).ToList();
-                b.enemyAimTarget = alive.Count > 0 ? alive[rng.Next(alive.Count)].slot : Slot.Torso;
-                b.enemyWeakTarget = Slot.Torso;
-            }
+            else if (p.ChassisOpen) b.enemyAimTarget = Slot.Chassi;             // the win condition
+            else if (e.Has("cirurgiao")) b.enemyAimTarget = StrategicPart(b, planned); // break the part that hurts most to open the chassis
+            else b.enemyAimTarget = weakest;                                      // open the chassis as fast as possible
+            b.enemyWeakTarget = b.enemyAimTarget != Slot.Chassi ? b.enemyAimTarget : weakest;
         }
+
+        static bool Chooses(CardDef d) => d.cost >= 2 || d.choose;
 
         static bool IsLimb(Slot s) => s == Slot.BracoEsq || s == Slot.BracoDir || s == Slot.Pernas;
 
@@ -91,12 +99,13 @@ namespace CardBattler.Combat
             var d = c.def;
             float v = 0;
             int raw = d.TargetsPart && !d.doubleCorrosion ? Raw(e, c) : 0;
-            v += d.pierce ? raw : Math.Max(raw * 0.4f, raw - p.armor);
+            float aimValue = Chooses(d) ? (p.ChassisOpen ? 1.3f : 1f) : 0.8f; // random hits are worth less
+            v += (d.pierce ? raw : Math.Max(raw * 0.4f, raw - p.armor)) * aimValue;
             v += 1.5f * (d.draw + d.chainDraw);
             v += d.armor * 0.4f;
             v += d.repair > 0 ? Math.Min(d.repair, e.parts.Values.Max(x => x.Max - x.hp)) * 0.6f : 0;
             if (d.dodge > 0 && !e.IsBroken(Slot.Pernas)) v += 2;
-            if (d.aim) v += e.hand.Any(x => x != c && x.def.TargetsPart) ? 2 : 0;
+            if (d.aim) v += e.hand.Any(x => x != c && x.def.TargetsPart && !Chooses(x.def)) ? (p.ChassisOpen ? 5 : 2) : 0;
             if (d.weakPoint > 0) v += e.hand.Count(x => x != c && x.def.TargetsPart) * 1.5f;
             if (d.selfHeat > 0 && e.heat + d.selfHeat >= Robot.HeatLimit) v -= 3;
             if (d.clearHeat) v += e.heat >= 6 ? e.heat : -1;
@@ -132,7 +141,8 @@ namespace CardBattler.Combat
             return setup.Concat(ordered).ToList();
         }
 
-        // The player part whose loss hurts the player most, favoring parts this turn's damage can break.
+        // The player part whose loss hurts the player most, favoring parts this turn's damage can break
+        // (breaking any part also exposes the chassis).
         public static Slot StrategicPart(Battle b, int plannedDamage)
         {
             var p = b.player;
@@ -143,8 +153,8 @@ namespace CardBattler.Combat
                 if (plannedDamage - p.armor >= part.hp) v *= 2; // can break it this turn
                 return v / Math.Max(1, part.hp);
             }
-            var best = p.parts.Values.Where(x => x.slot != Slot.Torso && !x.Broken).OrderByDescending(Value).FirstOrDefault();
-            return best?.slot ?? Slot.Torso;
+            var best = p.parts.Values.Where(x => !x.Broken).OrderByDescending(Value).FirstOrDefault();
+            return best?.slot ?? Slot.Chassi;
         }
     }
 }

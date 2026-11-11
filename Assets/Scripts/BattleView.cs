@@ -101,14 +101,24 @@ public partial class BattleView : MonoBehaviour
                        (r.overload > 0 ? $"   Sobrecarga {r.overload}" : "") + (r.aimPending ? "   [Mirando]" : "") + (r.pierceNext ? "   [Finta]" : "");
         GUI.Label(new Rect(area.x + 8, area.y + 26, area.width, 20), stats, small);
         float y = area.y + 50;
-        Bar(new Rect(area.x + 8, y, area.width - 16, 26), "Chassi", r.chassis, r.chassisMax, new Color(0.5f, 0.5f, 0.6f), false);
+        // The chassis is a target only once some part is destroyed (and never for Ponto Fraco/repairs).
+        bool chassisTarget = targetable && r.ChassisOpen && pending != null && pending.def.weakPoint == 0 && pendingTarget == Target.EnemyPart;
+        var chassisRow = new Rect(area.x + 8, y, area.width - 16, 26);
+        Bar(chassisRow, r.ChassisOpen ? "Chassi (exposto)" : "Chassi (protegido)", r.chassis, r.chassisMax,
+            r.ChassisOpen ? new Color(0.75f, 0.45f, 0.2f) : new Color(0.5f, 0.5f, 0.6f), chassisTarget);
+        if (chassisTarget && GUI.Button(chassisRow, GUIContent.none, GUIStyle.none))
+        {
+            var c = pending; pending = null;
+            battle.Play(battle.player, c, Slot.Chassi);
+        }
         y += 32;
         foreach (var part in r.parts.Values)
         {
             var row = new Rect(area.x + 8, y, area.width - 16, 30);
             string label = $"{Battle.SlotName(part.slot)}: {part.def.name}" + (part.corrosion > 0 ? $"  (Corrosão {part.corrosion})" : "") + (part.weak > 0 ? $"  (Ponto Fraco +{part.weak})" : "");
-            Bar(row, label, part.hp, part.Max, part.Broken ? new Color(0.5f, 0.15f, 0.15f) : new Color(0.2f, 0.6f, 0.3f), targetable);
-            if (targetable && GUI.Button(row, GUIContent.none, GUIStyle.none))
+            bool canPick = targetable && (pendingTarget == Target.OwnPart || !part.Broken); // destroyed enemy parts can't be chosen
+            Bar(row, label, part.hp, part.Max, part.Broken ? new Color(0.5f, 0.15f, 0.15f) : new Color(0.2f, 0.6f, 0.3f), canPick);
+            if (canPick && GUI.Button(row, GUIContent.none, GUIStyle.none))
             {
                 var c = pending; pending = null;
                 battle.Play(battle.player, c, part.slot);
@@ -149,7 +159,8 @@ public partial class BattleView : MonoBehaviour
             int cost = p.CostOf(c);
             bool broken = p.IsBroken(c.source);
             GUI.enabled = pending == null && battle.CanPlay(p, c);
-            string label = $"<b>{c.def.name}</b>  [{cost}]\n<size=11>{Battle.SlotName(c.source)}{(broken ? " (avariada)" : "")}</size>\n{c.def.text}";
+            string aimText = !c.def.TargetsPart ? "" : p.Chooses(c.def) ? " · escolhe a parte" : " · parte aleatória";
+            string label = $"<b>{c.def.name}</b>  [{cost}]\n<size=11>{Battle.SlotName(c.source)}{(broken ? " (avariada)" : "")}{aimText}</size>\n{c.def.text}";
             if (GUI.Button(new Rect(x, area.y, w, 115), label, new GUIStyle(cardStyle) { richText = true }))
             {
                 var t = battle.NeedsTarget(p, c);
@@ -157,7 +168,8 @@ public partial class BattleView : MonoBehaviour
                 else { pending = c; pendingTarget = t; }
             }
             GUI.enabled = pending == null && battle.result == Result.None;
-            if (GUI.Button(new Rect(x, area.y + 118, w, 26), "Sucata (+1)")) battle.Scrap(p, c);
+            bool swap = p.frame.passive == "scrapDraw" && !p.scrappedThisTurn;
+            if (GUI.Button(new Rect(x, area.y + 118, w, 26), swap ? "Sucata (compra 1)" : "Sucata (+1)")) battle.Scrap(p, c);
             GUI.enabled = true;
             x += w + 8;
         }
