@@ -1,0 +1,100 @@
+using System.Linq;
+using CardBattler.Combat;
+using CardBattler.UI;
+using NUnit.Framework;
+using UnityEngine;
+
+public class UITests
+{
+    Content content;
+
+    [SetUp]
+    public void SetUp() => content = Content.Load();
+
+    [Test]
+    public void Highlight_ColorsKeywords_AndHelpExplainsThem()
+    {
+        var text = content.Card("gancho").text; // "10 de dano. Encadear: Impacto."
+        var hl = Theme.Highlight(text);
+        StringAssert.Contains("<b>Encadear</b>", hl);
+        StringAssert.Contains("<b>Impacto</b>", hl);
+        var help = Theme.HelpFor(text).ToList();
+        Assert.AreEqual(2, help.Count);
+        Assert.IsEmpty(Theme.HelpFor(content.Card("varredura").text));
+    }
+
+    [Test]
+    public void Kinds_ClassifyCards()
+    {
+        Assert.AreEqual(CardKind.Attack, Kinds.Of(content.Card("serrar")));
+        Assert.AreEqual("3×2", Kinds.Value(content.Card("serrar")));
+        Assert.AreEqual(CardKind.Armor, Kinds.Of(content.Card("bloquear")));
+        Assert.AreEqual(CardKind.Draw, Kinds.Of(content.Card("varredura")));
+        Assert.AreEqual(CardKind.Repair, Kinds.Of(content.Card("remendo")));
+        Assert.AreEqual(CardKind.Aim, Kinds.Of(content.Card("mirar")));
+        Assert.AreEqual(CardKind.Status, Kinds.Of(content.Card("toxico")));
+        Assert.AreEqual("PARTE ALEATÓRIA", Kinds.TargetBadge(content.Card("soco"), false));
+        Assert.AreEqual("ESCOLHE A PARTE", Kinds.TargetBadge(content.Card("gancho"), true));
+    }
+
+    [Test]
+    public void IntentChips_ShowRandomTargetsAsQuestionMark_AndChosenTargetsByName()
+    {
+        var b = new Battle(content, 1);
+        b.enemyIntent.Clear(); b.enemyScraps.Clear();
+        b.enemyIntent.Add(new Card(content.Card("disparo"), Slot.BracoEsq));
+        b.enemyIntent.Add(new Card(content.Card("esmagar"), Slot.Pernas));
+        b.enemyAimTarget = Slot.BracoDir;
+        var chips = BattleScreen.IntentChips(b);
+        Assert.AreEqual("5 → ?", chips[0].text);
+        Assert.AreEqual("7 → Braço Dir", chips[1].text);
+        Assert.AreEqual(CardKind.Attack, chips[1].kind);
+    }
+
+    [Test]
+    public void RobotView_BuildsEveryPartOfTheCatalog()
+    {
+        var go = new GameObject("TestCanvas", typeof(RectTransform));
+        try
+        {
+            foreach (var head in content.PartsFor("Cabeca"))
+            foreach (var torso in content.PartsFor("Torso"))
+            {
+                var arms = content.PartsFor("Braco");
+                var legs = content.PartsFor("Pernas");
+                var def = new RobotDef { frame = "vira_lata", head = head.id, torso = torso.id, armL = arms[0].id, armR = arms[arms.Length - 1].id, legs = legs[0].id, core = "bateria_reciclada" };
+                var v = RobotView.Create(go.transform, false, false);
+                v.Build(content, def);
+                Assert.AreEqual(5, v.parts.Count);
+            }
+            foreach (var arm in content.PartsFor("Braco"))
+            foreach (var leg in content.PartsFor("Pernas"))
+            {
+                var def = new RobotDef { frame = "bastiao", head = "otica_sucata", torso = "placa_m2", armL = arm.id, armR = arm.id, legs = leg.id, core = "reator_k" };
+                var v = RobotView.Create(go.transform, true, false);
+                v.Build(content, def);
+                Assert.IsTrue(v.parts.Values.All(p => p.body.Count > 0), arm.id + "/" + leg.id);
+            }
+        }
+        finally { Object.DestroyImmediate(go); }
+    }
+
+    [Test]
+    public void RobotView_ShowsBrokenPartsExposedChassisAndArmor()
+    {
+        var go = new GameObject("TestCanvas", typeof(RectTransform));
+        try
+        {
+            var b = new Battle(content, 1);
+            var v = RobotView.Create(go.transform, false, false);
+            v.Build(content, content.Robot("player"));
+            b.player.parts[Slot.Cabeca].hp = 0;
+            b.player.armor = 5;
+            v.Show(b.player);
+            Assert.Greater(v.parts[Slot.Cabeca].brokenA.color.a, 0.5f);
+            Assert.AreEqual(0, v.parts[Slot.Torso].brokenA.color.a);
+            Assert.IsTrue(v.GetComponentsInChildren<UnityEngine.UI.Text>().Any(t => t.text == "BLINDAGEM 5"));
+        }
+        finally { Object.DestroyImmediate(go); }
+    }
+}
