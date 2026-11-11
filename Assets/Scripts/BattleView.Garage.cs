@@ -9,6 +9,7 @@ public partial class BattleView
     GarageSave garage;
     Vector2 deckScroll;
     int opponentIndex;
+    bool showDossier = true;
 
     // Enemies with a category, easiest first.
     RobotDef[] Opponents => content.robots.Where(r => !string.IsNullOrEmpty(r.tier)).OrderBy(r => Array.IndexOf(RobotDef.Tiers, r.tier)).ToArray();
@@ -98,28 +99,53 @@ public partial class BattleView
             new GUIStyle(rich) { fontSize = 14 });
 
         var deck = content.Deck(b);
-        GUI.Label(new Rect(x + 10, 180, w - 20, 22), $"<b>Deck ({deck.Count} cartas)</b>", rich);
-        GUILayout.BeginArea(new Rect(x + 10, 204, w - 20, 330));
+        var op = Opponent;
+        if (GUI.Toggle(new Rect(x + 10, 176, 160, 26), !showDossier, $"Deck ({deck.Count} cartas)", GUI.skin.button)) showDossier = false;
+        if (GUI.Toggle(new Rect(x + 176, 176, 220, 26), showDossier, "Dossiê do adversário", GUI.skin.button)) showDossier = true;
+        GUILayout.BeginArea(new Rect(x + 10, 208, w - 20, 326));
         deckScroll = GUILayout.BeginScrollView(deckScroll);
-        foreach (var g in deck.GroupBy(c => c.id))
-            GUILayout.Label($"{g.Count()}x {g.First().name} [{g.First().cost}] — {g.First().text}", small);
+        var wrap = new GUIStyle(small) { richText = true };
+        if (!showDossier)
+            foreach (var g in deck.GroupBy(c => c.id))
+                GUILayout.Label($"{g.Count()}x {g.First().name} [{g.First().cost}] — {g.First().text}", small);
+        else
+            DrawDossier(op, wrap);
         GUILayout.EndScrollView();
         GUILayout.EndArea();
 
         if (errors.Count > 0)
             GUI.Label(new Rect(x + 10, 540, w - 20, 50), "<color=#ff6060>" + string.Join("\n", errors) + "</color>", rich);
 
-        // Opponent picker
-        var op = Opponent;
+        // Opponent picker (changing opponent opens its dossier)
         GUI.Label(new Rect(x + 10, 592, 90, 24), "<b>Adversário</b>", rich);
-        if (GUI.Button(new Rect(x + 100, 590, 28, 24), "<")) opponentIndex--;
+        if (GUI.Button(new Rect(x + 100, 590, 28, 24), "<")) { opponentIndex--; showDossier = true; }
         GUI.Label(new Rect(x + 134, 592, 330, 24), $"{op.name} <color=#ffd060>({op.tier})</color>", rich);
-        if (GUI.Button(new Rect(x + 470, 590, 28, 24), ">")) opponentIndex++;
-        string strat = op.strategies.Length == 0 ? "joga cartas ao acaso" : "estratégias: " + string.Join(", ", op.strategies);
-        GUI.Label(new Rect(x + 10, 616, w - 20, 24), strat + (op.phases.Length > 0 ? $" · chefe com {op.phases.Length} fases" : ""), small);
+        if (GUI.Button(new Rect(x + 470, 590, 28, 24), ">")) { opponentIndex++; showDossier = true; }
         GUI.enabled = errors.Count == 0;
         if (GUI.Button(new Rect(x + w - 190, 646, 180, 46), "Lutar")) StartBattle(b);
         GUI.enabled = true;
         BattleLogger.MirrorToConsole = GUI.Toggle(new Rect(x + 10, 660, 200, 24), BattleLogger.MirrorToConsole, " Log no console");
+    }
+
+    // What the player "heard" about the opponent before the fight. Never shows win rates.
+    void DrawDossier(RobotDef op, GUIStyle style)
+    {
+        GUILayout.Label($"<b>{op.name}</b> <color=#ffd060>({op.tier})</color> · fabricante principal: {content.MainMaker(op)}", style);
+        GUILayout.Label($"<b>Como luta:</b> {content.Describe(op)}.", style);
+        var d = op.dossier;
+        if (d == null || !d.Exists)
+        {
+            GUILayout.Label("<i>Ninguém no bar perde tempo falando desse aí. Adversário de treino.</i>", style);
+            return;
+        }
+        GUILayout.Space(4);
+        GUILayout.Label("<b>Rumores</b>", style);
+        foreach (var r in d.rumors) GUILayout.Label("<i>" + r + "</i>", style);
+        GUILayout.Space(4);
+        GUILayout.Label("<b><color=#80ff80>Funciona bem</color></b>", style);
+        foreach (var t in d.worksWell) GUILayout.Label("• " + t, style);
+        GUILayout.Space(4);
+        GUILayout.Label("<b><color=#ff8080>Evite</color></b>", style);
+        foreach (var t in d.avoid) GUILayout.Label("• " + t, style);
     }
 }

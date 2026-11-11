@@ -50,6 +50,16 @@ namespace CardBattler.Combat
         public string signature, text; // signature: card id added to the hand and played first in that turn
     }
 
+    // Pre-fight intel on an enemy (stand-in for exploration). goodBuilds/badBuilds are preset ids the
+    // simulator checks against real results, so the text stays true after balance changes.
+    [Serializable]
+    public class DossierDef
+    {
+        public string[] rumors = new string[0], worksWell = new string[0], avoid = new string[0];
+        public string[] goodBuilds = new string[0], badBuilds = new string[0];
+        public bool Exists => rumors != null && rumors.Length > 0;
+    }
+
     // Also used as a garage build: frame + one part id per slot. Enemy-only fields tune the AI.
     [Serializable]
     public class RobotDef
@@ -60,6 +70,7 @@ namespace CardBattler.Combat
         public string[] strategies = new string[0]; // sucateiro, combista, cirurgiao, defensivo, status, adaptativo
         public int bonusChassis, bonusEnergy;       // fine-tuning only
         public PhaseDef[] phases = new PhaseDef[0];
+        public DossierDef dossier = new DossierDef();
 
         public RobotDef Clone() => (RobotDef)MemberwiseClone();
         public static readonly string[] Tiers = { "Fácil", "Moderado", "Difícil", "Chefe" };
@@ -114,6 +125,29 @@ namespace CardBattler.Combat
         // Signature card first, then the part packs in slot order.
         public List<CardDef> Deck(RobotDef b) =>
             new[] { Card(Frame(b.frame).signature) }.Concat(new[] { b.head, b.torso, b.armL, b.armR, b.legs }.SelectMany(id => Part(id).cards.Select(Card))).ToList();
+
+        static readonly Dictionary<string, string> StrategyText = new Dictionary<string, string>
+        {
+            ["sucateiro"] = "sucateia cartas para jogar mais por turno",
+            ["combista"] = "encadeia golpes de braços e pernas",
+            ["cirurgiao"] = "mira na sua parte mais valiosa",
+            ["defensivo"] = "se protege com blindagem",
+            ["status"] = "aplica Calor, Sobrecarga e Corrosão",
+            ["adaptativo"] = "fecha a guarda depois de apanhar e ataca quando você está fraco",
+        };
+
+        // Plain-language description of an enemy's behavior for the dossier.
+        public string Describe(RobotDef enemy)
+        {
+            var parts = (enemy.strategies ?? new string[0]).Select(s => StrategyText.TryGetValue(s, out var t) ? t : s).ToList();
+            if (parts.Count == 0) parts.Add("joga no improviso");
+            if (enemy.phases != null && enemy.phases.Length > 0) parts.Add($"muda de fase {enemy.phases.Length}x quando a vida cai");
+            return string.Join("; ", parts);
+        }
+
+        // Manufacturer with most parts on a build (core included).
+        public string MainMaker(RobotDef b) => b.PartIds.Select(id => Part(id).maker).Where(m => !string.IsNullOrEmpty(m))
+            .GroupBy(m => m).OrderByDescending(g => g.Count()).First().Key;
 
         public static Content Load() => JsonUtility.FromJson<Content>(Resources.Load<TextAsset>("content").text);
     }
