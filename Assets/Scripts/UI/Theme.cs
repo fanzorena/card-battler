@@ -35,18 +35,27 @@ namespace CardBattler.UI
         public static Color Alpha(Color c, float a) { c.a = a; return c; }
         public static Color Mix(Color a, Color b, float t) => Color.Lerp(a, b, t);
 
-        // ---- Keywords: highlighted in card text, explained in tooltips ----
-        public static readonly (string word, string pattern, Color color, string help)[] Keywords =
+        // ---- Glossary: one source for "?" icons and keyword tooltips (content.json "glossary") ----
+        public static CardBattler.Combat.Content Texts; // set when content loads
+
+        public static string Explain(string glossaryId)
         {
-            ("Encadear", @"Encadear", Hex("FFD34D"), "Encadear: bônus quando a carta vem logo depois de uma carta do outro braço ou das pernas."),
-            ("Blindagem", @"[Bb]lindagem", Hex("5AA8FF"), "Blindagem: absorve dano antes da integridade. Some no seu próximo turno."),
-            ("Calor", @"Calor", Hex("FF6A3D"), "Calor: com 10 ou mais, o robô gera 1 energia a menos por turno. Cai 2 por turno."),
-            ("Sobrecarga", @"Sobrecarga", Hex("FFE14D"), "Sobrecarga: o alvo gera 1 energia a menos no próximo turno."),
-            ("Corrosão", @"Corrosão", Hex("7CFF6B"), "Corrosão: 1 de dano por turno na parte, por N turnos."),
-            ("Impacto", @"Impacto", Hex("FF9A3D"), "Impacto: +4 de dano contra parte avariada ou chassi exposto."),
-            ("Esquivar", @"Esquivar|esquiva", Hex("9EF0FF"), "Esquivar: anula até 6 de dano do próximo ataque."),
-            ("Ignora", @"ignora blindagem", Hex("FF8AD8"), "Ignora blindagem: o dano vai direto para a integridade."),
-            ("Sucata", @"[Ss]ucata", Hex("C8A27A"), "Sucata: descarte uma carta para ganhar 1 energia (o Vira-lata compra 1 na primeira sucata do turno)."),
+            var g = Texts?.Glossary(glossaryId);
+            return g == null ? glossaryId : $"{g.title}: {g.text}";
+        }
+
+        // ---- Keywords: highlighted in card text, explained by their glossary entry ----
+        public static readonly (string glossaryId, string pattern, Color color)[] Keywords =
+        {
+            ("encadear", @"Encadear", Hex("FFD34D")),
+            ("blindagem", @"[Bb]lindagem", Hex("5AA8FF")),
+            ("calor", @"Calor", Hex("FF6A3D")),
+            ("sobrecarga", @"Sobrecarga", Hex("FFE14D")),
+            ("corrosao", @"Corrosão", Hex("7CFF6B")),
+            ("impacto", @"Impacto", Hex("FF9A3D")),
+            ("esquivar", @"Esquivar|esquiva", Hex("9EF0FF")),
+            ("ignora", @"ignora blindagem", Hex("FF8AD8")),
+            ("sucata", @"[Ss]ucata", Hex("C8A27A")),
         };
 
         public static string Highlight(string text)
@@ -58,7 +67,30 @@ namespace CardBattler.UI
         }
 
         public static IEnumerable<string> HelpFor(string text) =>
-            string.IsNullOrEmpty(text) ? Enumerable.Empty<string>() : Keywords.Where(k => Regex.IsMatch(text, k.pattern)).Select(k => k.help);
+            string.IsNullOrEmpty(text) ? Enumerable.Empty<string>() : Keywords.Where(k => Regex.IsMatch(text, k.pattern)).Select(k => Explain(k.glossaryId));
+
+        // Small "?" that explains a glossary entry on hover.
+        public static RectTransform HelpIcon(Transform parent, string glossaryId, float size = 26)
+        {
+            var img = Box(parent, "Help:" + glossaryId, Mix(Panel, Warn, 0.25f), Circle, raycast: true);
+            img.rectTransform.sizeDelta = new Vector2(size, size);
+            var q = Label(img.transform, "?", Mathf.RoundToInt(size * 0.7f), Warn, TextAnchor.MiddleCenter, FontStyle.Bold);
+            q.rectTransform.Fill();
+            img.gameObject.AddComponent<CardBattler.UI.HoverHelp>().text = Explain(glossaryId);
+            return img.rectTransform;
+        }
+
+        // Destroy that also works in EditMode (tests build screens outside Play mode).
+        public static void Kill(UnityEngine.Object o)
+        {
+            if (!o) return;
+            if (Application.isPlaying) UnityEngine.Object.Destroy(o); else UnityEngine.Object.DestroyImmediate(o);
+        }
+
+        public static void ClearChildren(Transform t)
+        {
+            foreach (var child in t.Cast<Transform>().ToList()) Kill(child.gameObject);
+        }
 
         // ---- Font & sprites ----
         static Font font;

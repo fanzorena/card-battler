@@ -88,13 +88,18 @@ namespace CardBattler.UI
             box.gameObject.SetActive(false);
         }
 
-        public static void Show(Vector2 overlayPos, IEnumerable<string> lines)
+        // anchor: top-center of the hovered element (overlay coords). The box sits above it, or below if there is no room.
+        public static void Show(Vector2 anchor, IEnumerable<string> lines, float elementHeight = 0)
         {
             var all = lines.ToList();
             if (!box || all.Count == 0) { Hide(); return; }
             text.text = string.Join("\n", all.Select(Theme.Highlight));
-            float h = 24 + all.Count * 48;
-            box.Place(Mathf.Clamp(overlayPos.x - 230, 10, Theme.Reference.x - 470), Mathf.Max(10, overlayPos.y - h - 170), 460, h);
+            float x = Mathf.Clamp(anchor.x - 240, 10, Theme.Reference.x - 490);
+            box.Place(x, 0, 480, 100);
+            float h = text.preferredHeight + 28;
+            float y = anchor.y - h - 12;
+            if (y < 10) y = anchor.y + elementHeight + 12;
+            box.Place(x, Mathf.Min(y, Theme.Reference.y - h - 10), 480, h);
             box.gameObject.SetActive(true);
             box.SetAsLastSibling();
         }
@@ -144,7 +149,7 @@ namespace CardBattler.UI
             var name = Theme.Label(rt, def.name, 21, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold);
             name.rectTransform.Place(62, 6, W - 112, 46);
             SlotIcons.Icon(rt, sourceKey, 40, accent).Place(W - 48, 9, 40, 40);
-            name.resizeTextForBestFit = true; name.resizeTextMinSize = 14; name.resizeTextMaxSize = 21;
+            name.resizeTextForBestFit = true; name.verticalOverflow = VerticalWrapMode.Truncate; name.resizeTextMinSize = 14; name.resizeTextMaxSize = 21;
 
             var costBg = Theme.Box(rt, "Cost", Theme.Bg, Theme.Circle);
             costBg.rectTransform.Center(30, 30, 60, 60);
@@ -186,7 +191,7 @@ namespace CardBattler.UI
         public void OnPointerEnter(PointerEventData e)
         {
             if (dragging) return;
-            Tooltip.Show(Fx.PosOf(Rect), new[] { "Origem: " + SlotIcons.Name(sourceKey) }.Concat(Theme.HelpFor(def.text))
+            Tooltip.Show(Fx.PosOf(Rect) - new Vector2(0, H * transform.lossyScale.y / transform.root.lossyScale.y / 2), new[] { "Origem: " + SlotIcons.Name(sourceKey) }.Concat(Theme.HelpFor(def.text))
                 .Concat(def.TargetsPart ? new[] { "Custo 1: parte aleatória. Custo 2 ou mais (ou Mirar): você escolhe a parte." } : new string[0]));
             if (!interactive || animating) return;
             transform.SetAsLastSibling();

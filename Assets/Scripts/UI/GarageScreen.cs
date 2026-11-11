@@ -1,29 +1,30 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace CardBattler.UI
 {
-    // Garage: robot in the middle with its slots around it, deck as mini cards, opponent dossier as an in-world file.
+    // Garage: only for building robots. Robot in the middle with its slots around it; on the right the robot's
+    // stats sheet (with "?" explanations and +/- deltas while hovering an alternative part) or the deck.
     public class GarageScreen
     {
         readonly GameUI app;
         readonly RectTransform root;
-        static int opponentIndex;
-        static bool showDossier = true;
+        RectTransform sheet;
+        static bool showDeck;
 
         public GarageScreen(GameUI app, RectTransform root) { this.app = app; this.root = root; }
 
         Content C => app.content;
         GarageSave G => app.garage;
-        RobotDef[] Opponents => C.robots.Where(r => !string.IsNullOrEmpty(r.tier)).OrderBy(r => Array.IndexOf(RobotDef.Tiers, r.tier)).ToArray();
-        RobotDef Opponent => Opponents[((opponentIndex % Opponents.Length) + Opponents.Length) % Opponents.Length];
 
-        static readonly (string label, string slot, Func<RobotDef, string> get, Action<RobotDef, string> set, float x, float y)[] Slots =
+        static readonly (string icon, string slot, Func<RobotDef, string> get, Action<RobotDef, string> set, float x, float y)[] Slots =
         {
-            // first item: slot icon key (the icon replaces the slot name)
             ("Cabeca", "Cabeca", b => b.head, (b, v) => b.head = v, 410, 120),
             (SlotIcons.Nucleo, "Nucleo", b => b.core, (b, v) => b.core = v, 760, 120),
             ("BracoEsq", "Braco", b => b.armL, (b, v) => b.armL = v, 60, 300),
@@ -32,11 +33,18 @@ namespace CardBattler.UI
             ("Pernas", "Pernas", b => b.legs, (b, v) => b.legs = v, 760, 480),
         };
 
+        // Why the build can't go on to the opponent selection (null = it can).
+        public static string ContinueBlocker(Content c, RobotDef b)
+        {
+            var errors = c.Validate(b);
+            return errors.Count == 0 ? null : string.Join("\n", errors);
+        }
+
         void Changed() { G.Save(GameUI.SavePath); Rebuild(); }
 
         void Rebuild()
         {
-            foreach (Transform t in root) UnityEngine.Object.Destroy(t.gameObject);
+            Theme.ClearChildren(root);
             Tooltip.Hide();
             Build();
         }
@@ -53,7 +61,7 @@ namespace CardBattler.UI
             var frame = C.Frame(b.frame);
 
             Theme.Label(root, "GARAGEM", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 400, 60);
-            Theme.Label(root, "Monte o robô e escolha o adversário", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
+            Theme.Label(root, "Monte o robô", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
             for (int i = 0; i < GarageSave.SlotCount; i++)
             {
                 int k = i;
@@ -63,19 +71,18 @@ namespace CardBattler.UI
             }
 
             // Robot area
-            var area = Theme.Box(root, "Area", Theme.Alpha(Theme.Panel, 0.6f));
-            area.rectTransform.Place(40, 110, 1040, 880);
+            Theme.Box(root, "Area", Theme.Alpha(Theme.Panel, 0.6f)).rectTransform.Place(40, 110, 1040, 880);
             var robot = RobotView.Create(root, false, false);
             robot.Rect.Center(560, 555, RobotView.W, RobotView.H);
             robot.transform.localScale = new Vector3(1.15f, 1.15f, 1);
             robot.Build(C, b);
 
-            // Frame selector (top-left slot)
-            SlotWidget(60, 120, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}",
-                frame.passiveText, () => { b.frame = Cycle(C.frames.Select(f => f.id).ToArray(), b.frame, -1); Changed(); },
-                () => { b.frame = Cycle(C.frames.Select(f => f.id).ToArray(), b.frame, 1); Changed(); });
+            var frames = C.frames.Select(f => f.id).ToArray();
+            SlotWidget(60, 120, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}", frame.passiveText,
+                () => { b.frame = Cycle(frames, b.frame, -1); Changed(); }, () => { b.frame = Cycle(frames, b.frame, 1); Changed(); },
+                dir => With(b, x => x.frame = Cycle(frames, b.frame, dir)));
 
-            foreach (var (label, slot, get, set, x, y) in Slots)
+            foreach (var (icon, slot, get, set, x, y) in Slots)
             {
                 var ids = C.PartsFor(slot).Select(p => p.id).ToArray();
                 var part = C.Part(get(b));
@@ -83,66 +90,52 @@ namespace CardBattler.UI
                     ? $"{part.energy} energia/turno{(part.heatPerTurn > 0 ? $" · +{part.heatPerTurn} Calor/turno" : "")} · Peso {part.weight}"
                     : $"Integridade {part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}";
                 string cards = string.Join(", ", part.cards.GroupBy(id => id).Select(g => $"{g.Count()}x {C.Card(g.Key).name}"));
-                SlotWidget(x, y, label, part.name, part.maker, stats, cards,
-                    () => { set(b, Cycle(ids, get(b), -1)); Changed(); }, () => { set(b, Cycle(ids, get(b), 1)); Changed(); });
+                SlotWidget(x, y, icon, part.name, part.maker, stats, cards,
+                    () => { set(b, Cycle(ids, get(b), -1)); Changed(); }, () => { set(b, Cycle(ids, get(b), 1)); Changed(); },
+                    dir => With(b, r => set(r, Cycle(ids, get(b), dir))));
             }
 
-            // Weight bar, bonuses, totals
+            // Weight bar + what blocks the build
             int weight = C.Weight(b);
             var (fill, wl) = Theme.Bar(root, weight > frame.carry ? Theme.Bad : Theme.Good, Theme.Body);
-            ((RectTransform)fill.transform.parent).Place(60, 820, 1000, 40);
+            var wbar = (RectTransform)fill.transform.parent;
+            wbar.Place(60, 820, 960, 40);
             fill.fillAmount = Mathf.Clamp01((float)weight / frame.carry);
             wl.text = $"PESO {weight} / {frame.carry}" + (weight > frame.carry ? "  — acima da carga do frame" : "");
-            var makers = C.ActiveMakers(b);
-            float bx = 60;
-            if (makers.Length == 0)
-                Theme.Label(root, "Sem bônus de fabricante (3 partes do mesmo fabricante ativam)", Theme.Small, Theme.TextDim).rectTransform.Place(60, 874, 1000, 30);
-            foreach (var m in makers)
-            {
-                var chip = Theme.Chip(root, $"{m.id.ToUpperInvariant()}: {m.text}", Theme.Maker(m.id), Theme.Small);
-                var rt = (RectTransform)chip.transform.parent;
-                float w = chip.preferredWidth + 30;
-                rt.Place(bx, 872, w, 36);
-                bx += w + 10;
-            }
-            Theme.Label(root, $"Chassi {frame.chassis}  ·  Integridade das partes {b.PartIds.Sum(id => C.Part(id).integrity)}  ·  Energia {C.Part(b.core).energy}/turno  ·  Mão {frame.hand}",
-                Theme.Body, Theme.TextDim).rectTransform.Place(60, 920, 1000, 34);
+            Theme.HelpIcon(root, "peso", 30).Place(1030, 825, 30, 30);
+            var blocker = ContinueBlocker(C, b);
+            if (blocker != null) Theme.Label(root, blocker, Theme.Body, Theme.Bad).rectTransform.Place(60, 876, 1000, 90);
 
-            // Right column: tabs
+            // Right column: stats sheet or deck
             var deck = C.Deck(b);
-            var tabDeck = Theme.Button(root, $"DECK ({deck.Count})", () => { showDossier = false; Rebuild(); }, showDossier ? Theme.Panel : Theme.PanelHi);
-            ((RectTransform)tabDeck.transform).Place(1120, 110, 240, 54);
-            var tabDos = Theme.Button(root, "DOSSIÊ DO ADVERSÁRIO", () => { showDossier = true; Rebuild(); }, showDossier ? Theme.PanelHi : Theme.Panel);
-            ((RectTransform)tabDos.transform).Place(1370, 110, 340, 54);
-            var content = Theme.Node(root, "TabContent").Place(1120, 176, 760, 680);
-            if (showDossier) Dossier(content, Opponent); else DeckGrid(content, deck);
+            var tabSheet = Theme.Button(root, "FICHA DO ROBÔ", () => { showDeck = false; Rebuild(); }, showDeck ? Theme.Panel : Theme.PanelHi);
+            ((RectTransform)tabSheet.transform).Place(1120, 110, 300, 54);
+            var tabDeck = Theme.Button(root, $"DECK ({deck.Count})", () => { showDeck = true; Rebuild(); }, showDeck ? Theme.PanelHi : Theme.Panel);
+            ((RectTransform)tabDeck.transform).Place(1430, 110, 240, 54);
+            var content = Theme.Node(root, "TabContent").Place(1120, 176, 760, 770);
+            if (showDeck) DeckGrid(content, deck);
+            else { sheet = content; DrawSheet(BuildStats.Of(C, b), null); }
 
-            // Opponent picker + fight
-            var op = Opponent;
-            var opBox = Theme.Box(root, "Opponent", Theme.Panel);
-            opBox.rectTransform.Place(1120, 870, 760, 84);
-            Theme.Label(opBox.transform, "ADVERSÁRIO", Theme.Small, Theme.TextDim, style: FontStyle.Bold).rectTransform.Place(20, 8, 300, 24);
-            Theme.Label(opBox.transform, $"{op.name}  <color=#{Theme.HexOf(TierColor(op.tier))}>{op.tier.ToUpperInvariant()}</color>", 26, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(20, 34, 600, 40);
-            ((RectTransform)Theme.Button(opBox.transform, "<", () => { opponentIndex--; showDossier = true; Rebuild(); }).transform).Place(620, 16, 56, 52);
-            ((RectTransform)Theme.Button(opBox.transform, ">", () => { opponentIndex++; showDossier = true; Rebuild(); }).transform).Place(686, 16, 56, 52);
-
-            var errors = C.Validate(b);
-            if (errors.Count > 0)
-                Theme.Label(root, string.Join("\n", errors), Theme.Body, Theme.Bad).rectTransform.Place(1120, 970, 380, 90);
-            var fight = Theme.Button(root, "LUTAR", () => app.StartBattle(b, op.id), Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 34);
-            ((RectTransform)fight.transform).Place(1520, 970, 360, 84);
-            fight.interactable = errors.Count == 0;
+            // Continue to the opponent selection
+            var go = Theme.Button(root, "CONTINUAR  →", app.ShowOpponents, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 32);
+            go.name = "Continuar";
+            ((RectTransform)go.transform).Place(1520, 970, 360, 84);
+            go.interactable = blocker == null;
+            if (blocker != null) Theme.Label(root, "Ajuste o robô para continuar", Theme.Small, Theme.Bad, TextAnchor.MiddleRight).rectTransform.Place(1120, 990, 390, 40);
 
             var log = Theme.Button(root, (BattleLogger.MirrorToConsole ? "[x]" : "[ ]") + " Log no console", () => { BattleLogger.MirrorToConsole = !BattleLogger.MirrorToConsole; Rebuild(); }, Theme.Panel, Theme.Small);
             ((RectTransform)log.transform).Place(60, 1010, 260, 44);
         }
+
+        // Copy of the build with one change (for the hover preview).
+        static RobotDef With(RobotDef b, Action<RobotDef> change) { var c = b.Clone(); change(c); return c; }
 
         public static Color TierColor(string tier) => tier switch
         {
             "Fácil" => Theme.Good, "Moderado" => Theme.Warn, "Difícil" => Theme.Exposed, "Chefe" => Theme.Bad, _ => Theme.TextDim,
         };
 
-        void SlotWidget(float x, float y, string iconKey, string name, string maker, string stats, string cards, Action prev, Action next)
+        void SlotWidget(float x, float y, string iconKey, string name, string maker, string stats, string cards, Action prev, Action next, Func<int, RobotDef> preview)
         {
             var accent = maker == null ? Theme.TextDim : Theme.Maker(maker);
             var box = Theme.Box(root, "Slot:" + iconKey, Theme.Panel);
@@ -152,7 +145,7 @@ namespace CardBattler.UI
             SlotIcons.Icon(box.transform, iconKey, 52, maker == null ? Theme.Warn : accent).Place(12, 8, 52, 52);
             var n = Theme.Label(box.transform, name, 24, Theme.Ink, style: FontStyle.Bold);
             n.rectTransform.Place(72, 6, 156, 32);
-            n.resizeTextForBestFit = true; n.resizeTextMinSize = 15; n.resizeTextMaxSize = 24;
+            n.resizeTextForBestFit = true; n.verticalOverflow = VerticalWrapMode.Truncate; n.resizeTextMinSize = 15; n.resizeTextMaxSize = 24;
             if (maker != null)
             {
                 var chip = Theme.Chip(box.transform, maker.ToUpperInvariant(), accent, 14);
@@ -160,11 +153,86 @@ namespace CardBattler.UI
             }
             Theme.Label(box.transform, stats, 16, Theme.Ink).rectTransform.Place(16, 70, 276, 40);
             Theme.Label(box.transform, cards, 15, Theme.TextDim).rectTransform.Place(16, 112, 276, 54);
-            ((RectTransform)Theme.Button(box.transform, "<", prev, Theme.PanelHi).transform).Place(232, 8, 30, 32);
-            ((RectTransform)Theme.Button(box.transform, ">", next, Theme.PanelHi).transform).Place(264, 8, 30, 32);
+            var l = Theme.Button(box.transform, "<", prev, Theme.PanelHi);
+            ((RectTransform)l.transform).Place(232, 8, 30, 32);
+            var r = Theme.Button(box.transform, ">", next, Theme.PanelHi);
+            ((RectTransform)r.transform).Place(264, 8, 30, 32);
+            // Hovering an arrow previews the part it would switch to on the stats sheet.
+            foreach (var (btn, dir) in new[] { (l, -1), (r, 1) })
+            {
+                var h = btn.gameObject.AddComponent<HoverAction>();
+                h.enter = () => { if (sheet) DrawSheet(BuildStats.Of(C, G.Current), BuildStats.Of(C, preview(dir))); };
+                h.exit = () => { if (sheet) DrawSheet(BuildStats.Of(C, G.Current), null); };
+            }
         }
 
-        void DeckGrid(RectTransform parent, System.Collections.Generic.List<CardDef> deck)
+        // ---- Stats sheet ----
+        // Each row: glossary id (the "?" text), label, value, number for deltas, whether higher is better, optional slot icon.
+        public static List<(string help, string label, string value, float? number, bool higherIsBetter, Slot? icon)> SheetRows(BuildStats s)
+        {
+            string F(float v) => v.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR"));
+            var rows = new List<(string, string, string, float?, bool, Slot?)>
+            {
+                ("chassi", "Chassi", s.chassis.ToString(), s.chassis, true, null),
+                ("integridade", "Integridade total", s.totalIntegrity.ToString(), s.totalIntegrity, true, null),
+            };
+            foreach (var p in s.parts) rows.Add(("integridade_parte", p.part, p.integrity.ToString(), p.integrity, true, p.slot));
+            rows.Add(("energia", "Energia por turno", s.energy.ToString(), s.energy, true, null));
+            rows.Add(("calor_turno", "Calor por turno", s.heatPerTurn.ToString(), s.heatPerTurn, false, null));
+            rows.Add(("mao", "Tamanho da mão", s.hand.ToString(), s.hand, true, null));
+            rows.Add(("peso", "Peso / Carga", $"{s.weight} / {s.carry}", s.carry - s.weight, true, null));
+            rows.Add(("bonus", "Bônus de fabricante", s.makers.Length == 0 ? "nenhum" : string.Join(" + ", s.makers), null, true, null));
+            rows.Add(("passiva", "Passiva do frame", s.passive, null, true, null));
+            var elems = s.elements.Concat(s.statuses.Select(x => "aplica " + x)).ToList();
+            rows.Add(("elementos", "Elementos e status", elems.Count == 0 ? "nenhum" : string.Join(", ", elems), null, true, null));
+            rows.Add(("deck", "Deck", $"{s.deckSize} cartas: {s.attacks} ataque · {s.defense} defesa · {s.utility} utilidade", s.attacks, true, null));
+            rows.Add(("custo_medio", "Custo médio", F(s.avgCost), s.avgCost, false, null));
+            rows.Add(("alvo", "Alvo dos ataques", $"{s.choose} escolhem · {s.random} aleatórios", s.choose, true, null));
+            return rows;
+        }
+
+        void DrawSheet(BuildStats s, BuildStats preview)
+        {
+            Theme.ClearChildren(sheet);
+            var bg = Theme.Box(sheet, "Sheet", Theme.Panel);
+            bg.rectTransform.Fill();
+            var rows = SheetRows(s);
+            var prev = preview == null ? null : SheetRows(preview);
+            float y = 14;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var (help, label, value, number, higherBetter, icon) = rows[i];
+                bool wide = help == "passiva";
+                float h = wide ? 58 : 38;
+                float x = 14;
+                Theme.HelpIcon(sheet, help, 26).Place(x, y + 4, 26, 26);
+                x += 34;
+                if (icon.HasValue) { SlotIcons.Icon(sheet, icon.Value, 30, Theme.Ink).Place(x, y + 2, 30, 30); x += 38; }
+                var shownLabel = prev != null && icon.HasValue ? prev[i].label : label;
+                Theme.Label(sheet, shownLabel, 19, icon.HasValue ? Theme.Ink : Theme.TextDim, TextAnchor.MiddleLeft).rectTransform.Place(x, y, 250 - (x - 48), 34);
+                var shownValue = prev != null ? prev[i].value : value;
+                var v = Theme.Label(sheet, shownValue, wide ? 16 : 20, Theme.Ink, wide ? TextAnchor.UpperLeft : TextAnchor.MiddleLeft, wide ? FontStyle.Normal : FontStyle.Bold);
+                v.rectTransform.Place(300, y + (wide ? 4 : 0), wide ? 440 : 330, h - 4);
+                if (prev != null && number.HasValue && prev[i].number.HasValue && Math.Abs(prev[i].number.Value - number.Value) > 0.001f)
+                {
+                    float d = prev[i].number.Value - number.Value;
+                    bool good = higherBetter ? d > 0 : d < 0;
+                    string txt = (d > 0 ? "+" : "") + (Math.Abs(d % 1) > 0.001f ? d.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR")) : ((int)d).ToString());
+                    var chip = Theme.Chip(sheet, txt, good ? Theme.Good : Theme.Bad, 18);
+                    ((RectTransform)chip.transform.parent).Place(650, y + 3, 90, 30);
+                }
+                else if (prev != null && !number.HasValue && prev[i].value != value)
+                {
+                    var chip = Theme.Chip(sheet, "muda", Theme.Warn, 16);
+                    ((RectTransform)chip.transform.parent).Place(650, y + 3, 90, 30);
+                }
+                y += h;
+            }
+            Theme.Label(sheet, preview == null ? "Passe o mouse em < ou > de um slot para comparar a peça." : "Comparando com a peça do botão sob o mouse.",
+                15, preview == null ? Theme.TextDim : Theme.Warn, TextAnchor.MiddleLeft).rectTransform.Place(14, y + 6, 720, 26);
+        }
+
+        void DeckGrid(RectTransform parent, List<CardDef> deck)
         {
             const float s = 0.58f;
             int col = 0, row = 0;
@@ -183,39 +251,13 @@ namespace CardBattler.UI
                 if (++col == 6) { col = 0; row++; }
             }
         }
+    }
 
-        void Dossier(RectTransform parent, RobotDef op)
-        {
-            var paper = Theme.Box(parent, "File", Theme.Paper);
-            paper.rectTransform.Fill();
-            var o = paper.gameObject.AddComponent<Outline>(); o.effectColor = Theme.Alpha(Theme.Hex("6B5A3E"), 0.8f); o.effectDistance = new Vector2(2, -2);
-            Theme.Solid(paper.transform, "Header", Theme.Hex("2B251D")).rectTransform.Place(0, 0, 760, 64);
-            var title = Theme.Label(paper.transform, "DOSSIÊ // " + op.name.ToUpperInvariant(), 26, Theme.Hex("E8D9B8"), TextAnchor.MiddleLeft, FontStyle.Bold);
-            title.rectTransform.Place(24, 0, 560, 64);
-            title.horizontalOverflow = HorizontalWrapMode.Wrap; title.resizeTextForBestFit = true; title.resizeTextMinSize = 16; title.resizeTextMaxSize = 26;
-            var stamp = Theme.Chip(paper.transform, op.tier.ToUpperInvariant(), TierColor(op.tier), 22);
-            var srt = (RectTransform)stamp.transform.parent;
-            srt.Place(590, 12, 150, 42); srt.localRotation = Quaternion.Euler(0, 0, -6);
-
-            var d = op.dossier;
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"<color=#B9A98A>FABRICANTE PRINCIPAL</color>   <color=#{Theme.HexOf(Theme.Maker(C.MainMaker(op)))}><b>{C.MainMaker(op)}</b></color>");
-            sb.AppendLine($"<color=#B9A98A>COMO LUTA</color>   {C.Describe(op)}.");
-            sb.AppendLine();
-            if (d == null || !d.Exists) sb.AppendLine("<i>Ninguém no bar perde tempo falando desse aí. Adversário de treino.</i>");
-            else
-            {
-                sb.AppendLine("<color=#B9A98A>RUMORES</color>");
-                foreach (var r in d.rumors) sb.AppendLine($"<i>{r}</i>\n");
-                sb.AppendLine($"<color=#{Theme.HexOf(Theme.Good)}><b>FUNCIONA BEM</b></color>");
-                foreach (var t in d.worksWell) sb.AppendLine("• " + Theme.Highlight(t));
-                sb.AppendLine();
-                sb.AppendLine($"<color=#{Theme.HexOf(Theme.Bad)}><b>EVITE</b></color>");
-                foreach (var t in d.avoid) sb.AppendLine("• " + Theme.Highlight(t));
-            }
-            var body = Theme.Label(paper.transform, sb.ToString(), 21, Theme.Hex("E8E1D0"));
-            body.rectTransform.Place(28, 84, 704, 580);
-            body.lineSpacing = 1.05f;
-        }
+    // Enter/exit callbacks for any UI element (used for hover previews).
+    public class HoverAction : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    {
+        public Action enter, exit;
+        public void OnPointerEnter(PointerEventData e) => enter?.Invoke();
+        public void OnPointerExit(PointerEventData e) => exit?.Invoke();
     }
 }

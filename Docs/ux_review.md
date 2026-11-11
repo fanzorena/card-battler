@@ -154,3 +154,38 @@ Capturas em `screenshots/`:
 - troca dos nomes de parte pelos ícones na caixa de texto, sem estragar nomes de carta como "Cabeça Dura".
 
 O arrastar até a sucata também foi verificado de ponta a ponta no Play mode.
+
+## Terceiro passe — garagem separada da luta, ficha do robô e "?"
+
+Pedido do dono: separar a garagem da luta, com um botão Continuar que leva à seleção de adversário; no lugar do dossiê, a ficha de estatísticas do robô; e um "?" ao lado de cada item, que explica a característica ao passar o mouse.
+
+Capturas:
+- `screenshots/fluxo_garagem.png` (com o tooltip do "?" de Chassi aberto)
+- `screenshots/fluxo_garagem_comparando.png` (comparando outra peça)
+- `screenshots/fluxo_adversario.png`
+
+**Fluxo:** Garagem → **CONTINUAR** → Adversário → **LUTAR** → Batalha. No fim da luta há três botões: Revanche, Outro adversário e Voltar à garagem. "Desistir" volta para a seleção de adversário.
+
+**Garagem**
+- Serve só para montar o robô: frame, peças, Robô 1–3 e deck. O adversário e o dossiê saíram de lá.
+- **CONTINUAR** fica desligado quando a build é inválida (por exemplo, acima da carga), e o motivo aparece em vermelho.
+
+**Ficha do robô** (no lugar do dossiê)
+- Linhas: chassi, integridade total e de cada parte (com o ícone), energia por turno, calor por turno, tamanho da mão, peso / carga, bônus de fabricante, passiva do frame, elementos e status, composição do deck (ataque / defesa / utilidade), custo médio e alvo dos ataques (quantos escolhem a parte e quantos são aleatórios).
+- Os valores se atualizam na hora.
+- Ao passar o mouse em **<** ou **>** de um slot, a ficha mostra a peça daquele botão com a diferença de cada valor: verde se melhora, vermelho se piora, "muda" nos textos.
+
+**"?" em cada item**
+- Cada "?" mostra uma explicação curta, escrita para as regras atuais.
+- Os textos ficam num **glossário** em `content.json`, a mesma fonte que os tooltips de palavras-chave das cartas já usam. Assim dá para reaproveitar na batalha.
+
+**Seleção de adversário**
+- Colunas por categoria (Fácil, Moderado, Difícil, Chefe), cada adversário com seu robô.
+- O dossiê do selecionado aparece como arquivo.
+- Uma prévia do seu robô mostra os números principais.
+
+**Testes novos:**
+- ficha do robô inicial;
+- glossário cobrindo todas as linhas da ficha e todas as palavras-chave;
+- CONTINUAR bloqueado para build acima da carga;
+- navegação garagem → adversário → batalha → garagem, incluindo o bloqueio quando a build é inválida.

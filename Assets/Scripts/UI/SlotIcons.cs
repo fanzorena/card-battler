@@ -67,7 +67,12 @@ namespace CardBattler.UI
     public class HoverHelp : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         public string text;
-        public void OnPointerEnter(PointerEventData e) => Tooltip.Show(Fx.PosOf((RectTransform)transform) + new Vector2(0, 120), new[] { text });
+        public void OnPointerEnter(PointerEventData e)
+        {
+            var rt = (RectTransform)transform;
+            float h = rt.rect.height * rt.lossyScale.y / rt.root.lossyScale.y;
+            Tooltip.Show(Fx.PosOf(rt) - new Vector2(0, h / 2), new[] { text }, h);
+        }
         public void OnPointerExit(PointerEventData e) => Tooltip.Hide();
     }
 }

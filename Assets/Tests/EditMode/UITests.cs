@@ -137,3 +137,91 @@ public class UITests
         finally { Object.DestroyImmediate(go); }
     }
 }
+
+public class GarageFlowTests
+{
+    Content content;
+
+    [SetUp]
+    public void SetUp() => content = Content.Load();
+
+    [Test]
+    public void BuildStats_ForTheStarterBuild()
+    {
+        var s = BuildStats.Of(content, content.Robot("player"));
+        Assert.AreEqual(8, s.chassis);
+        Assert.AreEqual(6 + 14 + 8 + 7 + 8, s.totalIntegrity);
+        Assert.AreEqual((3, 0, 5), (s.energy, s.heatPerTurn, s.hand));
+        Assert.AreEqual((10, 12), (s.weight, s.carry));
+        CollectionAssert.AreEqual(new[] { "Ferrovelho" }, s.makers);
+        Assert.AreEqual((20, 8, 7, 5), (s.deckSize, s.attacks, s.defense, s.utility));
+        Assert.AreEqual((2, 6), (s.choose, s.random)); // Gancho, Desmontar choose; Soco and Serrar are random
+        Assert.AreEqual(21f / 20f, s.avgCost, 0.001f);
+    }
+
+    [Test]
+    public void Glossary_ExplainsEveryStatRowAndKeyword()
+    {
+        Theme.Texts = content;
+        var ids = GarageScreen.SheetRows(BuildStats.Of(content, content.Robot("player"))).Select(r => r.help)
+            .Concat(Theme.Keywords.Select(k => k.glossaryId)).Distinct().ToList();
+        foreach (var id in ids)
+        {
+            var g = content.Glossary(id);
+            Assert.IsNotNull(g, id);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(g.text), id);
+        }
+        StringAssert.StartsWith("Chassi:", Theme.Explain("chassi"));
+    }
+
+    [Test]
+    public void Continue_IsBlockedForAnOverweightBuild()
+    {
+        Assert.IsNull(GarageScreen.ContinueBlocker(content, content.Robot("player")));
+        var heavy = content.Robot("enemy").Clone(); // 22 of weight on a 13 carry frame
+        StringAssert.Contains("Peso", GarageScreen.ContinueBlocker(content, heavy));
+    }
+
+    [Test]
+    public void Navigation_GarageToOpponentsToBattleAndBack()
+    {
+        var go = new GameObject("GameUITest");
+        var es = UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>();
+        try
+        {
+            var ui = go.AddComponent<GameUI>();
+            ui.logBattles = false;
+            ui.Init();
+            ui.garage.slots[ui.garage.selected] = content.Robot("player").Clone(); // in memory only
+            ui.ShowGarage();
+            Assert.AreEqual("garage", ui.screen);
+            var cont = ui.GetComponentsInChildren<UnityEngine.UI.Button>().Single(b => b.name == "Continuar");
+            Assert.IsTrue(cont.interactable);
+
+            ui.ShowOpponents();
+            Assert.AreEqual("opponents", ui.screen);
+            Assert.AreEqual(OpponentScreen.Opponents(content).Length, ui.GetComponentsInChildren<Clicker>().Count(c => c.name.StartsWith("Opponent:")));
+
+            ui.StartBattle(ui.garage.Current, "enemy_sucata");
+            Assert.AreEqual("battle", ui.screen);
+            Assert.AreEqual("enemy_sucata", ui.lastEnemy);
+            Assert.IsNotNull(ui.battle);
+
+            ui.ShowGarage();
+            Assert.AreEqual("garage", ui.screen);
+            Assert.IsNull(ui.battle);
+
+            // An invalid build can't reach the opponent screen.
+            ui.garage.slots[ui.garage.selected] = content.Robot("enemy").Clone();
+            ui.ShowGarage();
+            Assert.IsFalse(ui.GetComponentsInChildren<UnityEngine.UI.Button>().Single(b => b.name == "Continuar").interactable);
+            ui.ShowOpponents();
+            Assert.AreEqual("garage", ui.screen);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(go);
+            if (!es) { var created = UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>(); if (created) UnityEngine.Object.DestroyImmediate(created.gameObject); }
+        }
+    }
+}

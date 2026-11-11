@@ -15,6 +15,9 @@ namespace CardBattler.UI
         public GarageSave garage;
         public RectTransform screens, overlay;
         public Battle battle;
+        public string screen;          // "garage", "opponents" or "battle"
+        public string lastEnemy;       // for the rematch button
+        public bool logBattles = true; // tests turn the log files off
         BattleLogger logger;
         GarageScreen garageScreen;
         BattleScreen battleScreen;
@@ -29,9 +32,12 @@ namespace CardBattler.UI
             if (FindAnyObjectByType<GameUI>() == null) new GameObject("GameUI").AddComponent<GameUI>();
         }
 
-        void Start()
+        void Start() => Init();
+
+        public void Init()
         {
             content = Content.Load();
+            Theme.Texts = content;
             garage = GarageSave.Load(SavePath, content);
 
             var canvas = gameObject.AddComponent<Canvas>();
@@ -65,8 +71,19 @@ namespace CardBattler.UI
         void Clear()
         {
             Tooltip.Hide();
-            foreach (Transform t in screens) Destroy(t.gameObject);
+            Theme.ClearChildren(screens);
             garageScreen = null; battleScreen = null;
+        }
+
+        public void ShowOpponents()
+        {
+            if (GarageScreen.ContinueBlocker(content, garage.Current) != null) { ShowGarage(); return; }
+            logger?.Dispose();
+            logger = null;
+            battle = null;
+            Clear();
+            screen = "opponents";
+            new OpponentScreen(this, Theme.Node(screens, "Opponents").Fill()).Build();
         }
 
         public void ShowGarage()
@@ -75,6 +92,7 @@ namespace CardBattler.UI
             logger = null;
             battle = null;
             Clear();
+            screen = "garage";
             garageScreen = new GarageScreen(this, Theme.Node(screens, "Garage").Fill());
             garageScreen.Build();
         }
@@ -83,8 +101,10 @@ namespace CardBattler.UI
         {
             logger?.Dispose();
             battle = new Battle(content, Environment.TickCount, build.Clone(), enemyId);
-            logger = new BattleLogger(battle, LogDir);
+            logger = logBattles ? new BattleLogger(battle, LogDir) : null;
+            lastEnemy = enemyId;
             Clear();
+            screen = "battle";
             battleScreen = new BattleScreen(this, Theme.Node(screens, "Battle").Fill(), battle);
             battleScreen.Build();
         }
