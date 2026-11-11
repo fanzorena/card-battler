@@ -47,8 +47,47 @@ public class UITests
         b.enemyAimTarget = Slot.BracoDir;
         var chips = BattleScreen.IntentChips(b);
         Assert.AreEqual("5 → ?", chips[0].text);
-        Assert.AreEqual("7 → Braço Dir", chips[1].text);
+        Assert.IsNull(chips[0].target);
+        Assert.AreEqual("7 →", chips[1].text);
+        Assert.AreEqual(Slot.BracoDir, chips[1].target); // shown as the arm icon
         Assert.AreEqual(CardKind.Attack, chips[1].kind);
+    }
+
+    [Test]
+    public void SlotIcons_EverySlotHasADistinctNameAndArmsAreMarkedLeftRight()
+    {
+        var keys = new[] { Slot.Cabeca, Slot.Torso, Slot.BracoEsq, Slot.BracoDir, Slot.Pernas, Slot.Frame, Slot.Chassi }.Select(SlotIcons.Key).Append(SlotIcons.Nucleo).ToList();
+        Assert.AreEqual(keys.Count, keys.Select(SlotIcons.Name).Distinct().Count());
+        var go = new GameObject("TestCanvas", typeof(RectTransform));
+        try
+        {
+            string Mark(string key) => SlotIcons.Icon(go.transform, key, 40).GetComponentsInChildren<UnityEngine.UI.Text>().Select(t => t.text).SingleOrDefault();
+            Assert.AreEqual("E", Mark("BracoEsq"));
+            Assert.AreEqual("D", Mark("BracoDir"));
+            Assert.IsNull(Mark("Cabeca"));
+        }
+        finally { Object.DestroyImmediate(go); }
+    }
+
+    [Test]
+    public void Drop_ScrapZoneScraps_PartPlaysAt_PlayAreaPlays_ElsewhereCancels()
+    {
+        Assert.AreEqual(BattleScreen.DropKind.Scrap, BattleScreen.Decide(Target.EnemyPart, true, Slot.Torso, null, 900).kind);
+        Assert.AreEqual((BattleScreen.DropKind.PlayAt, (Slot?)Slot.BracoEsq), BattleScreen.Decide(Target.EnemyPart, false, Slot.BracoEsq, null, 300));
+        Assert.AreEqual((BattleScreen.DropKind.PlayAt, (Slot?)Slot.Torso), BattleScreen.Decide(Target.OwnPart, false, null, Slot.Torso, 500));
+        Assert.AreEqual(BattleScreen.DropKind.Play, BattleScreen.Decide(Target.None, false, null, null, 400).kind);
+        Assert.AreEqual(BattleScreen.DropKind.ChooseTarget, BattleScreen.Decide(Target.EnemyPart, false, null, null, 400).kind);
+        Assert.AreEqual(BattleScreen.DropKind.Cancel, BattleScreen.Decide(Target.None, false, null, null, 1000).kind);
+        Assert.AreEqual(BattleScreen.DropKind.Cancel, BattleScreen.Decide(Target.EnemyPart, false, null, Slot.Torso, 1000).kind); // own part is not a target for attacks
+    }
+
+    [Test]
+    public void TextBox_ReplacesPartNamesWithIcons()
+    {
+        Assert.AreEqual("Robô 1 sofre 6.", BattleScreen.StripSlotNames("Robô 1 sofre 6 em Braço Dir."));
+        Assert.AreEqual("Kiro joga Choque (custo 1).", BattleScreen.StripSlotNames("Kiro joga Choque (Braço Dir, custo 1)."));
+        Assert.AreEqual("Robô 1: avariada!", BattleScreen.StripSlotNames("Robô 1: Pernas avariada!"));
+        Assert.AreEqual("Mandíbula joga Cabeça Dura (custo 1).", BattleScreen.StripSlotNames("Mandíbula joga Cabeça Dura (Cabeça, custo 1)."));
     }
 
     [Test]

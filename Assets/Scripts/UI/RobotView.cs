@@ -65,6 +65,14 @@ namespace CardBattler.UI
             Part(c, Slot.BracoDir, c.Part(def.armR), 270, 110, 90, 210, DrawArm, mirror: true);
             Part(c, Slot.Cabeca, head, 120, 10, 120, 100, DrawHead);
 
+            // Slot icon next to each part: the same icon the cards and panels use.
+            foreach (var (slot, x, y) in new[] { (Slot.Cabeca, 262f, 30f), (Slot.BracoEsq, -18f, 190f), (Slot.BracoDir, 378f, 190f), (Slot.Torso, 112f, 252f), (Slot.Pernas, 300f, 410f) })
+            {
+                var icon = SlotIcons.Icon(figure, slot, 48, Theme.Maker(c.Part(slot == Slot.Cabeca ? def.head : slot == Slot.Torso ? def.torso : slot == Slot.BracoEsq ? def.armL : slot == Slot.BracoDir ? def.armR : def.legs).maker));
+                icon.Center(x, y, 48, 48);
+                Unflip(icon);
+            }
+
             // Core + chassis ring (protected/exposed).
             var core = c.Part(def.core);
             var coreColor = core.heatPerTurn > 0 ? Theme.Hex("FF5A3D") : Theme.Energy;
@@ -351,6 +359,15 @@ namespace CardBattler.UI
         static void Unflip(Transform t)
         {
             if (t.lossyScale.x < 0) t.localScale = new Vector3(-t.localScale.x, t.localScale.y, 1);
+        }
+
+        // Part (or exposed chassis) under a screen point, for drag & drop.
+        public Slot? SlotAt(Vector2 screen)
+        {
+            if (RectTransformUtility.RectangleContainsScreenPoint(coreRing.rectTransform, screen, null)) return Slot.Chassi;
+            foreach (var s in new[] { Slot.Cabeca, Slot.BracoEsq, Slot.BracoDir, Slot.Pernas, Slot.Torso })
+                if (parts.TryGetValue(s, out var pv) && RectTransformUtility.RectangleContainsScreenPoint(pv.rt, screen, null)) return s;
+            return null;
         }
 
         public Vector2 PosOf(Slot slot) => slot == Slot.Chassi || !parts.ContainsKey(slot) ? Fx.PosOf(coreRing.rectTransform) : Fx.PosOf(parts[slot].rt);

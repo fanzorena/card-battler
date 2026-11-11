@@ -68,13 +68,18 @@ namespace CardBattler.UI
             if (g) g.color = original;
         }
 
-        // Floating number/text at a screen point of the overlay (reference pixels from top-left).
-        public static void Float(Vector2 overlayPos, string text, Color color, int size = 34)
+        // Floating number/text at a point of the overlay (reference pixels from top-left), optionally with a slot icon.
+        public static void Float(Vector2 overlayPos, string text, Color color, int size = 34, string slotIcon = null)
         {
             if (!I || !I.overlay) return;
             var t = Theme.Label(I.overlay, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold);
             t.rectTransform.Center(overlayPos.x, overlayPos.y, 260, 60);
             t.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.85f);
+            if (slotIcon != null)
+            {
+                var icon = SlotIcons.Icon(t.transform, slotIcon, size * 1.1f, Theme.Ink);
+                icon.Center(130 - t.preferredWidth / 2 - size * 0.7f, 30, size * 1.1f, size * 1.1f);
+            }
             var g = t.gameObject.AddComponent<CanvasGroup>();
             Move(t.rectTransform, t.rectTransform.anchoredPosition + new Vector2(0, 70), 0.9f);
             Run(FadeLater(g, 0.5f, 0.45f, () => Destroy(t.gameObject)));
@@ -113,6 +118,15 @@ namespace CardBattler.UI
                 g.color = c;
                 yield return null;
             }
+        }
+
+        // Screen point (pointer) to overlay reference pixels from top-left.
+        public static Vector2 ScreenToOverlay(Vector2 screen)
+        {
+            if (!I || !I.overlay) return screen;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(I.overlay, screen, null, out var local);
+            var size = I.overlay.rect.size;
+            return new Vector2(local.x + size.x / 2, size.y / 2 - local.y);
         }
 
         // Overlay position (reference pixels from top-left) of a RectTransform's center.
