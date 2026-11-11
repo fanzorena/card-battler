@@ -731,7 +731,30 @@
       "legs": "esteiras",
       "core": "reator_k",
       "maxCardsPerTurn": 3,
-      "bonusChassis": 4
+      "bonusChassis": 4,
+      "dossier": {
+        "rumors": [
+          "\"O Bastião anda com o reator no talo. Um pouco de Calor a mais e ele engasga.\" — mecânico do Fim da Linha",
+          "\"Ele sempre mira no braço que mais bate. Se o seu for de vidro, já era.\""
+        ],
+        "worksWell": [
+          "Cartas que aplicam Calor (Corte de Plasma, Labareda): o Reator K dele já esquenta sozinho.",
+          "Sobrecarga (Choque) para cortar a energia dele.",
+          "Muita blindagem com Investida: transforma a defesa em dano."
+        ],
+        "avoid": [
+          "Robôs de chassi fino (Duelista) sem como frear a energia dele."
+        ],
+        "goodBuilds": [
+          "duelista_misto",
+          "kagemori",
+          "bastion"
+        ],
+        "badBuilds": [
+          "duelista",
+          "nyx"
+        ]
+      }
     },
     {
       "id": "enemy_kagemori",
@@ -749,7 +772,29 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 3,
-      "bonusChassis": 22
+      "bonusChassis": 22,
+      "dossier": {
+        "rumors": [
+          "\"A Lâmina bate muitas vezes, mas cada golpe é fraco. Quem tem casca grossa ri dela.\"",
+          "\"Robô da Kagemori contra robô da Kagemori? Ela conhece todos os truques da casa.\""
+        ],
+        "worksWell": [
+          "Peças robustas e reparo (Carcaça Remendada, Remendo, Gambiarra).",
+          "Blindagem barata para segurar a sequência de golpes encadeados."
+        ],
+        "avoid": [
+          "Montar no estilo Kagemori: braços de 6 de integridade quebram rápido contra ela."
+        ],
+        "goodBuilds": [
+          "inicial",
+          "bastion",
+          "duelista"
+        ],
+        "badBuilds": [
+          "duelista_misto",
+          "kagemori"
+        ]
+      }
     },
     {
       "id": "enemy_kiro",
@@ -769,7 +814,29 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 13
+      "bonusChassis": 13,
+      "dossier": {
+        "rumors": [
+          "\"O Kiro despreza sucata. Diz que robô de ferro-velho é imprevisível... e perde pra eles mais do que admite.\" — Lia, dona do Fim da Linha",
+          "\"Bata forte uma vez e ele se fecha na blindagem no turno seguinte. Golpe que atravessa blindagem resolve.\""
+        ],
+        "worksWell": [
+          "Peças Ferrovelho: muitos golpes baratos e reparo para aguentar a mira dele.",
+          "Desmontar ou Finta para passar pela blindagem que ele levanta depois de apanhar."
+        ],
+        "avoid": [
+          "Copiar o estilo Kagemori dele: ele conhece cada truque.",
+          "Depender de uma única parte forte: ele mira nela primeiro."
+        ],
+        "goodBuilds": [
+          "inicial",
+          "duelista"
+        ],
+        "badBuilds": [
+          "kagemori",
+          "duelista_misto"
+        ]
+      }
     },
     {
       "id": "enemy_acido",
@@ -789,7 +856,29 @@
       "core": "reator_k",
       "maxCardsPerTurn": 4,
       "bonusChassis": 34,
-      "bonusEnergy": 1
+      "bonusEnergy": 1,
+      "dossier": {
+        "rumors": [
+          "\"O ácido da Rainha não passa de arranhão pra quem anda com solda e remendo no bolso.\" — sucateiro do porto",
+          "\"Ela inventou metade dos venenos da Nyx. Usar peça Nyx contra ela é pedir pra derreter.\""
+        ],
+        "worksWell": [
+          "Reparo (Remendo, Gambiarra) contra a Corrosão.",
+          "Chassi alto e torso resistente para aguentar o dano contínuo."
+        ],
+        "avoid": [
+          "Peças Nyx: ela conhece os próprios venenos.",
+          "Chassi fino (Duelista): Calor e Corrosão derrubam rápido."
+        ],
+        "goodBuilds": [
+          "inicial",
+          "kagemori"
+        ],
+        "badBuilds": [
+          "nyx",
+          "duelista_misto"
+        ]
+      }
     },
     {
       "id": "boss_mandibula",
@@ -827,7 +916,29 @@
           "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
         }
       ],
-      "bonusChassis": -6
+      "bonusChassis": -6,
+      "dossier": {
+        "rumors": [
+          "\"Quando o Mandíbula sangra, ele morde. E a mordida atravessa qualquer blindagem.\" — ex-campeão dos fossos",
+          "\"Ele se tranca atrás da Placa M2. Quem não fura a blindagem dele cansa antes.\""
+        ],
+        "worksWell": [
+          "Cartas que ignoram blindagem (Corte Preciso, Desmontar, Finta).",
+          "Muita blindagem com Investida para aguentar a fúria e devolver o dano.",
+          "Guardar uma Esquiva para a Mordida do Campeão (metade da vida dele)."
+        ],
+        "avoid": [
+          "Chassi fino (Duelista): a Mordida ignora blindagem e derruba rápido."
+        ],
+        "goodBuilds": [
+          "bastion",
+          "kagemori"
+        ],
+        "badBuilds": [
+          "duelista",
+          "nyx"
+        ]
+      }
     }
   ],
   "presets": [

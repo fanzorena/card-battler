@@ -24,7 +24,7 @@ namespace CardBattler.Combat
 
     public class MatchupResult
     {
-        public string build, enemy, policy, makers, tier, enemyAI = "estrategia", strategies;
+        public string build, enemy, policy, makers, tier, enemyAI = "estrategia", strategies, buildId, enemyId;
         public int matches, wins, losses, draws;
         public readonly List<int> turns = new List<int>();
         public long remainingWins, dealt, taken, energyGen, energyUsed, energyWasted;
@@ -51,7 +51,7 @@ namespace CardBattler.Combat
         public static MatchupResult Run(Content content, RobotDef build, string enemyId, string policy, int matches, int seed, string jsonlDir = null, bool basicEnemy = false)
         {
             var ed = content.Robot(enemyId);
-            var r = new MatchupResult { build = build.name, enemy = ed.name, policy = policy, makers = Content.MakerNames(content.ActiveMakers(build)),
+            var r = new MatchupResult { build = build.name, buildId = build.id, enemyId = enemyId, enemy = ed.name, policy = policy, makers = Content.MakerNames(content.ActiveMakers(build)),
                 tier = string.IsNullOrEmpty(ed.tier) ? "-" : ed.tier, enemyAI = basicEnemy ? "basico" : "estrategia",
                 strategies = ed.strategies == null || ed.strategies.Length == 0 ? "nenhuma" : string.Join(", ", ed.strategies) };
             foreach (var c in content.Deck(build)) Stat(r.cards, c.name);
@@ -140,7 +140,7 @@ namespace CardBattler.Combat
             var t0 = DateTime.Now;
             var results = RunAll(content, cfg, progress, Path.Combine(dir, "battles"));
             var utf8 = new UTF8Encoding(false);
-            File.WriteAllText(Path.Combine(dir, "report.md"), Markdown(results, cfg, DateTime.Now - t0), utf8);
+            File.WriteAllText(Path.Combine(dir, "report.md"), Markdown(results, cfg, DateTime.Now - t0, content), utf8);
             File.WriteAllText(Path.Combine(dir, "matchups.csv"), MatchupCsv(results), utf8);
             File.WriteAllText(Path.Combine(dir, "cards.csv"), CardCsv(results), utf8);
             File.WriteAllText(Path.Combine(dir, "config.json"), JsonUtility.ToJson(cfg, true), utf8);
@@ -173,7 +173,7 @@ namespace CardBattler.Combat
             return s.ToString();
         }
 
-        public static string Markdown(List<MatchupResult> rs, SimConfig cfg, TimeSpan took)
+        public static string Markdown(List<MatchupResult> rs, SimConfig cfg, TimeSpan took, Content content = null)
         {
             var s = new StringBuilder();
             s.AppendLine("# Simulação de balanceamento");
@@ -182,6 +182,7 @@ namespace CardBattler.Combat
                          $"Limite de {TurnLimit} turnos (acima disso conta como empate). Tempo: {took.TotalSeconds:0.0}s.");
             s.AppendLine();
             AppendCategories(s, rs);
+            if (content != null) AppendDossierCheck(s, rs, content);
             s.AppendLine("## Confrontos");
             s.AppendLine();
             s.AppendLine("| Build | Inimigo | Política | IA inimiga | Vitórias | Turnos (méd/med) | Integridade restante (vitórias) | Dano causado/recebido por luta | Energia gerada/usada/desperdiçada por luta | Bônus |");
@@ -293,6 +294,43 @@ namespace CardBattler.Combat
             }
             s.AppendLine();
             s.AppendLine("Impacto das estratégias = quanto a vitória do jogador cai quando o inimigo usa as estratégias, comparado à IA básica (cartas aleatórias) com as mesmas partes.");
+            s.AppendLine();
+        }
+
+        // Per enemy: reference builds ranked by greedy win rate, checked against the dossier's good/bad builds.
+        // Returns warnings (empty = every dossier agrees with the results).
+        public static List<string> DossierWarnings(List<MatchupResult> rs, Func<string, DossierDef> dossierOf, out List<string> lines)
+        {
+            var warnings = new List<string>();
+            lines = new List<string>();
+            foreach (var g in rs.Where(r => r.policy == "greedy" && r.enemyAI == "estrategia").GroupBy(r => r.enemyId))
+            {
+                var ranked = g.OrderByDescending(r => r.WinRate).ToList();
+                int half = (ranked.Count + 1) / 2;
+                var top = ranked.Take(half).Select(r => r.buildId).ToList();
+                var d = dossierOf(g.Key);
+                string Fmt(MatchupResult r) => $"{r.build} ({Pct(r.WinRate)})";
+                lines.Add($"| {ranked[0].enemy} | {string.Join(", ", ranked.Take(2).Select(Fmt))} | {string.Join(", ", ranked.Skip(ranked.Count - 2).Select(Fmt))} | " +
+                          (d == null || !d.Exists ? "sem dossiê" : "{0}") + " |");
+                if (d == null || !d.Exists) continue;
+                var bad = d.goodBuilds.Where(id => !top.Contains(id)).Select(id => $"\"{id}\" está em \"funciona bem\" mas não fica na metade de cima")
+                    .Concat(d.badBuilds.Where(id => top.Contains(id)).Select(id => $"\"{id}\" está em \"evite\" mas fica na metade de cima")).ToList();
+                foreach (var w in bad) warnings.Add($"{ranked[0].enemy}: {w}");
+                lines[lines.Count - 1] = lines[lines.Count - 1].Replace("{0}", bad.Count == 0 ? "✔ de acordo" : "⚠ " + string.Join("; ", bad));
+            }
+            return warnings;
+        }
+
+        static void AppendDossierCheck(StringBuilder s, List<MatchupResult> rs, Content content)
+        {
+            DossierWarnings(rs, id => content.Robot(id).dossier, out var lines);
+            s.AppendLine("## Dossiês dos adversários");
+            s.AppendLine();
+            s.AppendLine("| Inimigo | Melhores builds | Piores builds | Dossiê |");
+            s.AppendLine("|---|---|---|---|");
+            foreach (var l in lines) s.AppendLine(l);
+            s.AppendLine();
+            s.AppendLine("Se aparecer ⚠, atualize o dossiê do inimigo em content.json (dicas, goodBuilds, badBuilds) para bater com os resultados.");
             s.AppendLine();
         }
 
