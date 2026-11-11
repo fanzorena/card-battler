@@ -44,9 +44,10 @@ public class BattleLoggerTests
         var play = b.history.Last(e => e.evt == "play");
         var atk = b.history.Last(e => e.evt == "attack");
         Assert.AreEqual(("Soco", "Braço Esq", 1), (play.card, play.source, play.cost));
-        Assert.AreEqual(("Torso", 4, 2), (atk.target, atk.value, atk.absorbed));
+        Assert.AreEqual((4, 2), (atk.value, atk.absorbed));
+        var hit = b.enemy.parts.Values.Single(p => Battle.SlotName(p.slot) == atk.target);
+        Assert.AreEqual(hit.Max - 4, hit.hp);
         Assert.AreEqual(4, atk.player.energy);
-        Assert.AreEqual(16, atk.enemy.torso);
     }
 
     [Test]

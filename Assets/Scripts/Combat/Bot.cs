@@ -18,7 +18,7 @@ namespace CardBattler.Combat
                 var c = options[rng.Next(options.Count)];
                 var t = b.NeedsTarget(p, c);
                 Slot? target = t == Target.None ? (Slot?)null
-                    : (t == Target.OwnPart ? p : b.enemy).parts.Keys.ElementAt(rng.Next(5));
+                    : t == Target.OwnPart ? p.parts.Keys.ElementAt(rng.Next(5)) : (Slot)rng.Next(7) is var s && s != Slot.Frame ? s : Slot.Chassi;
                 b.Play(p, c, target);
             }
         }
@@ -70,18 +70,19 @@ namespace CardBattler.Combat
             if (d.cancelIntent) v += Incoming(b) * 1.2f;
             if (d.clearHeat && p.heat >= 6) v += p.heat;
             if (d.peek) v += 0.5f;
-            if (d.aim && AttackAfter(b, c)) v += 2;
+            if (d.aim && AttackAfter(b, c)) v += e.ChassisOpen ? 6 : 2; // Mirar lets a cheap attack reach the chassis
             if (d.pierceNext && !p.pierceNext && e.armor > 0 && AttackAfter(b, c)) v += Math.Min(e.armor, 8);
             if (d.weakPoint > 0) v += d.weakPoint * p.hand.Count(x => x != c && x.def.TargetsPart);
             if (d.selfHeat > 0 && p.heat + d.selfHeat >= Robot.HeatLimit) v -= 3;
-            if (d.doubleCorrosion) v += e.parts[Slot.Torso].corrosion;
+            if (d.doubleCorrosion) v += e.parts.Values.Max(x => x.corrosion);
             else if (d.TargetsPart)
             {
                 int raw = d.DamageFor(p.armor) * Math.Max(1, d.hits) * (d.secondPart ? 2 : 1);
-                v += d.pierce || p.pierceNext ? raw : Math.Max(raw * 0.3f, raw - e.armor);
+                float aimValue = p.Chooses(d) ? (e.ChassisOpen ? 1.3f : 1f) : 0.8f; // random hits are worth less
+                v += (d.pierce || p.pierceNext ? raw : Math.Max(raw * 0.3f, raw - e.armor)) * aimValue;
                 v += d.targetHeat + d.overload * 2 + d.corrosion;
                 int landed = d.pierce || p.pierceNext ? raw : raw - e.armor;
-                if (landed >= e.parts[Slot.Torso].hp + e.chassis) v += 1000; // lethal
+                if (p.Chooses(d) && e.ChassisOpen && landed >= e.chassis) v += 1000; // lethal
             }
             return v;
         }
@@ -94,12 +95,16 @@ namespace CardBattler.Combat
                 case Target.OwnPart:
                     return p.parts.Values.OrderByDescending(x => x.Max - x.hp).First().slot;
                 case Target.EnemyPart:
-                    if (c.def.weakPoint > 0) return Slot.Torso;
-                    // Break an enemy weapon arm if this hit can, otherwise go for the torso.
-                    int dmg = c.def.DamageFor(p.armor) * Math.Max(1, c.def.hits);
-                    var arm = b.enemy.parts.Values.Where(x => (x.slot == Slot.BracoEsq || x.slot == Slot.BracoDir) && !x.Broken && x.hp <= dmg)
-                        .OrderByDescending(x => x.hp).FirstOrDefault();
-                    return arm?.slot ?? Slot.Torso;
+                    var e = b.enemy;
+                    var intact = e.parts.Values.Where(x => !x.Broken).ToList();
+                    var weakest = intact.OrderBy(x => x.hp).FirstOrDefault()?.slot ?? Slot.Chassi;
+                    if (c.def.weakPoint > 0) return weakest == Slot.Chassi ? (Slot?)null : weakest;
+                    if (e.ChassisOpen) return Slot.Chassi; // the win condition
+                    // Open the chassis: break a part this hit can finish (weapon arms first), else wear down the weakest part.
+                    int dmg = c.def.DamageFor(p.armor) * Math.Max(1, c.def.hits) + (c.def.pierce || p.pierceNext ? 0 : -e.armor);
+                    var breakable = intact.Where(x => x.hp <= dmg)
+                        .OrderByDescending(x => x.slot == Slot.BracoEsq || x.slot == Slot.BracoDir).ThenByDescending(x => x.hp).FirstOrDefault();
+                    return breakable?.slot ?? weakest;
                 default:
                     return null;
             }

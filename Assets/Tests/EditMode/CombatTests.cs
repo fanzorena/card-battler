@@ -26,6 +26,8 @@ public class CombatTests
         return c;
     }
 
+    static int Lost(Robot r) => r.parts.Values.Sum(p => p.Max - p.hp); // integrity lost across parts
+
     [Test]
     public void StarterBuild_Has19PartCardsPlusSignature_AndStartsWithHandAndEnergy()
     {
@@ -37,21 +39,55 @@ public class CombatTests
     }
 
     [Test]
-    public void Attack_HitsTorso_ArmorAbsorbsFirst()
+    public void CostOneAttack_HitsARandomPart_ArmorAbsorbsFirst_ChassisUntouched()
     {
         E.armor = 4;
-        b.Play(P, Give("soco", Slot.BracoEsq));
+        b.Play(P, Give("soco", Slot.BracoEsq), Slot.Torso); // the chosen slot is ignored: cost 1 is random
         Assert.AreEqual(0, E.armor);
-        Assert.AreEqual(20 - 2, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(2, Lost(E));
+        Assert.AreEqual(E.chassisMax, E.chassis);
     }
 
     [Test]
-    public void Mirar_LetsAttackPickPart_AndOverflowSpillsToTorso()
+    public void Targeting_CostTwoChooses_CostOneOnlyWithMirar()
     {
+        Assert.AreEqual(Target.None, b.NeedsTarget(P, Give("soco", Slot.BracoEsq)));
+        Assert.AreEqual(Target.EnemyPart, b.NeedsTarget(P, Give("gancho", Slot.BracoEsq)));
         b.Play(P, Give("mirar", Slot.Cabeca));
-        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.BracoDir); // plasma blade has 6
+        Assert.AreEqual(Target.EnemyPart, b.NeedsTarget(P, Give("soco", Slot.BracoEsq)));
+    }
+
+    [Test]
+    public void Mirar_LetsCheapAttackPickPart_BreakingItSpillsIntoTheChassis()
+    {
+        Assert.IsFalse(Battle.ValidTarget(E, Slot.Chassi));
+        b.Play(P, Give("mirar", Slot.Cabeca));
+        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.BracoDir); // plasma blade has 6: 4 spills
         Assert.IsTrue(E.parts[Slot.BracoDir].Broken);
-        Assert.AreEqual(20 - 4, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(6, Lost(E));
+        Assert.AreEqual(E.chassisMax - 4, E.chassis);
+        Assert.IsTrue(E.ChassisOpen);
+        Assert.IsTrue(b.history.Any(e => e.evt == "chassis_open" && e.actor == "enemy"));
+    }
+
+    [Test]
+    public void Chassis_CannotBeChosenUntilAPartIsDestroyed()
+    {
+        b.Play(P, Give("soco", Slot.BracoEsq), Slot.Chassi); // invalid: falls back to a random part
+        Assert.AreEqual(E.chassisMax, E.chassis);   // 6 damage can break the 6-hp blade but nothing spills
+        Assert.AreEqual(6, Lost(E));
+        E.parts[Slot.Cabeca].hp = 1;
+        b.DamagePart(E, Slot.Cabeca, 5);            // breaking it exposes the chassis and the rest spills
+        Assert.AreEqual(E.chassisMax - 4, E.chassis);
+    }
+
+    [Test]
+    public void RandomHits_OnlyLandOnIntactParts()
+    {
+        foreach (var s in new[] { Slot.Cabeca, Slot.Torso, Slot.BracoEsq, Slot.BracoDir }) E.parts[s].hp = 0;
+        for (int i = 0; i < 2; i++) b.Play(P, Give("soco", Slot.BracoEsq));
+        Assert.AreEqual(E.parts[Slot.Pernas].Max - 12, E.parts[Slot.Pernas].hp); // every random hit went to the only intact part
+        Assert.AreEqual(E.chassisMax, E.chassis);
     }
 
     [Test]
@@ -64,22 +100,20 @@ public class CombatTests
     [Test]
     public void Encadear_GancoAfterOtherArm_AddsImpactVsBrokenPart()
     {
-        E.parts[Slot.Cabeca].hp = 0;
-        b.Play(P, Give("mirar", Slot.Cabeca));
+        E.parts[Slot.Cabeca].hp = 0; // chassis exposed
+        E.chassis = 30;
         b.Play(P, Give("arrancada", Slot.Pernas)); // legs card right before the hook
-        int before = E.parts[Slot.Torso].hp;
-        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Cabeca); // broken head: everything spills to torso
-        Assert.AreEqual(before - (10 + Robot.ImpactBonus), E.parts[Slot.Torso].hp);
+        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Chassi);
+        Assert.AreEqual(30 - (10 + Robot.ImpactBonus), E.chassis); // Impacto hits the exposed chassis harder
     }
 
     [Test]
     public void Encadear_NoBonusWhenNotChained()
     {
         E.parts[Slot.Cabeca].hp = 0;
-        b.Play(P, Give("mirar", Slot.Cabeca));
-        int before = E.parts[Slot.Torso].hp;
-        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Cabeca);
-        Assert.AreEqual(before - 10, E.parts[Slot.Torso].hp);
+        E.chassis = 30;
+        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Chassi);
+        Assert.AreEqual(30 - 10, E.chassis);
     }
 
     [Test]
@@ -94,25 +128,24 @@ public class CombatTests
     }
 
     [Test]
-    public void Scrap_GivesEnergy_FirstScrapDrawsOne()
+    public void Scrap_VirLataFirstScrapDrawsInsteadOfEnergy_ThenGivesEnergy()
     {
         P.energy = 0;
         int deck = P.deck.Count;
         b.Scrap(P, Give("soco", Slot.BracoEsq));
         b.Scrap(P, Give("soco", Slot.BracoEsq));
-        Assert.AreEqual(2, P.energy);
+        Assert.AreEqual(1, P.energy);
         Assert.AreEqual(deck - 1, P.deck.Count);
         Assert.AreEqual(1, P.hand.Count);
     }
 
     [Test]
-    public void Desmontar_DrawsTwoWhenItBreaksThePart()
+    public void Desmontar_DrawsOneWhenItBreaksThePart()
     {
-        b.Play(P, Give("mirar", Slot.Cabeca));
         int hand = P.hand.Count;
         b.Play(P, Give("desmontar", Slot.BracoDir), Slot.BracoDir);
         Assert.IsTrue(E.parts[Slot.BracoDir].Broken);
-        Assert.AreEqual(hand + 2, P.hand.Count);
+        Assert.AreEqual(hand + 1, P.hand.Count);
     }
 
     [Test]
@@ -136,12 +169,15 @@ public class CombatTests
     }
 
     [Test]
-    public void TorsoAndChassisAtZero_EndsBattle()
+    public void DestroyedTorso_DoesNotEndTheFight_ChassisAtZeroDoes()
     {
-        E.parts[Slot.Torso].hp = 3;
         E.chassis = 3;
-        E.armor = 0;
-        b.Play(P, Give("soco", Slot.BracoEsq));
+        b.Play(P, Give("mirar", Slot.Cabeca));
+        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Torso);
+        b.DamagePart(E, Slot.Torso, 99);
+        Assert.IsTrue(E.parts[Slot.Torso].Broken);
+        Assert.AreEqual(Result.None, b.result);
+        b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Chassi);
         Assert.AreEqual(Result.Win, b.result);
     }
 

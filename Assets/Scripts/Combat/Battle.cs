@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace CardBattler.Combat
 {
-    public enum Slot { Cabeca, Torso, BracoEsq, BracoDir, Pernas, Frame }
+    public enum Slot { Cabeca, Torso, BracoEsq, BracoDir, Pernas, Frame, Chassi }
     public enum Target { None, OwnPart, EnemyPart }
     public enum Result { None, Win, Lose }
 
@@ -72,13 +72,17 @@ namespace CardBattler.Combat
             foreach (var id in p.def.cards) deck.Add(new Card(c.Card(id), slot));
         }
 
-        public bool Dead => parts[Slot.Torso].hp <= 0 && chassis <= 0;
-        public int Life => Math.Max(0, parts[Slot.Torso].hp) + chassis;
-        public int LifeMax => parts[Slot.Torso].Max + chassisMax;
+        // Defeat = chassis at 0. The chassis can only be targeted once some part is destroyed.
+        public bool Dead => chassis <= 0;
+        public int Life => chassis;
+        public int LifeMax => chassisMax;
+        public bool ChassisOpen => parts.Values.Any(p => p.Broken);
+        // Base cost decides targeting: 2+ (or Mirar, or a "choose" card) picks the part, otherwise it's random.
+        public bool Chooses(CardDef d) => d.cost >= 2 || d.choose || aimPending;
         public int BaseEnergy => core.energy + bonusEnergy + phaseEnergy;
         public int MaxCards => maxCardsPerTurn + phaseCards;
         public bool Has(string strategy) => strategies.Contains(strategy);
-        public bool IsBroken(Slot s) => s != Slot.Frame && parts[s].Broken;
+        public bool IsBroken(Slot s) => parts.TryGetValue(s, out var p) && p.Broken;
         public bool HasBonus(string bonus) => makers.Any(m => m.bonus == bonus);
         public int BonusValue(string bonus) => makers.FirstOrDefault(m => m.bonus == bonus)?.value ?? 0;
         public int CostOf(Card c) => Math.Max(0, c.def.cost + (IsBroken(c.source) ? 1 : 0)
@@ -165,7 +169,7 @@ namespace CardBattler.Combat
         public static string SlotName(Slot s) => s switch
         {
             Slot.Cabeca => "Cabeça", Slot.Torso => "Torso", Slot.BracoEsq => "Braço Esq",
-            Slot.BracoDir => "Braço Dir", Slot.Pernas => "Pernas", _ => "Frame"
+            Slot.BracoDir => "Braço Dir", Slot.Pernas => "Pernas", Slot.Chassi => "Chassi", _ => "Frame"
         };
 
         static string[] Names(IEnumerable<Card> cards) => cards.Select(c => c.def.name).ToArray();
@@ -239,7 +243,18 @@ namespace CardBattler.Combat
 
         public Target NeedsTarget(Robot user, Card c) =>
             c.def.repair > 0 ? Target.OwnPart
-            : c.def.weakPoint > 0 || (c.def.TargetsPart && user.aimPending) ? Target.EnemyPart : Target.None;
+            : c.def.weakPoint > 0 || (c.def.TargetsPart && user.Chooses(c.def)) ? Target.EnemyPart : Target.None;
+
+        // A chosen target must be an intact part, or the chassis once it is exposed.
+        public static bool ValidTarget(Robot r, Slot? s) =>
+            s.HasValue && (s == Slot.Chassi ? r.ChassisOpen : r.parts.TryGetValue(s.Value, out var p) && !p.Broken);
+
+        // Random hits land on an intact part (the chassis only if every part is destroyed).
+        public Slot RandomPart(Robot r, Slot? except = null)
+        {
+            var intact = r.parts.Values.Where(p => !p.Broken && p.slot != except).ToList();
+            return intact.Count == 0 ? Slot.Chassi : intact[rng.Next(intact.Count)].slot;
+        }
 
         public bool CanPlay(Robot user, Card c) => result == Result.None && user.hand.Contains(c) && user.energy >= user.CostOf(c);
 
@@ -266,15 +281,17 @@ namespace CardBattler.Combat
         {
             if (result != Result.None || !user.hand.Remove(c)) return false;
             user.discard.Add(c);
-            user.energy++;
-            Emit(user, "scrap", $"{user.name} sucateia {c.def.name} (+1 energia).", card: c.def.name, source: SlotName(c.source), value: 1);
+            // Vira-lata: the first scrap of the turn draws a card instead of giving energy (drawing is never free).
+            bool swap = user.frame.passive == "scrapDraw" && !user.scrappedThisTurn;
+            if (!swap) user.energy++;
+            Emit(user, "scrap", $"{user.name} sucateia {c.def.name} ({(swap ? "compra 1" : "+1 energia")}).", card: c.def.name, source: SlotName(c.source), value: swap ? 0 : 1);
             if (user.HasBonus("scrapArmor"))
             {
                 int v = user.BonusValue("scrapArmor");
                 user.armor += v;
                 Emit(user, "bonus", $"{user.name} ganha {v} de blindagem (Ferrovelho).", card: c.def.name, target: "Ferrovelho", value: v, ui: false);
             }
-            if (user.frame.passive == "scrapDraw" && !user.scrappedThisTurn) Draw(user, 1);
+            if (swap) Draw(user, 1);
             user.scrappedThisTurn = true;
             return true;
         }
@@ -352,17 +369,21 @@ namespace CardBattler.Combat
             }
             if (d.weakPoint > 0)
             {
-                var slot = target.HasValue && target != Slot.Frame ? target.Value : Slot.Torso;
+                var slot = target != Slot.Chassi && ValidTarget(opp, target) ? target.Value : RandomPart(opp);
+                if (slot == Slot.Chassi) return;
                 opp.parts[slot].weak += d.weakPoint;
                 Emit(opp, "weak_point", $"{opp.name}: {SlotName(slot)} sofre +{d.weakPoint} de cada ataque neste turno.", card: d.name, target: SlotName(slot), value: d.weakPoint);
             }
 
             if (!d.TargetsPart) return;
-            var main = Slot.Torso;
-            if (user.aimPending) { if (target.HasValue && target != Slot.Frame) main = target.Value; user.aimPending = false; }
+            bool chooses = user.Chooses(d);
+            user.aimPending = false; // Mirar is spent on the next attack
+            // A chosen target that is no longer valid (part destroyed meanwhile) falls back to the chassis if exposed.
+            var main = chooses ? (ValidTarget(opp, target) ? target.Value : opp.ChassisOpen ? Slot.Chassi : RandomPart(opp)) : RandomPart(opp);
             if (d.doubleCorrosion)
             {
-                var p = opp.parts[main];
+                var p = main == Slot.Chassi ? opp.parts.Values.OrderByDescending(x => x.corrosion).First() : opp.parts[main];
+                main = p.slot;
                 Emit(opp, "corrosion_applied", $"{opp.name}: Corrosão em {SlotName(main)} dobra ({p.corrosion} → {p.corrosion * 2}).", card: d.name, target: SlotName(main), value: p.corrosion);
                 p.corrosion *= 2;
                 return;
@@ -373,15 +394,15 @@ namespace CardBattler.Combat
             var slots = new List<Slot> { main };
             if (d.secondPart)
             {
-                var other = opp.parts.Values.Where(p => p.slot != main).OrderBy(p => p.Broken).ThenBy(_ => rng.Next()).First();
-                slots.Add(other.slot);
+                var other = RandomPart(opp, main);
+                if (other != Slot.Chassi) slots.Add(other);
             }
             foreach (var slot in slots)
             {
                 bool impact = d.chainImpact && chained;
                 Attack(user, opp, c, slot, dmg, Math.Max(1, d.hits), pierce, impact, chained, out bool broke);
                 if (broke && bonus && d.breakDraw > 0) Draw(user, d.breakDraw);
-                if (d.corrosion > 0)
+                if (d.corrosion > 0 && slot != Slot.Chassi)
                 {
                     opp.parts[slot].corrosion += d.corrosion + statusExtra;
                     if (statusExtra > 0) Emit(user, "bonus", "Nyx: +1 de Corrosão.", card: d.name, target: "Nyx", value: 1, ui: false);
@@ -404,14 +425,15 @@ namespace CardBattler.Combat
         void Attack(Robot user, Robot def, Card c, Slot slot, int dmg, int hits, bool pierce, bool impact, bool chained, out bool broke)
         {
             var d = c.def;
-            var part = def.parts[slot];
-            bool wasBroken = part.Broken;
+            var part = slot == Slot.Chassi ? null : def.parts[slot];
+            bool wasBroken = part?.Broken ?? false;
             int dodge = def.IsBroken(Slot.Pernas) ? 0 : def.dodge;
             def.dodge = 0;
             int total = 0, absorbed = 0, dodged = 0;
             for (int h = 0; h < hits; h++)
             {
-                int amount = dmg + (impact && part.Broken ? Robot.ImpactBonus : 0) + (h == 0 ? part.weak : 0);
+                // Impacto: bonus against destroyed parts and the exposed chassis. Ponto Fraco: +weak on every hit.
+                int amount = dmg + (impact && (part == null || part.Broken) ? Robot.ImpactBonus : 0) + (part?.weak ?? 0);
                 int dg = Math.Min(dodge, amount); dodge -= dg; amount -= dg; dodged += dg;
                 if (!pierce) { int a = Math.Min(def.armor, amount); def.armor -= a; amount -= a; absorbed += a; }
                 DamagePart(def, slot, amount);
@@ -420,30 +442,38 @@ namespace CardBattler.Combat
             Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
                 (absorbed > 0 ? $", {absorbed} na blindagem" : "") + (dodged > 0 ? $", {dodged} esquivado" : "") + ".",
                 card: d.name, source: SlotName(c.source), target: SlotName(slot), value: total, absorbed: absorbed, dodged: dodged, chained: chained);
-            broke = !wasBroken && part.Broken;
+            broke = part != null && !wasBroken && part.Broken;
         }
 
         // What the enemy will draw for its next intent (Análise).
         public List<Card> EnemyNextHand => enemy.deck.Take(enemy.frame.hand).ToList();
 
-        // Excess damage on a limb/head spills into the torso; torso excess goes to the chassis.
+        // Damage beyond a part's remaining integrity spills into the chassis only once it is exposed
+        // (some part destroyed, this one included); otherwise it is lost. Random hits never pick the chassis.
         public void DamagePart(Robot r, Slot slot, int amount)
         {
             if (amount <= 0) return;
+            if (slot == Slot.Chassi)
+            {
+                int ch = Math.Min(r.chassis, amount);
+                r.chassis -= ch;
+                if (ch > 0) Emit(r, "damage", $"{r.name}: chassi perde {ch} ({r.chassis}/{r.chassisMax}).", target: "Chassi", value: ch, ui: false);
+                return;
+            }
             var p = r.parts[slot];
-            bool wasBroken = p.Broken;
-            int a = Math.Min(p.hp, amount); p.hp -= a; amount -= a;
+            bool wasBroken = p.Broken, opened = r.ChassisOpen;
+            int a = Math.Min(p.hp, amount); p.hp -= a;
             if (a > 0) Emit(r, "damage", $"{r.name}: {SlotName(slot)} perde {a} ({p.hp}/{p.Max}).", target: SlotName(slot), value: a, ui: false);
             if (!wasBroken && p.Broken)
             {
                 Emit(r, "part_broken", $"{r.name}: {SlotName(slot)} avariada!", target: SlotName(slot));
+                if (!opened) Emit(r, "chassis_open", $"{r.name}: chassi exposto!", target: "Chassi");
                 if (slot == Slot.Pernas && r.dodge > 0) { r.dodge = 0; Emit(r, "dodge_cancelled", "Pernas avariadas: esquiva anulada."); }
             }
-            if (amount <= 0) return;
-            if (slot != Slot.Torso) { DamagePart(r, Slot.Torso, amount); return; }
-            int ch = Math.Min(r.chassis, amount);
-            r.chassis -= ch;
-            if (ch > 0) Emit(r, "damage", $"{r.name}: chassi perde {ch} ({r.chassis}/{r.chassisMax}).", target: "Chassi", value: ch, ui: false);
+            int rest = amount - a;
+            if (rest <= 0) return;
+            if (r.ChassisOpen) DamagePart(r, Slot.Chassi, rest);
+            else Emit(r, "overflow_lost", $"{rest} de dano perdido em {SlotName(slot)}.", target: SlotName(slot), value: rest, ui: false);
         }
 
         void CheckEnd()
@@ -491,7 +521,7 @@ namespace CardBattler.Combat
         public string IntentSummary() => string.Join(", ",
             (enemyScraps.Count > 0 ? new[] { $"sucateia {string.Join(", ", Names(enemyScraps))}" } : new string[0]).Concat(enemyIntent.Select(IntentText)));
 
-        // Boss hook: each phase triggers once when torso+chassis drops to its threshold.
+        // Boss hook: each phase triggers once when the chassis drops to its threshold.
         void CheckPhases()
         {
             while (enemy.phasesDone < enemy.phases.Length && enemy.Life <= enemy.phases[enemy.phasesDone].at * enemy.LifeMax)
@@ -514,8 +544,9 @@ namespace CardBattler.Combat
         {
             var d = c.def;
             bool aimed = enemyIntent.Any(x => x.def.aim) && d.TargetsPart && enemyIntent.First(x => x.def.TargetsPart) == c;
-            if (d.armorDamage) return $"{d.name}: {d.DamageFor(enemy.armor)} em {SlotName(aimed ? enemyAimTarget : Slot.Torso)}";
-            if (d.damage > 0) return $"{d.name}: {d.damage}{(d.hits > 1 ? "x" + d.hits : "")} em {SlotName(aimed ? enemyAimTarget : Slot.Torso)}{(d.secondPart ? " + outra parte" : "")}";
+            string where = d.cost >= 2 || d.choose || aimed ? SlotName(enemyAimTarget) : "parte aleatória";
+            if (d.armorDamage) return $"{d.name}: {d.DamageFor(enemy.armor)} em {where}";
+            if (d.damage > 0) return $"{d.name}: {d.damage}{(d.hits > 1 ? "x" + d.hits : "")} em {where}{(d.secondPart ? " + outra parte" : "")}";
             if (d.aim) return $"{d.name} → {SlotName(enemyAimTarget)}";
             return $"{d.name}: {d.text}";
         }

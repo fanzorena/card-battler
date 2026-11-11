@@ -3,6 +3,79 @@
 Valores que mudaram em relação ao documento de design / versão anterior, para atualizar o documento.
 Medido com o simulador (Card Battler > Simulador), 500 lutas por confronto, jogador greedy.
 
+## 2026-11-11 — mira por custo e chassi protegido (`feature/targeting-rules`)
+
+Motivo: no teste do dono, a luta era só "torso e depois chassi", as outras partes quase não levavam dano,
+e comprar cartas de graça deixava fácil cavar a carta desejada.
+
+### Regras novas (código)
+
+| Regra | Antes | Depois |
+|---|---|---|
+| Alvo dos ataques | sempre o torso (Mirar escolhia a parte) | **custo 1: parte aleatória** (entre as partes inteiras); **custo 2–3: escolhe a parte**. Mirar faz o próximo ataque escolher, mesmo de custo 1. Vale o **custo base** da carta: a parte avariada (+1) não muda a regra. |
+| Chassi | recebia o dano que passava do torso | só pode ser **escolhido como alvo** depois que alguma parte for destruída. Ataque aleatório nunca cai no chassi. |
+| Derrota | torso e chassi em 0 | **chassi em 0**. Torso destruído vira só uma parte avariada (cartas +1, sem bônus). |
+| Dano que sobra numa parte | ia para o torso / chassi | vai para o chassi **só se ele estiver exposto** (incluindo quando é essa parte que acabou de quebrar); senão se perde. Testamos "sempre perder": as lutas ficaram longas demais (mediana de 14–19 turnos). |
+| Impacto (Encadear do Gancho) | +4 contra parte avariada | +4 contra parte avariada **ou chassi exposto** |
+| Ponto Fraco | +3 no primeiro golpe de cada ataque | **+3 em todos os golpes** na parte neste turno |
+| Sucata do Vira-lata (passiva) | primeira sucata do turno: +1 energia e compra 1 | primeira sucata do turno **compra 1 em vez de dar energia** |
+| Fases do chefe | por torso + chassi | **por chassi** |
+
+### Cartas
+
+| Carta | Antes | Depois | Por quê |
+|---|---|---|---|
+| Varredura | 0: compre 1 | **1: compre 2** | Comprar carta passa a custar energia. |
+| Arrancada | 0: compre 1 | **1: compre 2** | Idem. |
+| Análise | 0: compre 1 e veja a próxima mão | **1: compre 2 e veja a próxima mão** | Idem. |
+| Desmontar | 7, ignora blindagem; se avariar, compre 2 | se avariar, **compre 1** | Com a regra nova ela escolhe a parte e quebra peças com facilidade. |
+| Investida | dano = toda a blindagem | **3/4 da blindagem** | Bastião ficava acima da meta. |
+| Ácido | 3 de dano, 2 de Corrosão | **4 de dano, 3 de Corrosão** | Nyx ficou fraco: quase todas as cartas dele são de custo 1 (aleatórias). |
+| Tóxico | custo 2 | **custo 1, escolhe a parte** | Precisa acertar a parte já corroída. |
+| Deslizar | 3 de blindagem | **4 de blindagem** | Nyx. |
+| Mordida do Campeão | (custo 0) | **escolhe a parte** | O golpe assinatura do chefe não pode ser aleatório. |
+
+### Partes e frames
+
+| O quê | Antes | Depois | Por quê |
+|---|---|---|---|
+| Coroa Nyx / Tórax Refrigerado / Injetor / Lança-chamas / Hover | integridade 4 / 13 / 6 / 7 / 9 | **6 / 15 / 8 / 9 / 9** (Hover 7 → 9) | Nyx abria o chassi rápido demais. |
+| Chassi dos frames | Vira-lata 10, Duelista 6, Bastião 16 | **8, 5, 13** | O chassi virou a vida real; encurta as lutas. |
+
+### Inimigos
+
+| Inimigo | Antes | Depois |
+|---|---|---|
+| Rato de Laboratório | sem estratégia | **defensivo** (continua Fácil, ~100%) |
+| Bastião de Patrulha | chassi +4 | chassi +0 |
+| Lâmina Corporativa | chassi +22 | chassi +8 |
+| Kiro Sato | chassi +13 | chassi +10 |
+| Rainha do Ácido | chassi +34 | chassi +6 |
+| Mandíbula (chefe) | frame Bastião, 5 estratégias (com defensivo), 3 cartas/turno, chassi −6 | **frame Vira-lata**, sem defensivo, **4 cartas/turno**, chassi +4 |
+
+Os bônus de chassi foram feitos para a regra antiga (vida = torso + chassi) e foram refeitos do zero.
+O chefe no frame Bastião gerava ~170 de blindagem por luta e a luta durava 18 turnos.
+
+### Antes / depois (500 lutas por confronto)
+
+| Categoria | Meta | Greedy antes → depois | Aleatório antes → depois | Mediana de turnos antes → depois |
+|---|---|---|---|---|
+| Fácil | > 80% | 100% → 99.9% | 97.7% → 78.5% | 2.6 → 4.1 |
+| Moderado | 65–75% | 66.6% → 68.6% | 1.6% → 1.7% | 6.2 → 8.1 |
+| Difícil | 55–60% | 59.3% → 56.5% | 1.4% → 1.2% | 7.0 → 7.7 |
+| Chefe | 55–60% | 56.8% → 56.0% | 2.3% → 0.4% | 7.3 → 8.0 |
+
+| Build (greedy) | Moderado | Difícil | Chefe |
+|---|---|---|---|
+| Inicial (Vira-lata Ferrovelho) | 73.5% → 80.7% ⚠ | 78.3% → 75.2% ⚠ | 54% → 62.8% |
+| Vira-lata Kagemori | 64.6% → 67.1% | 61.9% → 47.8% | 63.6% → 41.4% ⚠ |
+| Vira-lata Nyx | 62.7% → 65.9% | 45.4% → 49% | 52.4% → 55.6% |
+| Bastião Bastion | 74.3% → 55% ⚠ | 58.8% → 44.4% ⚠ | 65.8% → 61.2% |
+| Duelista Ferrovelho | 64.7% → 61.6% | 66.2% → 60.9% | 50.2% → 46.6% ⚠ |
+| Duelista Kagemori + Ferrovelho | 59.6% → 81.3% ⚠ | 45.1% → 61.5% | 55% → 68.6% ⚠ |
+
+Os 5 dossiês foram reescritos e estão de acordo com os resultados (o teste confere).
+
 ## 2026-11-10 — equilíbrio entre builds (`feature/build-balance`)
 
 ### Antes / depois (vitória do jogador greedy, média por categoria)

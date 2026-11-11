@@ -39,15 +39,16 @@ public class EnemyAITests
         Assert.IsEmpty(b.enemyScraps);
         CollectionAssert.DoesNotContain(Ids(b.enemyIntent), "desmontar");
 
+        // Vira-lata's first scrap draws instead of giving energy, so paying 1 for Desmontar takes 2 scraps.
         With("enemy_sucata", new[] { "sucateiro" }, 3, hand);
         CollectionAssert.AreEquivalent(new[] { "varredura", "bloquear" }, Ids(b.enemyScraps));
-        CollectionAssert.AreEquivalent(new[] { "gancho", "soco", "desmontar" }, Ids(b.enemyIntent));
+        CollectionAssert.AreEquivalent(new[] { "gancho", "desmontar" }, Ids(b.enemyIntent));
 
         int before = b.history.Count;
         b.EndPlayerTurn();
         var turn = b.history.Skip(before).ToList();
         Assert.AreEqual(2, turn.Count(e => e.actor == "enemy" && e.evt == "scrap"));
-        Assert.AreEqual(3, turn.Count(e => e.actor == "enemy" && e.evt == "play"));
+        Assert.AreEqual(2, turn.Count(e => e.actor == "enemy" && e.evt == "play"));
         Assert.IsFalse(turn.Any(e => e.evt == "intent_skip"));
     }
 
@@ -114,10 +115,15 @@ public class EnemyAITests
         EnemyAI.Plan(b);
         Assert.AreEqual("bloquear", b.enemyIntent.Single().def.id);
 
-        P.parts[Slot.Torso].hp = 3;
-        P.chassis = 0;
+        // Lethal needs an exposed chassis and an attack that chooses (cost 2+).
+        E.discard.AddRange(E.hand); E.hand.Clear();
+        E.hand.Add(new Card(content.Card("bloquear"), Slot.Torso));
+        E.hand.Add(new Card(content.Card("esmagar"), Slot.Pernas));
+        P.parts[Slot.Cabeca].hp = 0;
+        P.chassis = 3;
         EnemyAI.Plan(b);
-        Assert.AreEqual("disparo", b.enemyIntent.Single().def.id);
+        Assert.AreEqual("esmagar", b.enemyIntent.Single().def.id);
+        Assert.AreEqual(Slot.Chassi, b.enemyAimTarget);
     }
 
     [Test]
@@ -125,8 +131,7 @@ public class EnemyAITests
     {
         b = new Battle(content, 1, null, "boss_mandibula");
         Assert.AreEqual(0, E.phasesDone);
-        E.parts[Slot.Torso].hp = 3;
-        E.chassis = 8; // life 11 of 30: below 50%, above 20%
+        E.chassis = (int)(E.chassisMax * 0.4f); // below 50%, above 20%
         b.enemyIntent.Clear(); b.enemyScraps.Clear();
         b.EndPlayerTurn();
         Assert.AreEqual(1, E.phasesDone);

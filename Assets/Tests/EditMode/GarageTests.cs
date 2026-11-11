@@ -151,7 +151,7 @@ public class NewCardTests
     {
         WithBuild(new RobotDef { frame = "vira_lata", head = "coroa_nyx", torso = "torax_refrigerado", armL = "injetor", armR = "lanca_chamas", legs = "hover", core = "bateria_reciclada" });
         b.Play(P, Give("acido", Slot.BracoEsq));
-        Assert.AreEqual(3, E.parts[Slot.Torso].corrosion);
+        Assert.AreEqual(3 + 1, E.parts.Values.Sum(p => p.corrosion)); // Ácido 3 + Nyx bonus
     }
 
     [Test]
@@ -180,8 +180,9 @@ public class NewCardTests
     public void PontoFraco_AddsThreeToEachAttackOnThatPart()
     {
         b.Play(P, Give("ponto_fraco", Slot.Cabeca), Slot.Torso);
-        b.Play(P, Give("serrar", Slot.BracoDir)); // 3+3 then 3
-        Assert.AreEqual(20 - 9, E.parts[Slot.Torso].hp);
+        b.Play(P, Give("mirar", Slot.Cabeca));
+        b.Play(P, Give("serrar", Slot.BracoDir), Slot.Torso); // (3+3) twice: +3 on every hit
+        Assert.AreEqual(20 - 12, E.parts[Slot.Torso].hp);
     }
 
     [Test]
@@ -210,16 +211,16 @@ public class NewCardTests
     public void Rajada_HitsThreeTimes_ArmorAbsorbsPerHit()
     {
         E.armor = 5;
-        b.Play(P, Give("rajada", Slot.BracoEsq)); // 4,4,4 vs 5 armor
+        b.Play(P, Give("rajada", Slot.BracoEsq), Slot.Torso); // cost 2 chooses; 4,4,4 vs 5 armor
         Assert.AreEqual(20 - 7, E.parts[Slot.Torso].hp);
     }
 
     [Test]
-    public void Investida_DealsDamageEqualToOwnArmor()
+    public void Investida_DealsThreeQuartersOfOwnArmor()
     {
         P.armor = 9;
         b.Play(P, Give("investida", Slot.BracoEsq));
-        Assert.AreEqual(20 - 9, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(6, E.parts.Values.Sum(p => p.Max - p.hp));
         Assert.AreEqual(9, P.armor); // armor is not spent
     }
 
@@ -227,18 +228,18 @@ public class NewCardTests
     public void CortePreciso_And_Finta_IgnoreArmor()
     {
         E.armor = 20;
-        b.Play(P, Give("corte_preciso", Slot.BracoDir));
+        b.Play(P, Give("corte_preciso", Slot.BracoDir), Slot.Torso);
         Assert.AreEqual(20 - 9, E.parts[Slot.Torso].hp);
         b.Play(P, Give("finta", Slot.Frame));
         b.Play(P, Give("soco", Slot.BracoEsq));
-        Assert.AreEqual(20 - 15, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(15, E.parts.Values.Sum(p => p.Max - p.hp));
         Assert.AreEqual(20, E.armor);
     }
 
     [Test]
     public void Arco_HitsTwoParts()
     {
-        b.Play(P, Give("arco", Slot.BracoDir));
+        b.Play(P, Give("arco", Slot.BracoDir), Slot.Torso);
         Assert.AreEqual(20 - 6, E.parts[Slot.Torso].hp);
         Assert.AreEqual(1, E.parts.Values.Count(p => p.slot != Slot.Torso && p.hp == p.Max - 6));
     }
@@ -247,8 +248,9 @@ public class NewCardTests
     public void Toxico_DoublesCorrosion()
     {
         b.Play(P, Give("acido", Slot.BracoEsq));
-        b.Play(P, Give("toxico", Slot.BracoEsq));
-        Assert.AreEqual(4, E.parts[Slot.Torso].corrosion);
+        var corroded = E.parts.Values.Single(p => p.corrosion > 0).slot;
+        b.Play(P, Give("toxico", Slot.BracoEsq), corroded);
+        Assert.AreEqual(6, E.parts[corroded].corrosion);
     }
 
     [Test]
@@ -260,10 +262,11 @@ public class NewCardTests
         Assert.AreEqual(6, P.dodge);
         Assert.AreEqual(hand + 1, P.hand.Count);
         b.Play(P, Give("chute", Slot.Pernas));
-        b.Play(P, Give("esmagar", Slot.Pernas));
-        Assert.AreEqual(20 - 6 - 5 - 7, E.parts[Slot.Torso].hp);
+        b.Play(P, Give("esmagar", Slot.Pernas), Slot.Torso);
+        Assert.AreEqual(20 - 7, E.parts[Slot.Torso].hp);
+        Assert.That(E.parts.Values.Sum(p => p.Max - p.hp), Is.InRange(7 + 5, 6 + 5 + 7)); // random hits may overflow a weak part
         b.Play(P, Give("deslizar", Slot.Pernas));
-        Assert.AreEqual(3, P.armor);
+        Assert.AreEqual(4, P.armor);
     }
 
     [Test]
