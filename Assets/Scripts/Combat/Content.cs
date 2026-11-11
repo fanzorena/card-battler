@@ -87,10 +87,12 @@ namespace CardBattler.Combat
         public MakerDef[] makers;
         public RobotDef[] robots;
         public RobotDef[] presets; // player builds used by the simulator
+        public JobDef[] jobs = new JobDef[0];
 
         public CardDef Card(string id) => cards.FirstOrDefault(c => c.id == id) ?? throw new ArgumentException("Carta desconhecida: " + id);
         public PartDef Part(string id) => parts.FirstOrDefault(p => p.id == id) ?? throw new ArgumentException("Parte desconhecida: " + id);
         public FrameDef Frame(string id) => frames.FirstOrDefault(f => f.id == id) ?? throw new ArgumentException("Frame desconhecido: " + id);
+        public JobDef Job(string id) => jobs.FirstOrDefault(j => j.id == id) ?? throw new ArgumentException("Trabalho desconhecido: " + id);
         public RobotDef Robot(string id) => robots.FirstOrDefault(r => r.id == id) ?? throw new ArgumentException("Robô desconhecido: " + id);
         public PartDef[] PartsFor(string slot) => parts.Where(p => p.slot == slot).ToArray();
 

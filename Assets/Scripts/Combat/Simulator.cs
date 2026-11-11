@@ -20,6 +20,14 @@ namespace CardBattler.Combat
         public string[] enemies = new string[0];
     }
 
+    public class JobResult
+    {
+        public string job;
+        public int runs, completed;
+        public int[] lostAt = new int[0]; // runs that ended at each stage
+        public float CompletionRate => runs == 0 ? 0 : (float)completed / runs;
+    }
+
     public class CardStat { public long drawn, played, scrapped, damage, absorbed, armor; }
 
     public class MatchupResult
@@ -105,6 +113,36 @@ namespace CardBattler.Combat
 
         static void Inc(Dictionary<string, int> d, string k) => d[k] = (d.TryGetValue(k, out var v) ? v : 0) + 1;
 
+        // Plays a whole job: damage carries over, the bot spends scrap on repairs (broken parts first, then the chassis)
+        // and takes the first part offered. shortcut: the bot never rebuilds with new parts, so rewards don't help it.
+        public static JobResult RunJob(Content content, string jobId, int runs, int seed)
+        {
+            var job = content.Job(jobId);
+            var r = new JobResult { job = job.name, runs = runs, lostAt = new int[job.stages.Length] };
+            for (int i = 0; i < runs; i++)
+            {
+                var rng = new System.Random(seed + i);
+                var s = RunState.Start(content, jobId);
+                while (!s.Over(content))
+                {
+                    while (s.scrap > 0)
+                    {
+                        var hurt = s.build.PartIds.Where(id => s.HpOf(content, id) < content.Part(id).integrity)
+                            .OrderBy(id => s.HpOf(content, id)).FirstOrDefault();
+                        if (!s.Repair(content, hurt ?? (s.chassisDamage > 0 ? null : "")) ) break;
+                    }
+                    int stage = s.stage;
+                    var b = s.StartBattle(content, seed + i * 31 + stage);
+                    while (b.result == Result.None && b.turn < TurnLimit) { Bot.PlayTurn(b); b.EndPlayerTurn(); }
+                    s.Finish(content, b, rng);
+                    if (s.failed) r.lostAt[stage]++;
+                    else if (s.offer.Length > 0) s.Choose(s.offer[0]);
+                }
+                if (s.Done(content)) r.completed++;
+            }
+            return r;
+        }
+
         public static List<MatchupResult> RunAll(Content content, SimConfig cfg, Action<string, float> progress = null, string jsonlDir = null)
         {
             var builds = cfg.builds.Length > 0 ? cfg.builds : content.presets;
@@ -140,7 +178,19 @@ namespace CardBattler.Combat
             var t0 = DateTime.Now;
             var results = RunAll(content, cfg, progress, Path.Combine(dir, "battles"));
             var utf8 = new UTF8Encoding(false);
-            File.WriteAllText(Path.Combine(dir, "report.md"), Markdown(results, cfg, DateTime.Now - t0, content), utf8);
+            var md = Markdown(results, cfg, DateTime.Now - t0, content);
+            var jobs = new StringBuilder("
+## Trabalhos (sequência de lutas com dano acumulado)
+
+| Trabalho | Concluídos | Onde as tentativas terminaram |
+|---|---|---|
+");
+            foreach (var j in content.jobs)
+            {
+                var jr = RunJob(content, j.id, cfg.matches, cfg.seed);
+                jobs.AppendLine($"| {jr.job} | {Pct(jr.CompletionRate)} | " + string.Join(", ", j.stages.Select((st, k) => $"{k + 1}. {content.Robot(st.enemy).name}: {Pct((float)jr.lostAt[k] / jr.runs)}")) + " |");
+            }
+            File.WriteAllText(Path.Combine(dir, "report.md"), md + jobs, utf8);
             File.WriteAllText(Path.Combine(dir, "matchups.csv"), MatchupCsv(results), utf8);
             File.WriteAllText(Path.Combine(dir, "cards.csv"), CardCsv(results), utf8);
             File.WriteAllText(Path.Combine(dir, "config.json"), JsonUtility.ToJson(cfg, true), utf8);
