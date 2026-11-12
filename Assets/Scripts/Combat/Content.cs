@@ -96,6 +96,11 @@ namespace CardBattler.Combat
         public RobotDef[] presets; // player builds used by the simulator
         public GlossaryEntry[] glossary = new GlossaryEntry[0];
         public JobDef[] jobs = new JobDef[0];
+        public StageDef[] pit = new StageDef[0];          // Fosso ranking ladder, last = champion
+        public DialogueDef[] dialogues = new DialogueDef[0];
+        public ClueDef[] clues = new ClueDef[0];
+        public DialogueDef Dialogue(string id) => dialogues.FirstOrDefault(d => d.id == id) ?? throw new ArgumentException("Diálogo desconhecido: " + id);
+        public ClueDef Clue(string id) => clues.FirstOrDefault(d => d.id == id) ?? throw new ArgumentException("Pista desconhecida: " + id);
         public GlossaryEntry Glossary(string id) => glossary.FirstOrDefault(g => g.id == id);
 
         public CardDef Card(string id) => cards.FirstOrDefault(c => c.id == id) ?? throw new ArgumentException("Carta desconhecida: " + id);

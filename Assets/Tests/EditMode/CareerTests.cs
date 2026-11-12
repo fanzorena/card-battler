@@ -178,6 +178,8 @@ public class CareerTests
             ui.Init();
             Assert.IsFalse(ui.HasCareer);
             ui.PlayCareer();
+            Assert.AreEqual("map", ui.screen);
+            ui.ShowJob();
             Assert.AreEqual("job", ui.screen);
             Assert.IsTrue(ui.HasCareer);
             Assert.IsFalse(ui.career.InJob);
@@ -194,6 +196,8 @@ public class CareerTests
             Assert.AreEqual("job", ui.screen);
             Assert.AreEqual(1, ui.career.stage);
             Assert.AreEqual(1, Career.Load(path, ui.content).stage); // saved
+            ui.Back();
+            Assert.AreEqual("map", ui.screen);
             ui.Back();
             Assert.AreEqual("title", ui.screen);
             ui.FreePlay();

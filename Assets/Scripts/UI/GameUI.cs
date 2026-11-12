@@ -18,7 +18,8 @@ namespace CardBattler.UI
         public bool careerMode;        // which garage/flow is active
         public RectTransform screens, overlay;
         public Battle battle;
-        public string screen;          // "title", "about", "history", "garage", "opponents", "job" or "battle"
+        public string screen;          // "title", "about", "history", "garage", "opponents", "map", "job", "workshop", "pit" or "battle"
+        public string careerHub = "map"; // career screen the garage returns to
         public string lastEnemy;       // for the rematch button
         public Action<Battle> afterBattle; // set for career fights: their result goes back to the career
         public bool logBattles = true; // tests turn the log files off
@@ -105,8 +106,9 @@ namespace CardBattler.UI
             switch (screen)
             {
                 case "title": Quit(); break;
-                case "about": case "history": case "job": ShowTitle(); break;
-                case "garage": if (careerMode) ShowJob(); else ShowTitle(); break;
+                case "about": case "history": case "map": ShowTitle(); break;
+                case "job": case "workshop": case "pit": ShowMap(); break;
+                case "garage": if (careerMode) ShowCareer(careerHub); else ShowTitle(); break;
                 case "opponents": ShowGarage(); break;
             }
         }
@@ -126,7 +128,7 @@ namespace CardBattler.UI
             career ??= Career.Load(careerPath, content) ?? Career.New(content);
             careerMode = true;
             SaveCareer();
-            ShowJob();
+            ShowMap();
         }
 
         public void NewCareer()
@@ -134,7 +136,7 @@ namespace CardBattler.UI
             career = Career.New(content);
             careerMode = true;
             SaveCareer();
-            ShowJob();
+            ShowMap();
         }
 
         public void FreePlay()
@@ -147,7 +149,17 @@ namespace CardBattler.UI
         public void SaveGarage() { if (careerMode) SaveCareer(); else garage.Save(SavePath); }
 
         // ---- Screens ----
-        public void ShowJob() => new JobScreen(this, Screen("job")).Build();
+        public MapScreen map; // current map (tests drive its dialogue)
+        public void ShowMap() { careerHub = "map"; map = new MapScreen(this, Screen("map")); map.Build(); }
+        public void ShowJob() => ShowCareer("job");
+
+        // Career places: "map", "job" (Celeste's job), "workshop" (Oficina) or "pit" (Fosso ranking).
+        public void ShowCareer(string page)
+        {
+            if (page == "map") { ShowMap(); return; }
+            careerHub = page;
+            new JobScreen(this, Screen(page), page).Build();
+        }
 
         public void ShowOpponents()
         {
@@ -170,6 +182,19 @@ namespace CardBattler.UI
                 career.FinishJobFight(content, done, new System.Random(Environment.TickCount));
                 SaveCareer();
                 ShowJob();
+            });
+        }
+
+        // Fosso ranking fight: losing costs only the ranking position.
+        public void StartPitFight()
+        {
+            var enemy = career.PitStage(content).enemy;
+            var b = career.StartBattle(content, Environment.TickCount, enemy);
+            Run(b, enemy, done =>
+            {
+                career.FinishPitFight(content, done);
+                SaveCareer();
+                ShowCareer("pit");
             });
         }
 
