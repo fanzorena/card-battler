@@ -254,4 +254,17 @@ public class GarageFlowTests
             if (!es) { var created = UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>(); if (created) UnityEngine.Object.DestroyImmediate(created.gameObject); }
         }
     }
+
+    [Test]
+    public void EveryVisiblePart_HasSvgArt()
+    {
+        // Aspect of the part box in RobotView: the SVG viewBox must match it (importer keeps the viewport).
+        var box = new System.Collections.Generic.Dictionary<string, float> { ["Cabeca"] = 120f / 100, ["Torso"] = 180f / 165, ["Braco"] = 90f / 210, ["Pernas"] = 200f / 140 };
+        foreach (var p in content.parts.Where(p => p.slot != "Nucleo"))
+        {
+            var art = Resources.Load<Sprite>("RobotParts/" + p.id);
+            Assert.IsNotNull(art, p.id);
+            Assert.AreEqual(box[p.slot], art.rect.width / art.rect.height, 0.03f, p.id);
+        }
+    }
 }
