@@ -170,7 +170,7 @@ namespace CardBattler.UI
         public void ShowGarage() => new GarageScreen(this, Screen("garage")).Build();
 
         // Treino livre fight.
-        public void StartBattle(RobotDef build, string enemyId) => Run(new Battle(content, Environment.TickCount, build.Clone(), enemyId), enemyId, null);
+        public void StartBattle(RobotDef build, string enemyId) => Run(new Battle(content, Environment.TickCount, build.Clone(), enemyId, false, content.Robot(enemyId).terrain), enemyId, null);
 
         // Career job fight: damage carries over, the result goes back to the career.
         public void StartJobFight()

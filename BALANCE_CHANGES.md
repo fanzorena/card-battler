@@ -3,6 +3,37 @@
 Valores que mudaram em relação ao documento de design / versão anterior, para atualizar o documento.
 Medido com o simulador (Card Battler > Simulador), 500 lutas por confronto, jogador greedy.
 
+## 2026-11-12 — terrenos (`feature/terrain`)
+
+### Regras novas (código)
+
+| Terreno | Arena | Regra |
+|---|---|---|
+| Piso de sucata | Fossos do porto (trabalho, ranking, maioria dos inimigos) | pernas de rodas esquivam só metade (o pedido era "perdem a esquiva"; ver abaixo) |
+| Telhado na chuva | Distrito Neon (casa do Kiro) | ataques Elétricos +2 no primeiro golpe |
+| Campo de supressão | Torre-Arena Kagemori (casa da Lâmina Corporativa) | Calor recebido de ataques dobrado |
+
+Pernas Hover ignoram o terreno. O simulador agora luta na arena de casa de cada inimigo.
+
+**Por que metade e não zero:** com "rodas não esquivam", todas as categorias caíram 20+ pontos (Chefe 37%, trabalho da Celeste 2%), porque a build inicial e 4 das 6 builds de referência usam rodas e todas as lutas da carreira são no Fosso. Pela metade, a queda fica entre 6 e 10 pontos, e dá para corrigir no chassi dos inimigos.
+
+| Inimigo | Chassi extra antes | Depois |
+|---|---|---|
+| Bastião de Patrulha | 0 | −3 |
+| Lâmina Corporativa | 8 | 10 |
+| Kiro Sato | 12 | 10 |
+| Rainha do Ácido | 8 | 6 |
+| Mandíbula | 2 | −1 |
+
+| Categoria | Meta | Antes (elementos) | Terreno, rodas sem esquiva | Rodas pela metade | Ajustado |
+|---|---|---|---|---|---|
+| Fácil | > 80% | 99.9% | 99.5% | 99.8% | 99.8% |
+| Moderado | 65–75% | 71.9% | 59.8% | 66.3% | 68% |
+| Difícil | 55–60% | 59.7% | 48.3% | 52.7% | 57.3% |
+| Chefe | 55–60% | 59.5% | 37% | 49.3% | 55.8% |
+
+Trabalho da Celeste (bot com a build inicial, que nunca troca de peça): 37% → 18%.
+
 ## 2026-11-12 — elementos automáticos (`feature/elements`)
 
 ### Regras novas (código)
