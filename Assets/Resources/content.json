@@ -1186,6 +1186,31 @@
           "scrap": 0,
           "text": "O campeão dos Fossos. Vence ele e o Circuito Regional abre as portas."
         }
+      ],
+      "unlocks": [
+        "ferro"
+      ]
+    },
+    {
+      "id": "duda_patio",
+      "name": "O Pátio do Duda",
+      "fixer": "Duda",
+      "intro": "Duda limpa os óculos na camisa: \"Tem gente roubando sucata do meu pátio à noite. Dois robôs, sempre os mesmos. Espanta eles e te dou uma planta que vale ouro.\"",
+      "outro": "Duda te entrega um rolo de papel engordurado: \"Planta do Hover. Flutua por cima de qualquer chão, sucata, chuva, o que for. Fabrica na Oficina.\"",
+      "blueprint": "bp_hover",
+      "stages": [
+        {
+          "enemy": "enemy_nyx",
+          "credits": 15,
+          "scrap": 2,
+          "text": "O primeiro ladrão: um Rato de Laboratório que derrete o cadeado com ácido."
+        },
+        {
+          "enemy": "enemy_kagemori",
+          "credits": 30,
+          "scrap": 3,
+          "text": "O segundo é profissional: uma Lâmina Corporativa. Alguém está pagando por essa sucata."
+        }
       ]
     }
   ],
@@ -1302,7 +1327,7 @@
       "lines": [
         {
           "who": "Mecânica",
-          "text": "Traz o robô pra bancada. Conserto, troco peça, e um dia fabrico também."
+          "text": "Traz o robô pra bancada. Conserto, troco peça e, se você trouxer a planta, fabrico também."
         }
       ]
     },
@@ -1312,6 +1337,10 @@
         {
           "who": "Placa",
           "text": "FERRO-VELHO DO DUDA — FECHADO. VOLTO LOGO."
+        },
+        {
+          "who": "Placa",
+          "text": "(Embaixo, a lápis: \"pra quem é de confiança da Celeste, bate três vezes\")"
         }
       ]
     },
@@ -1321,6 +1350,33 @@
         {
           "who": "Celeste",
           "text": "Esse canto do porto não te conhece ainda. Faz uma luta comigo primeiro."
+        }
+      ]
+    },
+    {
+      "id": "duda",
+      "lines": [
+        {
+          "who": "Duda",
+          "text": "Compro, vendo, troco. Peça boa sai daqui com garantia de que não explode. Quase sempre."
+        }
+      ]
+    },
+    {
+      "id": "duda_done",
+      "lines": [
+        {
+          "who": "Duda",
+          "text": "Depois que você espantou aqueles dois, o pátio anda calmo. Volta quando quiser negociar."
+        }
+      ]
+    },
+    {
+      "id": "ferro_open",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "O Duda abriu o Ferro-velho pra você. Ele vende peça boa, compra o que sobra e às vezes tem planta de fabricação."
         }
       ]
     }
@@ -1354,6 +1410,100 @@
       "place": "Torre-Arena Kagemori",
       "rule": "heatDouble",
       "text": "Campo de supressão: todo Calor recebido de ataques é dobrado."
+    }
+  ],
+  "shop": [
+    {
+      "part": "elmo_bastion",
+      "price": 50
+    },
+    {
+      "part": "sensor_k7",
+      "price": 55
+    },
+    {
+      "part": "coroa_nyx",
+      "price": 55
+    },
+    {
+      "part": "placa_m2",
+      "price": 70
+    },
+    {
+      "part": "chassi_aero",
+      "price": 65
+    },
+    {
+      "part": "torax_refrigerado",
+      "price": 65
+    },
+    {
+      "part": "canhao_30mm",
+      "price": 70
+    },
+    {
+      "part": "escudo_braco",
+      "price": 55
+    },
+    {
+      "part": "lamina_plasma",
+      "price": 75
+    },
+    {
+      "part": "pulso_tesla",
+      "price": 75
+    },
+    {
+      "part": "injetor",
+      "price": 60
+    },
+    {
+      "part": "lanca_chamas",
+      "price": 70
+    },
+    {
+      "part": "punho_hidraulico",
+      "price": 35
+    },
+    {
+      "part": "serra_circular",
+      "price": 35
+    },
+    {
+      "part": "esteiras",
+      "price": 60
+    },
+    {
+      "part": "pernas_digitigradas",
+      "price": 70
+    },
+    {
+      "frame": "bastiao",
+      "price": 120
+    },
+    {
+      "frame": "duelista",
+      "price": 120
+    },
+    {
+      "blueprint": "bp_reator",
+      "price": 80
+    }
+  ],
+  "blueprints": [
+    {
+      "id": "bp_hover",
+      "name": "Planta do Hover",
+      "part": "hover",
+      "scrap": 6,
+      "credits": 30
+    },
+    {
+      "id": "bp_reator",
+      "name": "Planta do Reator K",
+      "part": "reator_k",
+      "scrap": 5,
+      "credits": 40
     }
   ]
 }

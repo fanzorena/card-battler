@@ -26,10 +26,10 @@ namespace CardBattler.UI
             ("bar", "Bar Fim da Linha", "Celeste arruma lutas", 430, 640, "FFC24A"),
             ("oficina", "Oficina do Cais", "Reparos e garagem", 900, 380, "4AD6FF"),
             ("fosso", "O Fosso", "Ranking até o campeão", 1360, 620, "FF5A4A"),
-            ("ferro", "Ferro-velho", "Fechado", 1560, 300, "8A8FA3"),
+            ("ferro", "Ferro-velho", "Compra, venda e plantas", 1560, 300, "C8A27A"),
         };
 
-        public bool IsOpen(string id) => id != "ferro" && K.IsOpen(id);
+        public bool IsOpen(string id) => K.IsOpen(id);
 
         public void Build()
         {
@@ -117,7 +117,7 @@ namespace CardBattler.UI
         void Poi((string id, string name, string sub, float x, float y, string color) p)
         {
             bool open = IsOpen(p.id);
-            bool teaser = p.id == "ferro";
+            bool teaser = p.id == "ferro" && !open; // shown by name even while locked
             var color = open ? Theme.Hex(p.color) : Theme.TextDim;
             var node = Theme.Node(root, "Place:" + p.id);
             node.Center(p.x, p.y, 300, 220);
@@ -185,9 +185,9 @@ namespace CardBattler.UI
         // Clicking a place.
         public void Open(string id)
         {
-            if (id == "ferro") { Talk(Lines("ferro_velho"), null); return; }
-            if (!IsOpen(id)) { Talk(Lines("locked"), null); return; }
-            if (id == "oficina") app.ShowCareer("workshop");
+            if (!IsOpen(id)) { Talk(Lines(id == "ferro" ? "ferro_velho" : "locked"), null); return; }
+            if (id == "ferro") app.ShowCareer("ferro");
+            else if (id == "oficina") app.ShowCareer("workshop");
             else if (id == "fosso") app.ShowCareer("pit");
             else Bar();
         }
@@ -206,8 +206,8 @@ namespace CardBattler.UI
         public void Celeste()
         {
             var lines = new List<LineDef>();
-            foreach (var once in new[] { "celeste_first", "celeste_unlock" })
-                if (!K.Seen(once) && (once == "celeste_first" || K.IsOpen("fosso"))) { lines.AddRange(Lines(once)); K.MarkSeen(once); app.SaveCareer(); }
+            foreach (var once in new[] { "celeste_first", "celeste_unlock", "ferro_open" })
+                if (!K.Seen(once) && (once == "celeste_first" || K.IsOpen(once == "ferro_open" ? "ferro" : "fosso"))) { lines.AddRange(Lines(once)); K.MarkSeen(once); app.SaveCareer(); }
             if (K.InJob)
             {
                 lines.AddRange(Lines("celeste_busy"));
@@ -215,7 +215,7 @@ namespace CardBattler.UI
                 return;
             }
             lines.AddRange(Lines("celeste_offer"));
-            var job = C.jobs[0];
+            var job = C.Job("celeste_fossos");
             Talk(lines, new List<(string, Action)>
             {
                 ("Aceitar o trabalho", () => { K.StartJob(C, job.id); K.lastResult = null; app.SaveCareer(); app.ShowJob(); }),

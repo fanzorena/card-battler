@@ -5,6 +5,7 @@
 - **Vira-lata**: frame inicial do jogador, era o chassi antigo do Tomás.
 - **Celeste**: fixer, dona do bar Fim da Linha, conheceu o Tomás. Pode dizer abertamente que Rafa é filho dele e reconhece o Vira-lata.
 - **Silas Vend**: promotor que armou a luta do Tomás, hoje diretor de entretenimento da Kagemori. Por enquanto só insinuado ("promotor de terno caro"), sem nome nem cargo.
+- **Duda**: dono do Ferro-velho do porto, de confiança da Celeste. Compra, vende e troca peças e plantas de fabricação; o pátio dele vem sendo saqueado por robôs pagos por alguém (gancho para depois).
 - **Pista do apostador velho** (após ser campeão do Fosso): a luta do Tomás foi comprada/armada.
 
 Textos do jogo ficam em `Assets/Resources/content.json` (`dialogues`, `clues`, `jobs`).
