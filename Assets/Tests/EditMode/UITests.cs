@@ -146,6 +146,22 @@ public class GarageFlowTests
     public void SetUp() => content = Content.Load();
 
     [Test]
+    public void History_CountsRecordedBattles()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cb_hist_" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            Assert.AreEqual(0, TitleScreen.HistoryCount(dir)); // folder doesn't exist yet
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "battle_1.jsonl"), "");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "battle_1_resumo.txt"), "");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "battle_2.jsonl"), "");
+            Assert.AreEqual(2, TitleScreen.HistoryCount(dir)); // summaries don't count twice
+        }
+        finally { if (System.IO.Directory.Exists(dir)) System.IO.Directory.Delete(dir, true); }
+    }
+
+    [Test]
     public void BuildStats_ForTheStarterBuild()
     {
         var s = BuildStats.Of(content, content.Robot("player"));
@@ -192,6 +208,15 @@ public class GarageFlowTests
             var ui = go.AddComponent<GameUI>();
             ui.logBattles = false;
             ui.Init();
+            Assert.AreEqual("title", ui.screen);
+            Assert.IsTrue(ui.GetComponentsInChildren<UnityEngine.UI.Button>().Any(b => b.name == "Menu:HISTÓRICO"));
+            ui.ShowTitle("about");
+            Assert.AreEqual("about", ui.screen);
+            ui.Back();
+            Assert.AreEqual("title", ui.screen);
+            ui.ShowTitle("history");
+            ui.Back();
+            Assert.AreEqual("title", ui.screen);
             ui.garage.slots[ui.garage.selected] = content.Robot("player").Clone(); // in memory only
             ui.ShowGarage();
             Assert.AreEqual("garage", ui.screen);
@@ -200,6 +225,11 @@ public class GarageFlowTests
 
             ui.ShowOpponents();
             Assert.AreEqual("opponents", ui.screen);
+            ui.Back();
+            Assert.AreEqual("garage", ui.screen);
+            ui.Back();
+            Assert.AreEqual("title", ui.screen);
+            ui.ShowOpponents();
             Assert.AreEqual(OpponentScreen.Opponents(content).Length, ui.GetComponentsInChildren<Clicker>().Count(c => c.name.StartsWith("Opponent:")));
 
             ui.StartBattle(ui.garage.Current, "enemy_sucata");

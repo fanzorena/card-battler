@@ -62,6 +62,7 @@ namespace CardBattler.UI
 
             Theme.Label(root, "GARAGEM", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 400, 60);
             Theme.Label(root, "Monte o robô", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
+            ((RectTransform)Theme.Button(root, "←  MENU", () => app.ShowTitle(), Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
             for (int i = 0; i < GarageSave.SlotCount; i++)
             {
                 int k = i;

@@ -15,7 +15,7 @@ namespace CardBattler.UI
         public GarageSave garage;
         public RectTransform screens, overlay;
         public Battle battle;
-        public string screen;          // "garage", "opponents" or "battle"
+        public string screen;          // "title", "about", "history", "garage", "opponents" or "battle"
         public string lastEnemy;       // for the rematch button
         public bool logBattles = true; // tests turn the log files off
         BattleLogger logger;
@@ -24,7 +24,7 @@ namespace CardBattler.UI
 
         public static string SavePath => Path.Combine(Application.persistentDataPath, "garage.json");
         // Editor: <projeto>/Logs/Battles. Build: persistentDataPath/Battles.
-        static string LogDir => Path.GetFullPath(Path.Combine(Application.isEditor ? Path.Combine(Application.dataPath, "..", "Logs") : Application.persistentDataPath, "Battles"));
+        public static string LogDir => Path.GetFullPath(Path.Combine(Application.isEditor ? Path.Combine(Application.dataPath, "..", "Logs") : Application.persistentDataPath, "Battles"));
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -57,7 +57,7 @@ namespace CardBattler.UI
             gameObject.AddComponent<Fx>().overlay = overlay;
             Fx.I = GetComponent<Fx>();
             Tooltip.Init(overlay);
-            ShowGarage();
+            ShowTitle();
         }
 
         static void Background(RectTransform root)
@@ -73,6 +73,42 @@ namespace CardBattler.UI
             Tooltip.Hide();
             Theme.ClearChildren(screens);
             garageScreen = null; battleScreen = null;
+        }
+
+        public void ShowTitle(string page = "title")
+        {
+            logger?.Dispose();
+            logger = null;
+            battle = null;
+            Clear();
+            screen = page;
+            new TitleScreen(this, Theme.Node(screens, "Title").Fill(), page).Build();
+        }
+
+        public static void Quit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        // ESC: quits from the title, otherwise goes back one screen. In a battle it does nothing ("Desistir" handles that).
+        public void Back()
+        {
+            switch (screen)
+            {
+                case "title": Quit(); break;
+                case "about": case "history": case "garage": ShowTitle(); break;
+                case "opponents": ShowGarage(); break;
+            }
+        }
+
+        void Update()
+        {
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb != null && kb.escapeKey.wasPressedThisFrame) Back();
         }
 
         public void ShowOpponents()
