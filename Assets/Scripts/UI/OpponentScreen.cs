@@ -86,8 +86,10 @@ namespace CardBattler.UI
         }
 
         // The in-world file: header, category stamp, how it fights, rumors, works well / avoid.
-        public static void Dossier(Content c, RectTransform parent, RobotDef op)
+        // terrainId: the arena of this fight (null = the opponent's home arena).
+        public static void Dossier(Content c, RectTransform parent, RobotDef op, string terrainId = null)
         {
+            var terrain = c.Terrain(terrainId ?? op.terrain);
             var paper = Theme.Box(parent, "File", Theme.Paper);
             paper.rectTransform.Fill();
             var o = paper.gameObject.AddComponent<Outline>(); o.effectColor = Theme.Alpha(Theme.Hex("6B5A3E"), 0.8f); o.effectDistance = new Vector2(2, -2);
@@ -103,6 +105,7 @@ namespace CardBattler.UI
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"<color=#B9A98A>FABRICANTE PRINCIPAL</color>   <color=#{Theme.HexOf(Theme.Maker(c.MainMaker(op)))}><b>{c.MainMaker(op)}</b></color>");
             sb.AppendLine($"<color=#B9A98A>COMO LUTA</color>   {c.Describe(op)}.");
+            if (terrain != null) sb.AppendLine($"<color=#B9A98A>ARENA</color>   <b>{terrain.name}</b> ({terrain.place}): {terrain.text}");
             sb.AppendLine();
             if (d == null || !d.Exists) sb.AppendLine("<i>Ninguém no bar perde tempo falando desse aí. Adversário de treino.</i>");
             else

@@ -568,7 +568,8 @@
         "arrancada",
         "esquivar",
         "esquivar"
-      ]
+      ],
+      "wheels": true
     },
     {
       "id": "esteiras",
@@ -718,7 +719,8 @@
       "armR": "serra_circular",
       "legs": "rodas_entrega",
       "core": "bateria_reciclada",
-      "maxCardsPerTurn": 2
+      "maxCardsPerTurn": 2,
+      "terrain": "fosso"
     },
     {
       "id": "enemy_nyx",
@@ -734,7 +736,8 @@
       "armR": "lanca_chamas",
       "legs": "hover",
       "core": "reator_k",
-      "maxCardsPerTurn": 2
+      "maxCardsPerTurn": 2,
+      "terrain": "fosso"
     },
     {
       "id": "enemy",
@@ -752,7 +755,7 @@
       "legs": "esteiras",
       "core": "reator_k",
       "maxCardsPerTurn": 3,
-      "bonusChassis": 0,
+      "bonusChassis": -3,
       "dossier": {
         "rumors": [
           "\"O Bastião anda com o reator no talo. Um pouco de Calor a mais e ele engasga.\" — mecânico do Fim da Linha",
@@ -761,22 +764,23 @@
         "worksWell": [
           "Cartas que aplicam Calor (Corte de Plasma, Labareda): o Reator K dele já esquenta sozinho.",
           "Sobrecarga (Choque) para cortar a energia dele.",
-          "Peças Ferrovelho: muitos golpes baratos para quebrar peças e expor o chassi dele."
+          "Golpes Elétricos (Pulso Tesla): as placas Bastion dele são fracas a choque."
         ],
         "avoid": [
           "Montar só blindagem (Bastião + Investida): ele vence a corrida de desgaste.",
-          "Chassi fino (Duelista) sem como frear a energia dele."
+          "Chassi fino (Duelista) sem como frear a energia dele.",
+          "Contar com a esquiva das rodas: no piso de sucata do Fosso elas derrapam e esquivam pela metade."
         ],
         "goodBuilds": [
-          "duelista_misto",
-          "inicial",
-          "kagemori"
+          "kagemori",
+          "duelista_misto"
         ],
         "badBuilds": [
           "bastion",
           "duelista"
         ]
-      }
+      },
+      "terrain": "fosso"
     },
     {
       "id": "enemy_kagemori",
@@ -794,7 +798,7 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 3,
-      "bonusChassis": 8,
+      "bonusChassis": 10,
       "dossier": {
         "rumors": [
           "\"A Lâmina bate muitas vezes, mas cada golpe é fraco. Quem tem casca grossa ri dela.\"",
@@ -814,7 +818,8 @@
         "badBuilds": [
           "kagemori"
         ]
-      }
+      },
+      "terrain": "torre_kagemori"
     },
     {
       "id": "enemy_kiro",
@@ -834,7 +839,7 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 12,
+      "bonusChassis": 10,
       "dossier": {
         "rumors": [
           "\"O Kiro despreza sucata. Diz que robô de ferro-velho é imprevisível... e perde pra eles mais do que admite.\" — Celeste, dona do Fim da Linha",
@@ -849,14 +854,15 @@
           "Blindagem lenta: ele encadeia golpes rápido demais."
         ],
         "goodBuilds": [
-          "inicial",
-          "duelista"
+          "duelista_misto",
+          "inicial"
         ],
         "badBuilds": [
           "kagemori",
           "bastion"
         ]
-      }
+      },
+      "terrain": "neon_chuva"
     },
     {
       "id": "enemy_acido",
@@ -875,7 +881,7 @@
       "legs": "hover",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 8,
+      "bonusChassis": 6,
       "bonusEnergy": 1,
       "dossier": {
         "rumors": [
@@ -898,7 +904,8 @@
           "nyx",
           "bastion"
         ]
-      }
+      },
+      "terrain": "fosso"
     },
     {
       "id": "boss_mandibula",
@@ -935,30 +942,31 @@
           "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
         }
       ],
-      "bonusChassis": 2,
+      "bonusChassis": -1,
       "dossier": {
         "rumors": [
           "\"Quando o Mandíbula sangra, ele morde. E a mordida escolhe onde dói e atravessa qualquer blindagem.\" — ex-campeão dos fossos",
           "\"Ele largou o chassi militar e luta feito cão de rua: sempre mira na sua melhor peça.\""
         ],
         "worksWell": [
-          "Peças Ferrovelho e reparo para aguentar a mira dele.",
+          "Peças Kagemori: precisão e Elétrico contra as placas dele, que são fracas a choque.",
           "Calor e Sobrecarga para cortar a energia dele (o núcleo dele já esquenta).",
           "Guardar uma Esquiva para a Mordida do Campeão (na metade da vida dele)."
         ],
         "avoid": [
-          "Builds lentas ou de chassi fino (Nyx pura, Duelista Ferrovelho): ele quebra as peças e expõe o chassi rápido.",
+          "Ir de rodas no Fosso (Vira-lata inicial, Duelista Ferrovelho): a esquiva derrapa e ele quebra as peças rápido.",
           "Bater só com Cinético: as placas Bastion dele resistem a pancada."
         ],
         "goodBuilds": [
           "duelista_misto",
-          "inicial"
+          "kagemori"
         ],
         "badBuilds": [
-          "nyx",
+          "inicial",
           "duelista"
         ]
-      }
+      },
+      "terrain": "fosso"
     }
   ],
   "presets": [
@@ -1139,6 +1147,11 @@
       "id": "sucata",
       "title": "Sucata",
       "text": "Descarte uma carta para ganhar 1 energia (o Vira-lata compra 1 na primeira sucata do turno)."
+    },
+    {
+      "id": "terreno",
+      "title": "Terreno",
+      "text": "Cada arena tem uma regra: Piso de sucata (Fossos) corta pela metade a esquiva de pernas de rodas; Telhado na chuva (Distrito Neon) dá +2 aos ataques Elétricos; Campo de supressão (Torre Kagemori) dobra o Calor recebido de ataques. Pernas Hover ignoram o terreno."
     }
   ],
   "jobs": [
@@ -1318,6 +1331,29 @@
       "title": "A luta do Tomás foi comprada",
       "source": "Apostador velho, Bar Fim da Linha",
       "text": "O robô do Tomás Navarro, ex-campeão dos Fossos, travou no terceiro round quando estava ganhando: alguém mexeu no núcleo antes da luta. Na mesma noite o núcleo Áurea, protótipo dele, desapareceu, e depois o próprio Tomás. O promotor que armou a luta hoje subiu na vida."
+    }
+  ],
+  "terrains": [
+    {
+      "id": "fosso",
+      "name": "Piso de sucata",
+      "place": "Fossos do porto",
+      "rule": "noWheelDodge",
+      "text": "Chão de sucata solta: pernas de rodas derrapam e esquivam só metade."
+    },
+    {
+      "id": "neon_chuva",
+      "name": "Telhado na chuva",
+      "place": "Distrito Neon",
+      "rule": "rainElectric",
+      "text": "Telhado molhado: ataques Elétricos causam +2 de dano."
+    },
+    {
+      "id": "torre_kagemori",
+      "name": "Campo de supressão",
+      "place": "Torre-Arena Kagemori",
+      "rule": "heatDouble",
+      "text": "Campo de supressão: todo Calor recebido de ataques é dobrado."
     }
   ]
 }

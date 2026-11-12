@@ -141,7 +141,16 @@ namespace CardBattler.UI
             overlayLayer = Theme.Node(root, "Overlay").Fill();
 
             seen = b.history.Count;
-            Say($"Luta contra {b.enemy.name} ({b.enemy.tier}).");
+            if (b.terrain != null)
+            {
+                var chip = Theme.Chip(root, "ARENA: " + b.terrain.name.ToUpperInvariant(), Theme.Exposed, 16);
+                ((RectTransform)chip.transform.parent).Center(960, 455, 360, 30);
+                chip.transform.parent.name = "Terrain";
+                var help = chip.transform.parent.gameObject.AddComponent<HoverHelp>();
+                help.text = $"{b.terrain.name} ({b.terrain.place}): {b.terrain.text} Pernas Hover ignoram o terreno.";
+                chip.transform.parent.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+            }
+            Say($"Luta contra {b.enemy.name} ({b.enemy.tier}){(b.terrain == null ? "" : $" · arena: {b.terrain.name}, {b.terrain.text}")}.");
             Refresh(animateDraw: true);
             Banner("SEU TURNO", Theme.Good);
         }

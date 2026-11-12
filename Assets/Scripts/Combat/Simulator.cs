@@ -18,6 +18,8 @@ namespace CardBattler.Combat
         public string[] policies = { "greedy", "random" };
         public RobotDef[] builds = new RobotDef[0];
         public string[] enemies = new string[0];
+        public string terrain = "";        // "" = each enemy's home arena, "none" = neutral, or a terrain id for every fight
+        public bool terrainTable = true;   // also run greedy on every terrain (fewer matches) for the per-terrain table
     }
 
     public class JobResult
@@ -56,16 +58,21 @@ namespace CardBattler.Combat
         };
         public const float MinDecisionGap = 0.25f; // greedy must beat random by this much on Difícil/Chefe
 
-        public static MatchupResult Run(Content content, RobotDef build, string enemyId, string policy, int matches, int seed, string jsonlDir = null, bool basicEnemy = false)
+        // terrain: "" = the enemy's home arena, "none" = neutral, otherwise a terrain id.
+        public static string TerrainFor(Content content, string enemyId, string terrain) =>
+            terrain == "none" ? null : string.IsNullOrEmpty(terrain) ? content.Robot(enemyId).terrain : terrain;
+
+        public static MatchupResult Run(Content content, RobotDef build, string enemyId, string policy, int matches, int seed, string jsonlDir = null, bool basicEnemy = false, string terrain = "")
         {
             var ed = content.Robot(enemyId);
+            var arena = TerrainFor(content, enemyId, terrain);
             var r = new MatchupResult { build = build.name, buildId = build.id, enemyId = enemyId, enemy = ed.name, policy = policy, makers = Content.MakerNames(content.ActiveMakers(build)),
                 tier = string.IsNullOrEmpty(ed.tier) ? "-" : ed.tier, enemyAI = basicEnemy ? "basico" : "estrategia",
                 strategies = ed.strategies == null || ed.strategies.Length == 0 ? "nenhuma" : string.Join(", ", ed.strategies) };
             foreach (var c in content.Deck(build)) Stat(r.cards, c.name);
             for (int i = 0; i < matches; i++)
             {
-                var b = new Battle(content, seed + i, build, enemyId, basicEnemy);
+                var b = new Battle(content, seed + i, build, enemyId, basicEnemy, arena);
                 var logger = jsonlDir == null ? null : new BattleLogger(b, jsonlDir);
                 var rng = new System.Random(seed + i);
                 while (b.result == Result.None && b.turn < TurnLimit)
@@ -168,7 +175,7 @@ namespace CardBattler.Combat
                     foreach (var (pol, basic) in runs)
                     {
                         progress?.Invoke($"{b.name} vs {e} ({pol}{(basic ? ", IA básica" : "")})", (float)done++ / total);
-                        results.Add(Run(content, b, e, pol, cfg.matches, cfg.seed, cfg.jsonl ? jsonlDir : null, basic));
+                        results.Add(Run(content, b, e, pol, cfg.matches, cfg.seed, cfg.jsonl ? jsonlDir : null, basic, cfg.terrain));
                     }
             return results;
         }
@@ -188,11 +195,31 @@ namespace CardBattler.Combat
                 var jr = RunJob(content, j.id, cfg.matches, cfg.seed);
                 jobs.AppendLine($"| {jr.job} | {Pct(jr.CompletionRate)} | " + string.Join(", ", j.stages.Select((st, k) => $"{k + 1}. {content.Robot(st.enemy).name}: {Pct((float)jr.lostAt[k] / jr.runs)}")) + " |");
             }
-            File.WriteAllText(Path.Combine(dir, "report.md"), md + jobs, utf8);
+            var terrains = cfg.terrainTable ? TerrainTable(content, cfg) : "";
+            File.WriteAllText(Path.Combine(dir, "report.md"), md + jobs + terrains, utf8);
             File.WriteAllText(Path.Combine(dir, "matchups.csv"), MatchupCsv(results), utf8);
             File.WriteAllText(Path.Combine(dir, "cards.csv"), CardCsv(results), utf8);
             File.WriteAllText(Path.Combine(dir, "config.json"), JsonUtility.ToJson(cfg, true), utf8);
             return dir;
+        }
+
+        // Greedy win rate per category with every fight on the same arena (neutral + each terrain), fewer matches.
+        public static string TerrainTable(Content content, SimConfig cfg)
+        {
+            int n = Math.Max(50, cfg.matches / 5);
+            var builds = cfg.builds.Length > 0 ? cfg.builds : content.presets;
+            var enemies = content.robots.Where(r => !string.IsNullOrEmpty(r.tier)).ToArray();
+            var s = new StringBuilder($"\n## Terrenos (greedy, {n} lutas por confronto, todas as lutas na mesma arena)\n\n| Terreno | " + string.Join(" | ", RobotDef.Tiers) + " |\n|---|" + string.Concat(RobotDef.Tiers.Select(_ => "---|")) + "\n");
+            foreach (var t in new[] { ("none", "Neutro") }.Concat(content.terrains.Select(t => (t.id, $"{t.name} ({t.place})"))))
+            {
+                var cells = RobotDef.Tiers.Select(tier =>
+                {
+                    var rs = builds.SelectMany(b => enemies.Where(e => e.tier == tier).Select(e => Run(content, b, e.id, "greedy", n, cfg.seed, terrain: t.Item1))).ToList();
+                    return rs.Count == 0 ? "-" : Pct(rs.Average(r => r.WinRate));
+                });
+                s.AppendLine($"| {t.Item2} | {string.Join(" | ", cells)} |");
+            }
+            return s.ToString();
         }
 
         static string F(float v) => v.ToString("0.#", CultureInfo.InvariantCulture);

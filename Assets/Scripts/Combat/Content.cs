@@ -24,9 +24,14 @@ namespace CardBattler.Combat
         public string id, name, slot, maker, element;
         public string resist, weakTo; // element names: -1 / +1 damage per hit taken
         public int integrity, weight, energy, heatPerTurn;
-        public bool ignoresTerrain; // shortcut: no terrain rules yet, flag is data only
+        public bool ignoresTerrain; // legs: terrain rules don't apply to this robot (Hover)
+        public bool wheels;         // legs: affected by "noWheelDodge" terrain
         public string[] cards = new string[0];
     }
+
+    // Arena rule. rule: "noWheelDodge", "rainElectric" or "heatDouble". Robots on Hover legs ignore it.
+    [Serializable]
+    public class TerrainDef { public string id, name, place, text, rule; }
 
     [Serializable]
     public class FrameDef
@@ -75,6 +80,7 @@ namespace CardBattler.Combat
         public string id, name, frame, head, torso, armL, armR, legs, core;
         public int maxCardsPerTurn;
         public string tier;                 // Fácil, Moderado, Difícil, Chefe (enemies only)
+        public string terrain;              // home arena terrain id (Treino livre / simulator)
         public string[] strategies = new string[0]; // sucateiro, combista, cirurgiao, defensivo, status, adaptativo
         public int bonusChassis, bonusEnergy;       // fine-tuning only
         public PhaseDef[] phases = new PhaseDef[0];
@@ -97,6 +103,8 @@ namespace CardBattler.Combat
         public RobotDef[] presets; // player builds used by the simulator
         public GlossaryEntry[] glossary = new GlossaryEntry[0];
         public JobDef[] jobs = new JobDef[0];
+        public TerrainDef[] terrains = new TerrainDef[0];
+        public TerrainDef Terrain(string id) => string.IsNullOrEmpty(id) ? null : terrains.FirstOrDefault(t => t.id == id) ?? throw new ArgumentException("Terreno desconhecido: " + id);
         public StageDef[] pit = new StageDef[0];          // Fosso ranking ladder, last = champion
         public DialogueDef[] dialogues = new DialogueDef[0];
         public ClueDef[] clues = new ClueDef[0];

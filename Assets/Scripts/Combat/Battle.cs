@@ -29,6 +29,7 @@ namespace CardBattler.Combat
     {
         public const int HeatLimit = 10, HeatDissipation = 2, ImpactBonus = 4;
         public const int ElementImpact = 2, ElementMod = 1; // Cinético bonus per attack; resist/weak per hit
+        public const int RainBonus = 2;
         public readonly string id, name;
         public readonly FrameDef frame;
         public readonly PartDef core;
@@ -135,9 +136,16 @@ namespace CardBattler.Combat
         internal Random Rng => rng;
 
         // basicEnemyAI: ignore the enemy's strategies (simulator uses it to measure their impact).
-        public Battle(Content content, int seed, RobotDef playerBuild = null, string enemyId = "enemy", bool basicEnemyAI = false)
+        public readonly TerrainDef terrain; // null = neutral arena
+
+        // Whether the arena rule applies to this robot (Hover legs ignore terrain).
+        public bool TerrainHits(Robot r, string rule) => terrain != null && terrain.rule == rule && !r.parts[Slot.Pernas].def.ignoresTerrain;
+
+        // basicEnemyAI: ignore the enemy's strategies (simulator uses it to measure their impact). terrainId: arena rule (null = none).
+        public Battle(Content content, int seed, RobotDef playerBuild = null, string enemyId = "enemy", bool basicEnemyAI = false, string terrainId = null)
         {
             this.content = content;
+            terrain = content.Terrain(terrainId);
             this.seed = seed;
             rng = new Random(seed);
             if (playerBuild != null)
@@ -156,6 +164,7 @@ namespace CardBattler.Combat
                 Emit(r, "build", $"{r.name}: peso {r.weight}/{r.frame.carry}, bônus de fabricante: {(r.makers.Length == 0 ? "nenhum" : string.Join("; ", r.makers.Select(m => m.id + " (" + m.text + ")")))}.",
                     target: Content.MakerNames(r.makers), cost: r.weight, value: r.frame.carry,
                     cards: new[] { r.frame.name }.Concat(r.parts.Values.Select(p => p.def.name)).Append(r.core.name).ToArray(), ui: false);
+            if (terrain != null) Emit(player, "terrain", $"Terreno: {terrain.name} ({terrain.place}). {terrain.text}", target: terrain.id, ui: false);
             Shuffle(player.deck); Shuffle(enemy.deck);
             PlanEnemy();
             StartTurn(player, true);
@@ -333,7 +342,10 @@ namespace CardBattler.Combat
                 if (user.IsBroken(Slot.Pernas)) Emit(user, "dodge_cancelled", "Pernas avariadas: esquiva anulada.", card: d.name);
                 else
                 {
-                    user.dodge = Math.Max(user.dodge, d.dodge);
+                    // Piso de sucata: wheels skid, the dodge is halved.
+                    bool skid = user.parts[Slot.Pernas].def.wheels && TerrainHits(user, "noWheelDodge");
+                    user.dodge = Math.Max(user.dodge, skid ? d.dodge / 2 : d.dodge);
+                    if (skid) Emit(user, "dodge_skid", $"{terrain.name}: as rodas derrapam, esquiva pela metade.", card: d.name, value: d.dodge / 2);
                     Emit(user, "dodge", $"{user.name} prepara esquiva de {user.dodge}.", card: d.name, value: user.dodge, ui: false);
                 }
             }
@@ -413,8 +425,9 @@ namespace CardBattler.Combat
             }
             if (d.targetHeat > 0)
             {
-                opp.heat += d.targetHeat;
-                Emit(opp, "heat_applied", $"{opp.name} recebe {d.targetHeat} Calor (total {opp.heat}).", card: d.name, value: d.targetHeat);
+                int heat = HeatOn(opp, d.targetHeat);
+                opp.heat += heat;
+                Emit(opp, "heat_applied", $"{opp.name} recebe {heat} Calor (total {opp.heat}){(heat > d.targetHeat ? $" ({terrain.name}: dobrado)" : "")}.", card: d.name, value: heat);
             }
             if (d.overload > 0)
             {
@@ -447,8 +460,9 @@ namespace CardBattler.Combat
             switch (ElementOf(user, c))
             {
                 case "Térmico" when d.targetHeat == 0:
-                    opp.heat += 1;
-                    Emit(opp, "heat_applied", $"Térmico: {opp.name} recebe 1 Calor (total {opp.heat}).", card: d.name, value: 1);
+                    int heat = HeatOn(opp, 1);
+                    opp.heat += heat;
+                    Emit(opp, "heat_applied", $"Térmico: {opp.name} recebe {heat} Calor (total {opp.heat}).", card: d.name, value: heat);
                     break;
                 case "Elétrico" when d.overload == 0 && opp.overload == 0:
                     opp.overload = 1;
@@ -461,6 +475,9 @@ namespace CardBattler.Combat
             }
         }
 
+        // Calor from attacks; doubled on a "heatDouble" arena.
+        int HeatOn(Robot target, int amount) => TerrainHits(target, "heatDouble") ? amount * 2 : amount;
+
         void Attack(Robot user, Robot def, Card c, Slot slot, int dmg, int hits, bool pierce, bool impact, bool chained, out bool broke, out int dealt)
         {
             var d = c.def;
@@ -469,6 +486,7 @@ namespace CardBattler.Combat
             var element = ElementOf(user, c);
             int mod = ElementModifier(part?.def, element);
             int kinetic = element == "Cinético" && (part == null || part.Broken) ? Robot.ElementImpact : 0;
+            if (element == "Elétrico" && TerrainHits(def, "rainElectric")) kinetic += Robot.RainBonus; // first-hit bonus, same as Cinético
             int dodge = def.IsBroken(Slot.Pernas) ? 0 : def.dodge;
             def.dodge = 0;
             int total = 0, absorbed = 0, dodged = 0;
@@ -482,7 +500,7 @@ namespace CardBattler.Combat
                 total += amount;
             }
             dealt = total;
-            Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}{(kinetic > 0 ? " (Cinético: Impacto)" : "")}{(mod > 0 ? " (fraqueza)" : mod < 0 ? " (resistência)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
+            Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}{(kinetic > 0 ? element == "Elétrico" ? $" ({terrain.name}: +{kinetic})" : " (Cinético: Impacto)" : "")}{(mod > 0 ? " (fraqueza)" : mod < 0 ? " (resistência)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
                 (absorbed > 0 ? $", {absorbed} na blindagem" : "") + (dodged > 0 ? $", {dodged} esquivado" : "") + ".",
                 card: d.name, source: SlotName(c.source), target: SlotName(slot), value: total, absorbed: absorbed, dodged: dodged, chained: chained);
             broke = part != null && !wasBroken && part.Broken;

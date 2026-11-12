@@ -108,12 +108,14 @@ namespace CardBattler.Combat
         public void EndJob() { job = null; stage = 0; offer = new string[0]; }
 
         // Battle with the current build; damage from earlier fights carries over.
+        public const string Arena = "fosso"; // the job and the ranking ladder are both fought in the Fossos
+
         public Battle StartBattle(Content c, int seed, string enemyId)
         {
             if (offer.Length > 0) throw new InvalidOperationException("Escolha a recompensa antes da próxima luta.");
             var errors = Validate(c);
             if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
-            var b = new Battle(c, seed, Build.Clone(), enemyId);
+            var b = new Battle(c, seed, Build.Clone(), enemyId, false, c.terrains.Any(t => t.id == Arena) ? Arena : null);
             foreach (var p in b.player.parts.Values) p.hp = HpOf(c, p.def.id);
             b.player.chassis = Math.Max(1, b.player.chassisMax - chassisDamage);
             return b;

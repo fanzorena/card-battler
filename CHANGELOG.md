@@ -5,6 +5,7 @@ Versões seguem o Git Flow do projeto (`main` = último release estável). Detal
 ## Unreleased (0.4.0)
 
 - **Elementos:** todo ataque leva o elemento da peça de onde vem a carta. Cinético dá Impacto (+2 contra parte avariada ou chassi exposto), Térmico +1 Calor, Elétrico Sobrecarga e Químico +1 Corrosão na parte atingida (sem acumular com o mesmo status da carta). Algumas peças resistem a um elemento (−1 por golpe) ou são fracas a outro (+1). Chip do elemento nas cartas de ataque, efeito no tooltip, resistência/fraqueza na garagem; IA do jogador e dos inimigos valorizam o efeito. Rebalanceado (chassi extra de Kiro, Rainha do Ácido e Mandíbula) e dossiês do Kiro e do Mandíbula atualizados.
+- **Terrenos:** cada arena tem uma regra. Piso de sucata (Fossos): pernas de rodas derrapam e esquivam só metade. Telhado na chuva (Distrito Neon): ataques Elétricos +2. Campo de supressão (Torre-Arena Kagemori): Calor recebido de ataques dobrado. Pernas Hover ignoram o terreno. A arena aparece no dossiê e na luta (com explicação no hover); trabalho e ranking são no Fosso; cada inimigo tem uma arena de casa para o Treino livre. Simulador usa a arena de casa e ganhou uma tabela por terreno. Rebalanceado (chassi extra de Bastião, Lâmina, Kiro, Rainha do Ácido e Mandíbula) e dossiês atualizados.
 
 ## v0.3.0 — 2026-11-12
 
