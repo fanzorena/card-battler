@@ -1157,5 +1157,145 @@
         }
       ]
     }
+  ],
+  "pit": [
+    {
+      "enemy": "enemy_nyx",
+      "credits": 15,
+      "scrap": 1,
+      "text": "Posição 4 do ranking. O Rato de Laboratório luta pra testar veneno novo."
+    },
+    {
+      "enemy": "enemy_kagemori",
+      "credits": 25,
+      "scrap": 2,
+      "text": "Posição 3. Uma lâmina da Kagemori vem aqui fazer nome antes do Circuito."
+    },
+    {
+      "enemy": "enemy_acido",
+      "credits": 35,
+      "scrap": 2,
+      "text": "Posição 2. A Rainha do Ácido segura essa vaga há três temporadas."
+    },
+    {
+      "enemy": "boss_mandibula",
+      "credits": 60,
+      "scrap": 0,
+      "text": "Disputa do título. O Mandíbula não perde no Fosso dele."
+    }
+  ],
+  "dialogues": [
+    {
+      "id": "celeste_first",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "Navarro. Faz tempo que não vejo esse sobrenome no Fim da Linha."
+        },
+        {
+          "who": "Celeste",
+          "text": "Esse Vira-lata aí ainda anda? Então talvez sirva pros Fossos."
+        },
+        {
+          "who": "Celeste",
+          "text": "Eu arrumo luta, você aparece e não morre. A gente divide o que sobrar."
+        }
+      ]
+    },
+    {
+      "id": "celeste_offer",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "Tenho quatro noites nos Fossos pra você. Uma luta por noite, e no fim o Mandíbula."
+        },
+        {
+          "who": "Celeste",
+          "text": "Robô quebrado não se conserta sozinho. Guarda sucata entre uma luta e outra."
+        },
+        {
+          "who": "Celeste",
+          "text": "Perdeu, o trabalho acaba e o conserto sai do seu bolso. Topa?"
+        }
+      ]
+    },
+    {
+      "id": "celeste_busy",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "Você já tá num trabalho meu. Termina ele antes de pedir outro."
+        }
+      ]
+    },
+    {
+      "id": "celeste_unlock",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "Primeira luta e você saiu andando. O pessoal do porto reparou."
+        },
+        {
+          "who": "Celeste",
+          "text": "A Oficina do cais agora te atende, e o Fosso tem ranking próprio, fora dos meus trabalhos."
+        }
+      ]
+    },
+    {
+      "id": "bettor_clue",
+      "lines": [
+        {
+          "who": "Apostador velho",
+          "text": "Campeão novo, hein. Senta aí, Navarro. Eu apostei no Tomás, naquela noite."
+        },
+        {
+          "who": "Apostador velho",
+          "text": "Ele tava ganhando. Aí o robô dele travou do nada no terceiro round."
+        },
+        {
+          "who": "Apostador velho",
+          "text": "Ninguém trava assim. Alguém mexeu naquele núcleo antes da luta. A luta foi armada."
+        },
+        {
+          "who": "Apostador velho",
+          "text": "Eu não sei quem. Mas quem pagou a aposta contra ele ficou rico naquela noite."
+        }
+      ]
+    },
+    {
+      "id": "oficina",
+      "lines": [
+        {
+          "who": "Mecânica",
+          "text": "Traz o robô pra bancada. Conserto, troco peça, e um dia fabrico também."
+        }
+      ]
+    },
+    {
+      "id": "ferro_velho",
+      "lines": [
+        {
+          "who": "Placa",
+          "text": "FERRO-VELHO DO DUDA — FECHADO. VOLTO LOGO."
+        }
+      ]
+    },
+    {
+      "id": "locked",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "Esse canto do porto não te conhece ainda. Faz uma luta comigo primeiro."
+        }
+      ]
+    }
+  ],
+  "clues": [
+    {
+      "id": "luta_armada",
+      "title": "A luta do Tomás foi armada",
+      "source": "Apostador velho, Bar Fim da Linha",
+      "text": "O robô do Tomás Navarro travou no terceiro round quando estava ganhando. Alguém mexeu no núcleo antes da luta, e quem apostou contra ele ficou rico naquela noite."
+    }
   ]
 }

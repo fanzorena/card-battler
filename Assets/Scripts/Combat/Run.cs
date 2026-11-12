@@ -22,6 +22,19 @@ namespace CardBattler.Combat
     }
 
     [Serializable]
+    public class LineDef { public string who, text; }
+
+    [Serializable]
+    public class DialogueDef
+    {
+        public string id;
+        public LineDef[] lines = new LineDef[0];
+    }
+
+    [Serializable]
+    public class ClueDef { public string id, title, text, source; }
+
+    [Serializable]
     public class PartHp
     {
         public string part;
@@ -44,6 +57,14 @@ namespace CardBattler.Combat
         public int stage;
         public string[] offer = new string[0];   // reward choice pending after a win
         public string lastResult;                // short text about the last fight, for the job screen
+        public string[] unlocked = new string[0]; // map places opened ("oficina", "fosso")
+        public int pitRank;                      // Fosso ladder fights won (== pit.Length: champion)
+        public string lastPit;                   // short text about the last Fosso fight
+        public string[] clues = new string[0];   // clue ids in the Pistas journal
+        public string[] seen = new string[0];    // one-time dialogues already heard
+
+        public const string ClueRigged = "luta_armada";
+        public static readonly string[] PortPlaces = { "oficina", "fosso" }; // opened by the first job win
 
         public RobotDef Build => garage.Current;
         public bool InJob => !string.IsNullOrEmpty(job);
@@ -133,6 +154,38 @@ namespace CardBattler.Combat
                 .Select(id => (id, k: rng.Next())).OrderBy(x => owned.Contains(x.id)).ThenBy(x => x.k).Select(x => x.id).Take(2).ToArray();
             lastResult = $"Vitória contra {c.Robot(st.enemy).name}: +{st.credits} créditos, +{st.scrap} sucata.";
             stage++;
+            foreach (var p in PortPlaces) Unlock(p);
+        }
+
+        // ---- Map / Fosso / Pistas ----
+        public bool IsOpen(string place) => place == "bar" || unlocked.Contains(place);
+        public void Unlock(string place) { if (!unlocked.Contains(place)) unlocked = unlocked.Append(place).ToArray(); }
+        public bool Champion(Content c) => pitRank >= c.pit.Length;
+        public StageDef PitStage(Content c) => c.pit[Math.Min(pitRank, c.pit.Length - 1)];
+        // The old bettor shows up in the bar once you're champion, until he's told his story.
+        public bool BettorWaiting(Content c) => Champion(c) && !clues.Contains(ClueRigged);
+        public bool Seen(string dialogueId) => seen.Contains(dialogueId);
+        public void MarkSeen(string dialogueId) { if (!Seen(dialogueId)) seen = seen.Append(dialogueId).ToArray(); }
+        public void LearnClue(Content c, string id) { c.Clue(id); if (!clues.Contains(id)) clues = clues.Append(id).ToArray(); }
+
+        // Ranking fight. Win: money, one rung up, damage stays. Loss: one rung down and nothing else
+        // (the Fosso crew patches the robot for free, no credits charged).
+        public void FinishPitFight(Content c, Battle b)
+        {
+            var st = PitStage(c);
+            var name = c.Robot(st.enemy).name;
+            if (b.result == Result.Win)
+            {
+                KeepDamage(c, b);
+                credits += st.credits;
+                scrap += st.scrap;
+                pitRank = Math.Min(c.pit.Length, pitRank + 1);
+                lastPit = $"Vitória no Fosso contra {name}: +{st.credits} créditos, +{st.scrap} sucata." + (Champion(c) ? " Você é o novo campeão dos Fossos!" : "");
+                return;
+            }
+            damaged = new PartHp[0]; chassisDamage = 0;
+            pitRank = Math.Max(0, pitRank - 1);
+            lastPit = $"Derrota no Fosso contra {name}. Você caiu uma posição no ranking. O pessoal do Fosso remendou o robô de graça.";
         }
 
         public void Choose(string partId)
@@ -184,9 +237,10 @@ namespace CardBattler.Combat
                 {
                     var s = JsonUtility.FromJson<Career>(File.ReadAllText(path));
                     bool ok = s != null && s.owned.All(id => c.parts.Any(p => p.id == id)) && s.frames.All(id => c.frames.Any(f => f.id == id))
-                              && (!s.InJob || c.jobs.Any(j => j.id == s.job));
+                              && (!s.InJob || c.jobs.Any(j => j.id == s.job)) && s.clues.All(id => c.clues.Any(k => k.id == id));
                     if (ok)
                     {
+                        s.pitRank = Math.Clamp(s.pitRank, 0, c.pit.Length);
                         s.garage = GarageSave.Fix(s.garage, c);
                         return s;
                     }

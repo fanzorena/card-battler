@@ -65,7 +65,7 @@ namespace CardBattler.UI
             Theme.Label(root, "Monte o robô", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
             if (app.careerMode) Theme.Label(root, $"{app.career.credits} créditos · {app.career.scrap} sucata · só peças que você tem", Theme.Small, Theme.Warn).rectTransform.Place(980, 80, 700, 30);
             else Theme.Label(root, "TREINO LIVRE · todas as peças liberadas", Theme.Small, Theme.Exposed).rectTransform.Place(980, 80, 700, 30);
-            ((RectTransform)Theme.Button(root, "←  MENU", () => app.ShowTitle(), Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
+            ((RectTransform)Theme.Button(root, app.careerMode ? "←  VOLTAR" : "←  MENU", app.Back, Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
             for (int i = 0; i < GarageSave.SlotCount; i++)
             {
                 int k = i;
@@ -121,7 +121,7 @@ namespace CardBattler.UI
             else { sheet = content; DrawSheet(BuildStats.Of(C, b), null); }
 
             // Continue to the opponent selection
-            var go = Theme.Button(root, "CONTINUAR  →", app.careerMode ? app.ShowJob : app.ShowOpponents, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 32);
+            var go = Theme.Button(root, "CONTINUAR  →", app.careerMode ? () => app.ShowCareer(app.careerHub) : app.ShowOpponents, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 32);
             go.name = "Continuar";
             ((RectTransform)go.transform).Place(1520, 970, 360, 84);
             go.interactable = blocker == null;

@@ -5,15 +5,17 @@ using UnityEngine.UI;
 
 namespace CardBattler.UI
 {
-    // Career hub for a job: the offer, the stage track, the next opponent's dossier, repairs between fights,
-    // the reward choice after a win and the fixer's closing words.
+    // Career places reached from the map.
+    // "job": Celeste's job (offer, stage track, next opponent's dossier, repairs, reward choice, closing words).
+    // "workshop": the Oficina (repairs + garage; crafting later). "pit": the Fosso ranking ladder.
     public class JobScreen
     {
         readonly GameUI app;
         readonly RectTransform root;
+        readonly string page;
         bool abandonArmed;
 
-        public JobScreen(GameUI app, RectTransform root) { this.app = app; this.root = root; }
+        public JobScreen(GameUI app, RectTransform root, string page = "job") { this.app = app; this.root = root; this.page = page; }
 
         Content C => app.content;
         Career K => app.career;
@@ -22,11 +24,15 @@ namespace CardBattler.UI
 
         public void Build()
         {
-            Theme.Label(root, "TRABALHO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
+            Theme.Label(root, page == "workshop" ? "OFICINA" : page == "pit" ? "FOSSO" : "TRABALHO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
             Theme.Label(root, $"{K.credits} créditos   ·   {K.scrap} sucata", 26, Theme.Warn, TextAnchor.MiddleRight, FontStyle.Bold).rectTransform.Place(1000, 34, 700, 50);
-            ((RectTransform)Theme.Button(root, "←  MENU", () => app.ShowTitle(), Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
+            var back = Theme.Button(root, "←  MAPA", app.ShowMap, Theme.Panel, 22);
+            back.name = "Mapa";
+            ((RectTransform)back.transform).Place(1720, 34, 160, 50);
 
-            if (!K.InJob) Offer(C.jobs[0]);
+            if (page == "workshop") Workshop();
+            else if (page == "pit") Pit();
+            else if (!K.InJob) Offer(C.jobs[0]);
             else if (K.offer.Length > 0) Reward();
             else if (K.JobDone(C)) Done();
             else Hub();
@@ -41,7 +47,7 @@ namespace CardBattler.UI
             Theme.Label(panel.transform, "Oferecido por " + job.fixer, Theme.Small, Theme.TextDim).rectTransform.Place(36, 76, 920, 30);
             var intro = string.IsNullOrEmpty(K.lastResult) ? "" : $"<color=#{Theme.HexOf(Theme.Warn)}>{K.lastResult}</color>\n\n";
             Theme.Label(panel.transform, intro + $"<i>{job.intro}</i>", 24, Theme.Ink).rectTransform.Place(36, 120, 920, 360);
-            Track(panel.transform, job, -1, 36, 500);
+            Track(panel.transform, job.stages, -1, 36, 500);
             var accept = Theme.Button(panel.transform, "ACEITAR TRABALHO", () => { K.StartJob(C, job.id); K.lastResult = null; Changed(); },
                 Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 30);
             accept.name = "Aceitar";
@@ -51,18 +57,18 @@ namespace CardBattler.UI
         }
 
         // The four fights in a row: done, current, ahead.
-        void Track(Transform parent, JobDef job, int current, float x, float y)
+        void Track(Transform parent, StageDef[] stages, int current, float x, float y, string label = "LUTA")
         {
-            for (int i = 0; i < job.stages.Length; i++)
+            for (int i = 0; i < stages.Length; i++)
             {
-                var st = job.stages[i];
+                var st = stages[i];
                 var r = C.Robot(st.enemy);
                 bool done = i < current, now = i == current;
                 var color = GarageScreen.TierColor(r.tier);
                 var box = Theme.Box(parent, "Stage" + i, now ? Theme.Mix(Theme.Panel, color, 0.3f) : Theme.Alpha(Theme.PanelHi, done ? 0.5f : 1));
                 box.rectTransform.Place(x + i * 232, y, 220, 180);
                 if (now) Theme.Box(box.transform, "Now", color, Theme.Frame).rectTransform.Fill(-3);
-                Theme.Label(box.transform, $"LUTA {i + 1}", 16, Theme.TextDim, style: FontStyle.Bold).rectTransform.Place(14, 10, 190, 24);
+                Theme.Label(box.transform, $"{label} {i + 1}", 16, Theme.TextDim, style: FontStyle.Bold).rectTransform.Place(14, 10, 190, 24);
                 var name = Theme.Label(box.transform, r.name, 22, done ? Theme.TextDim : Theme.Ink, style: FontStyle.Bold);
                 name.rectTransform.Place(14, 36, 196, 60);
                 name.resizeTextForBestFit = true; name.resizeTextMinSize = 14; name.resizeTextMaxSize = 22; name.verticalOverflow = VerticalWrapMode.Truncate;
@@ -78,7 +84,7 @@ namespace CardBattler.UI
             int idx = System.Math.Min(K.stage, job.stages.Length - 1);
             var st = job.stages[idx];
             Theme.Label(root, job.name, Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 900, 30);
-            Track(root, job, K.stage, 60, 120);
+            Track(root, job.stages, K.stage, 60, 120);
 
             var talk = Theme.Box(root, "Fixer", Theme.Alpha(Theme.Panel, 0.96f));
             talk.rectTransform.Place(60, 316, 1000, 190);
@@ -164,6 +170,59 @@ namespace CardBattler.UI
             ((RectTransform)btn.transform).Place(x + 544, y + 4, 140, 34);
         }
 
+        // ---- Oficina: repairs and the garage; crafting comes later ----
+        void Workshop()
+        {
+            Theme.Label(root, "Cais do porto · bancada da Mecânica", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 900, 30);
+            var talk = Theme.Box(root, "Mechanic", Theme.Alpha(Theme.Panel, 0.96f));
+            talk.rectTransform.Place(60, 120, 1000, 120);
+            var line = C.Dialogue("oficina").lines[0];
+            Theme.Label(talk.transform, $"<b>{line.who}:</b> <i>{line.text}</i>", 22, Theme.Ink).rectTransform.Place(24, 18, 952, 90);
+            Status(60, 260);
+
+            var side = Theme.Box(root, "Bench", Theme.Alpha(Theme.Panel, 0.96f));
+            side.rectTransform.Place(1120, 120, 760, 560);
+            Theme.Label(side.transform, "BANCADA", 26, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(30, 24, 700, 36);
+            Theme.Label(side.transform, $"Peças no estoque: {K.owned.Length} · frames: {K.frames.Length}\n\nNa garagem você monta os 3 robôs com as peças que já tem.", 22, Theme.Ink)
+                .rectTransform.Place(30, 76, 700, 140);
+            var garage = Theme.Button(side.transform, "ABRIR GARAGEM", app.ShowGarage, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 28);
+            garage.name = "Garagem";
+            ((RectTransform)garage.transform).Place(30, 230, 400, 80);
+            var craft = Theme.Button(side.transform, "FABRICAR  ·  em breve", () => { }, Theme.Panel, 22);
+            craft.interactable = false;
+            ((RectTransform)craft.transform).Place(30, 330, 400, 64);
+            Theme.Label(side.transform, "Transformar sucata em peças novas. Ainda não está aberto.", 18, Theme.TextDim).rectTransform.Place(30, 404, 700, 60);
+        }
+
+        // ---- Fosso: ranking ladder up to the champion. Losing costs only the ranking ----
+        void Pit()
+        {
+            bool champ = K.Champion(C);
+            Theme.Label(root, champ ? "Você é o campeão dos Fossos. Defenda o título quando quiser." : $"Ranking do Fosso · posição {C.pit.Length - K.pitRank + 1} · perder só custa a posição",
+                Theme.Small, champ ? Theme.Good : Theme.TextDim).rectTransform.Place(62, 80, 1000, 30);
+            Track(root, C.pit, K.pitRank, 60, 120, "DEGRAU");
+
+            var st = K.PitStage(C);
+            var talk = Theme.Box(root, "Announcer", Theme.Alpha(Theme.Panel, 0.96f));
+            talk.rectTransform.Place(60, 316, 1000, 190);
+            var text = (string.IsNullOrEmpty(K.lastPit) ? "" : $"<color=#{Theme.HexOf(Theme.Warn)}>{K.lastPit}</color>\n")
+                       + (champ ? "<b>Locutor:</b> <i>O campeão está na casa! Quem sobe pra tirar o cinturão?</i>" : $"<b>Locutor:</b> <i>{st.text}</i>");
+            Theme.Label(talk.transform, text, 22, Theme.Ink).rectTransform.Place(24, 18, 952, 160);
+            Status(60, 524);
+
+            var dossier = Theme.Node(root, "Dossier").Place(1120, 110, 760, 760);
+            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy));
+
+            ((RectTransform)Theme.Button(root, "GARAGEM", app.ShowGarage, Theme.Panel, 26).transform).Place(1120, 970, 220, 84);
+            var errors = K.Validate(C);
+            var fight = Theme.Button(root, champ ? "DEFENDER TÍTULO" : "LUTAR", app.StartPitFight, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), champ ? 28 : 34);
+            fight.name = "Lutar";
+            ((RectTransform)fight.transform).Place(1520, 970, 360, 84);
+            fight.interactable = errors.Count == 0 && K.offer.Length == 0;
+            if (K.offer.Length > 0) Theme.Label(root, "Escolha a recompensa do trabalho antes", Theme.Small, Theme.Bad, TextAnchor.MiddleRight).rectTransform.Place(1120, 880, 760, 40);
+            else if (errors.Count > 0) Theme.Label(root, "Robô inválido: ajuste na garagem", Theme.Small, Theme.Bad, TextAnchor.MiddleRight).rectTransform.Place(1120, 880, 760, 40);
+        }
+
         // ---- After a win: pick 1 of 2 parts from the beaten robot ----
         void Reward()
         {
@@ -204,8 +263,8 @@ namespace CardBattler.UI
             panel.rectTransform.Place(60, 120, 1000, 820);
             Theme.Label(panel.transform, "TRABALHO CONCLUÍDO", 40, Theme.Good, style: FontStyle.Bold).rectTransform.Place(36, 26, 920, 54);
             Theme.Label(panel.transform, $"{K.lastResult}\n\n<b>{job.fixer}:</b> <i>{job.outro}</i>", 24, Theme.Ink).rectTransform.Place(36, 100, 920, 380);
-            Track(panel.transform, job, job.stages.Length, 36, 500);
-            var end = Theme.Button(panel.transform, "ENCERRAR", () => { K.EndJob(); K.lastResult = "Trabalho concluído. A Celeste disse que te chama de novo."; Changed(); },
+            Track(panel.transform, job.stages, job.stages.Length, 36, 500);
+            var end = Theme.Button(panel.transform, "ENCERRAR", () => { K.EndJob(); K.lastResult = "Trabalho concluído. A Celeste disse que te chama de novo."; app.SaveCareer(); app.ShowMap(); },
                 Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 30);
             end.name = "Encerrar";
             ((RectTransform)end.transform).Place(36, 720, 360, 80);
