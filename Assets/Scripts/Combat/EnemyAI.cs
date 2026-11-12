@@ -101,6 +101,7 @@ namespace CardBattler.Combat
             int raw = d.TargetsPart && !d.doubleCorrosion ? Raw(e, c) : 0;
             float aimValue = Chooses(d) ? (p.ChassisOpen ? 1.3f : 1f) : 0.8f; // random hits are worth less
             v += (d.pierce ? raw : Math.Max(raw * 0.4f, raw - p.armor)) * aimValue;
+            if (raw > 0) v += Bot.ElementValue(Battle.ElementOf(e, c), d, p) * (e.Has("status") ? 2 : 1);
             v += 1.5f * (d.draw + d.chainDraw);
             v += d.armor * 0.4f;
             v += d.repair > 0 ? Math.Min(d.repair, e.parts.Values.Max(x => x.Max - x.hp)) * 0.6f : 0;

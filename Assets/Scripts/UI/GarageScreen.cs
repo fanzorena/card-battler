@@ -92,7 +92,7 @@ namespace CardBattler.UI
                 var part = C.Part(get(b));
                 string stats = slot == "Nucleo"
                     ? $"{part.energy} energia/turno{(part.heatPerTurn > 0 ? $" · +{part.heatPerTurn} Calor/turno" : "")} · Peso {part.weight}"
-                    : $"Integridade {(Car != null && Car.HpOf(C, part.id) < part.integrity ? $"<color=#{Theme.HexOf(Theme.Bad)}>{Car.HpOf(C, part.id)}</color>/" : "")}{part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}";
+                    : $"Integridade {(Car != null && Car.HpOf(C, part.id) < part.integrity ? $"<color=#{Theme.HexOf(Theme.Bad)}>{Car.HpOf(C, part.id)}</color>/" : "")}{part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}{(string.IsNullOrEmpty(part.resist) ? "" : " · resiste " + part.resist)}{(string.IsNullOrEmpty(part.weakTo) ? "" : " · fraca a " + part.weakTo)}";
                 string cards = string.Join(", ", part.cards.GroupBy(id => id).Select(g => $"{g.Count()}x {C.Card(g.Key).name}"));
                 SlotWidget(x, y, icon, part.name, part.maker, stats, cards,
                     () => { set(b, Cycle(ids, get(b), -1)); Changed(); }, () => { set(b, Cycle(ids, get(b), 1)); Changed(); },
@@ -245,7 +245,7 @@ namespace CardBattler.UI
             {
                 var src = srcs.FirstOrDefault(p => C.Part(p.Item1).cards.Contains(d.id));
                 string maker = src.Item1 != null ? C.Part(src.Item1).maker : null;
-                var card = CardView.Create(parent, d, maker, src.Item2 ?? "Frame");
+                var card = CardView.Create(parent, d, maker, src.Item2 ?? "Frame", null, src.Item1 != null ? C.Part(src.Item1).element : null);
                 card.interactive = false;
                 card.Rect.anchorMin = card.Rect.anchorMax = new Vector2(0, 1);
                 card.Rect.pivot = new Vector2(0, 1);

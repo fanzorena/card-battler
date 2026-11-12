@@ -2,6 +2,10 @@
 
 Versões seguem o Git Flow do projeto (`main` = último release estável). Detalhes de balanceamento em `BALANCE_CHANGES.md`.
 
+## Unreleased (0.4.0)
+
+- **Elementos:** todo ataque leva o elemento da peça de onde vem a carta. Cinético dá Impacto (+2 contra parte avariada ou chassi exposto), Térmico +1 Calor, Elétrico Sobrecarga e Químico +1 Corrosão na parte atingida (sem acumular com o mesmo status da carta). Algumas peças resistem a um elemento (−1 por golpe) ou são fracas a outro (+1). Chip do elemento nas cartas de ataque, efeito no tooltip, resistência/fraqueza na garagem; IA do jogador e dos inimigos valorizam o efeito. Rebalanceado (chassi extra de Kiro, Rainha do Ácido e Mandíbula) e dossiês do Kiro e do Mandíbula atualizados.
+
 ## v0.3.0 — 2026-11-12
 
 Primeira fatia de progressão: carreira com save, o trabalho da Celeste e o mapa do porto.

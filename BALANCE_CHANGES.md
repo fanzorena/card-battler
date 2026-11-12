@@ -3,6 +3,49 @@
 Valores que mudaram em relação ao documento de design / versão anterior, para atualizar o documento.
 Medido com o simulador (Card Battler > Simulador), 500 lutas por confronto, jogador greedy.
 
+## 2026-11-12 — elementos automáticos (`feature/elements`)
+
+### Regras novas (código)
+
+| Regra | Valor |
+|---|---|
+| Elemento do ataque | o da peça de origem da carta (carta assinatura do frame não tem elemento) |
+| Cinético | Impacto +2 no primeiro golpe contra parte avariada ou chassi exposto |
+| Térmico / Elétrico / Químico | +1 Calor / Sobrecarga 1 turno / +1 Corrosão na parte, quando o ataque causa dano; não acumula com o mesmo status da carta |
+| Resistência / fraqueza | −1 / +1 de dano por golpe na parte (chassi não tem) |
+
+### Dados
+
+| Peça | Resiste | Fraca a |
+|---|---|---|
+| Placa M2, Esteiras | Cinético | Elétrico |
+| Elmo Bastion | — | Elétrico |
+| Escudo de Braço | Cinético | — |
+| Sensor K-7 | Elétrico | Cinético |
+| Chassi Aero, Pulso Tesla | Elétrico | — |
+| Coroa Nyx | Químico | Térmico |
+| Injetor | Químico | — |
+| Tórax Refrigerado | Térmico | Químico |
+| Lança-chamas | Térmico | — |
+| Carcaça Remendada | — | Químico |
+
+| Inimigo | Chassi extra antes | Depois |
+|---|---|---|
+| Kiro Sato | 10 | 12 |
+| Rainha do Ácido | 6 | 8 |
+| Mandíbula | 4 | 2 |
+
+### Resultado (greedy, média das builds)
+
+| Categoria | Meta | Antes (v0.3.0) | Só elementos | Depois do ajuste |
+|---|---|---|---|---|
+| Fácil | > 80% | 99.9% | 99.9% | 99.9% |
+| Moderado | 65–75% | 68.6% | 71.6% | 71.9% |
+| Difícil | 55–60% | 56.5% | 64.9% | 59.7% |
+| Chefe | 55–60% | 56% | 52.5% | 59.5% |
+
+Trabalho da Celeste (bot, 500 tentativas): 30.2% → 37% de conclusão.
+
 ## 2026-11-11 — mira por custo e chassi protegido (`feature/targeting-rules`)
 
 Motivo: no teste do dono, a luta era só "torso e depois chassi", as outras partes quase não levavam dano,

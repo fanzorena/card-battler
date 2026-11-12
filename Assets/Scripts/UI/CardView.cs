@@ -126,14 +126,15 @@ namespace CardBattler.UI
         CanvasGroup group;
         Vector2 home;
         bool playable = true;
+        string element;
 
         // sourceKey: slot key of the part the card comes from (SlotIcons), e.g. "BracoEsq" or "Frame".
-        public static CardView Create(Transform parent, CardDef def, string maker, string sourceKey, Card card = null)
+        public static CardView Create(Transform parent, CardDef def, string maker, string sourceKey, Card card = null, string element = null)
         {
             var rt = Theme.Node(parent, "Card:" + def.name);
             rt.sizeDelta = new Vector2(W, H);
             var v = rt.gameObject.AddComponent<CardView>();
-            v.card = card; v.def = def; v.sourceKey = sourceKey;
+            v.card = card; v.def = def; v.sourceKey = sourceKey; v.element = def.TargetsPart ? element : null;
             v.group = rt.gameObject.AddComponent<CanvasGroup>();
             var accent = Theme.Maker(maker);
 
@@ -169,6 +170,8 @@ namespace CardBattler.UI
             v.targetText = Theme.Label(rt, "", 14, Theme.Warn, TextAnchor.MiddleCenter, FontStyle.Bold);
             v.targetText.rectTransform.Place(6, 170, W - 12, 20);
 
+            if (!string.IsNullOrEmpty(v.element))
+                ((RectTransform)Theme.Chip(art.transform, v.element.ToUpperInvariant(), Theme.Element(v.element), 13).transform.parent).Place(6, 66, 96, 22);
             var body = Theme.Label(rt, Theme.Highlight(def.text), 19, Theme.Ink, TextAnchor.UpperCenter);
             body.rectTransform.Place(12, 192, W - 24, H - 198);
             return v;
@@ -191,7 +194,9 @@ namespace CardBattler.UI
         public void OnPointerEnter(PointerEventData e)
         {
             if (dragging) return;
-            Tooltip.Show(Fx.PosOf(Rect) - new Vector2(0, H * transform.lossyScale.y / transform.root.lossyScale.y / 2), new[] { "Origem: " + SlotIcons.Name(sourceKey) }.Concat(Theme.HelpFor(def.text))
+            Tooltip.Show(Fx.PosOf(Rect) - new Vector2(0, H * transform.lossyScale.y / transform.root.lossyScale.y / 2), new[] { "Origem: " + SlotIcons.Name(sourceKey) }
+                .Concat(string.IsNullOrEmpty(element) ? new string[0] : new[] { $"{element}: {Battle.ElementEffect(element)}" })
+                .Concat(Theme.HelpFor(def.text))
                 .Concat(def.TargetsPart ? new[] { "Custo 1: parte aleatória. Custo 2 ou mais (ou Mirar): você escolhe a parte." } : new string[0]));
             if (!interactive || animating) return;
             transform.SetAsLastSibling();

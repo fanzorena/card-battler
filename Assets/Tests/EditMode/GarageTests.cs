@@ -182,7 +182,7 @@ public class NewCardTests
         b.Play(P, Give("ponto_fraco", Slot.Cabeca), Slot.Torso);
         b.Play(P, Give("mirar", Slot.Cabeca));
         b.Play(P, Give("serrar", Slot.BracoDir), Slot.Torso); // (3+3) twice: +3 on every hit
-        Assert.AreEqual(20 - 12, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(20 - 2 * (3 + 3 - Robot.ElementMod), E.parts[Slot.Torso].hp); // the Bastion plate resists Cinético
     }
 
     [Test]
@@ -212,7 +212,7 @@ public class NewCardTests
     {
         E.armor = 5;
         b.Play(P, Give("rajada", Slot.BracoEsq), Slot.Torso); // cost 2 chooses; 4,4,4 vs 5 armor
-        Assert.AreEqual(20 - 7, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(20 - (3 * (4 - Robot.ElementMod) - 5), E.parts[Slot.Torso].hp); // Cinético vs resistant plate: 3 per hit
     }
 
     [Test]
@@ -229,10 +229,10 @@ public class NewCardTests
     {
         E.armor = 20;
         b.Play(P, Give("corte_preciso", Slot.BracoDir), Slot.Torso);
-        Assert.AreEqual(20 - 9, E.parts[Slot.Torso].hp);
+        Assert.AreEqual(20 - (9 - Robot.ElementMod), E.parts[Slot.Torso].hp); // the Bastion plate resists Cinético
         b.Play(P, Give("finta", Slot.Frame));
         b.Play(P, Give("soco", Slot.BracoEsq));
-        Assert.AreEqual(15, E.parts.Values.Sum(p => p.Max - p.hp));
+        Assert.That(E.parts.Values.Sum(p => p.Max - p.hp), Is.InRange(8 + 6 - Robot.ElementMod, 8 + 6)); // the random part may resist Cinético
         Assert.AreEqual(20, E.armor);
     }
 
@@ -240,8 +240,8 @@ public class NewCardTests
     public void Arco_HitsTwoParts()
     {
         b.Play(P, Give("arco", Slot.BracoDir), Slot.Torso);
-        Assert.AreEqual(20 - 6, E.parts[Slot.Torso].hp);
-        Assert.AreEqual(1, E.parts.Values.Count(p => p.slot != Slot.Torso && p.hp == p.Max - 6));
+        Assert.AreEqual(20 - (6 - Robot.ElementMod), E.parts[Slot.Torso].hp); // the Bastion plate resists Cinético
+        Assert.AreEqual(1, E.parts.Values.Count(p => p.slot != Slot.Torso && p.hp < p.Max));
     }
 
     [Test]

@@ -35,7 +35,7 @@ public class BattleLoggerTests
     [Test]
     public void PlayAttack_LogsCostTargetAbsorbedAndSnapshots()
     {
-        var b = new Battle(content, 3);
+        var b = new Battle(content, 3, null, "enemy_sucata");  // no element resistances on the target
         b.player.energy = 5;
         b.enemy.armor = 2;
         var soco = new Card(content.Card("soco"), Slot.BracoEsq);

@@ -28,6 +28,7 @@ namespace CardBattler.Combat
     public class Robot
     {
         public const int HeatLimit = 10, HeatDissipation = 2, ImpactBonus = 4;
+        public const int ElementImpact = 2, ElementMod = 1; // Cinético bonus per attack; resist/weak per hit
         public readonly string id, name;
         public readonly FrameDef frame;
         public readonly PartDef core;
@@ -400,8 +401,9 @@ namespace CardBattler.Combat
             foreach (var slot in slots)
             {
                 bool impact = d.chainImpact && chained;
-                Attack(user, opp, c, slot, dmg, Math.Max(1, d.hits), pierce, impact, chained, out bool broke);
+                Attack(user, opp, c, slot, dmg, Math.Max(1, d.hits), pierce, impact, chained, out bool broke, out int dealt);
                 if (broke && bonus && d.breakDraw > 0) Draw(user, d.breakDraw);
+                if (dealt > 0) ElementStatus(user, opp, c, slot);
                 if (d.corrosion > 0 && slot != Slot.Chassi)
                 {
                     opp.parts[slot].corrosion += d.corrosion + statusExtra;
@@ -422,24 +424,65 @@ namespace CardBattler.Combat
             }
         }
 
-        void Attack(Robot user, Robot def, Card c, Slot slot, int dmg, int hits, bool pierce, bool impact, bool chained, out bool broke)
+        // ---- Elements: an attack carries the element of the part it comes from ----
+        public static string ElementOf(Robot user, Card c) => c.source == Slot.Frame || !user.parts.ContainsKey(c.source) ? null : user.parts[c.source].def.element;
+
+        public static string ElementEffect(string element) => element switch
+        {
+            "Cinético" => $"Impacto: +{Robot.ElementImpact} contra parte avariada ou chassi exposto",
+            "Térmico" => "+1 Calor no alvo",
+            "Elétrico" => "Sobrecarga no alvo",
+            "Químico" => "+1 Corrosão na parte atingida",
+            _ => null,
+        };
+
+        // Per-hit change from the target part's resistance/weakness (chassis has none).
+        public static int ElementModifier(PartDef target, string element) =>
+            target == null || string.IsNullOrEmpty(element) ? 0 : target.resist == element ? -Robot.ElementMod : target.weakTo == element ? Robot.ElementMod : 0;
+
+        // Status that comes with the element when the attack lands. Cards that already apply the same status don't stack it.
+        void ElementStatus(Robot user, Robot opp, Card c, Slot slot)
+        {
+            var d = c.def;
+            switch (ElementOf(user, c))
+            {
+                case "Térmico" when d.targetHeat == 0:
+                    opp.heat += 1;
+                    Emit(opp, "heat_applied", $"Térmico: {opp.name} recebe 1 Calor (total {opp.heat}).", card: d.name, value: 1);
+                    break;
+                case "Elétrico" when d.overload == 0 && opp.overload == 0:
+                    opp.overload = 1;
+                    Emit(opp, "overload_applied", $"Elétrico: {opp.name} recebe Sobrecarga por 1 turno.", card: d.name, value: 1);
+                    break;
+                case "Químico" when d.corrosion == 0 && slot != Slot.Chassi:
+                    opp.parts[slot].corrosion += 1;
+                    Emit(opp, "corrosion_applied", $"Químico: {opp.name} recebe 1 Corrosão em {SlotName(slot)}.", card: d.name, target: SlotName(slot), value: 1);
+                    break;
+            }
+        }
+
+        void Attack(Robot user, Robot def, Card c, Slot slot, int dmg, int hits, bool pierce, bool impact, bool chained, out bool broke, out int dealt)
         {
             var d = c.def;
             var part = slot == Slot.Chassi ? null : def.parts[slot];
             bool wasBroken = part?.Broken ?? false;
+            var element = ElementOf(user, c);
+            int mod = ElementModifier(part?.def, element);
+            int kinetic = element == "Cinético" && (part == null || part.Broken) ? Robot.ElementImpact : 0;
             int dodge = def.IsBroken(Slot.Pernas) ? 0 : def.dodge;
             def.dodge = 0;
             int total = 0, absorbed = 0, dodged = 0;
             for (int h = 0; h < hits; h++)
             {
                 // Impacto: bonus against destroyed parts and the exposed chassis. Ponto Fraco: +weak on every hit.
-                int amount = dmg + (impact && (part == null || part.Broken) ? Robot.ImpactBonus : 0) + (part?.weak ?? 0);
+                int amount = Math.Max(0, dmg + (impact && (part == null || part.Broken) ? Robot.ImpactBonus : 0) + (part?.weak ?? 0) + mod + (h == 0 ? kinetic : 0));
                 int dg = Math.Min(dodge, amount); dodge -= dg; amount -= dg; dodged += dg;
                 if (!pierce) { int a = Math.Min(def.armor, amount); def.armor -= a; amount -= a; absorbed += a; }
                 DamagePart(def, slot, amount);
                 total += amount;
             }
-            Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
+            dealt = total;
+            Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}{(kinetic > 0 ? " (Cinético: Impacto)" : "")}{(mod > 0 ? " (fraqueza)" : mod < 0 ? " (resistência)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
                 (absorbed > 0 ? $", {absorbed} na blindagem" : "") + (dodged > 0 ? $", {dodged} esquivado" : "") + ".",
                 card: d.name, source: SlotName(c.source), target: SlotName(slot), value: total, absorbed: absorbed, dodged: dodged, chained: chained);
             broke = part != null && !wasBroken && part.Broken;
