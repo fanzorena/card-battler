@@ -80,12 +80,22 @@ namespace CardBattler.Combat
                 int raw = d.DamageFor(p.armor) * Math.Max(1, d.hits) * (d.secondPart ? 2 : 1);
                 float aimValue = p.Chooses(d) ? (e.ChassisOpen ? 1.3f : 1f) : 0.8f; // random hits are worth less
                 v += (d.pierce || p.pierceNext ? raw : Math.Max(raw * 0.3f, raw - e.armor)) * aimValue;
-                v += d.targetHeat + d.overload * 2 + d.corrosion;
+                v += d.targetHeat + d.overload * 2 + d.corrosion + ElementValue(Battle.ElementOf(p, c), d, e);
                 int landed = d.pierce || p.pierceNext ? raw : raw - e.armor;
                 if (p.Chooses(d) && e.ChassisOpen && landed >= e.chassis) v += 1000; // lethal
             }
             return v;
         }
+
+        // Rough worth of the element's automatic effect (status or Cinético impact).
+        public static float ElementValue(string element, CardDef d, Robot target) => element switch
+        {
+            "Térmico" when d.targetHeat == 0 => 1,
+            "Elétrico" when d.overload == 0 && target.overload == 0 => 2,
+            "Químico" when d.corrosion == 0 => 1,
+            "Cinético" when target.ChassisOpen => Robot.ElementImpact,
+            _ => 0,
+        };
 
         public static Slot? TargetFor(Battle b, Card c)
         {

@@ -86,7 +86,7 @@ public class CombatTests
     {
         foreach (var s in new[] { Slot.Cabeca, Slot.Torso, Slot.BracoEsq, Slot.BracoDir }) E.parts[s].hp = 0;
         for (int i = 0; i < 2; i++) b.Play(P, Give("soco", Slot.BracoEsq));
-        Assert.AreEqual(E.parts[Slot.Pernas].Max - 12, E.parts[Slot.Pernas].hp); // every random hit went to the only intact part
+        Assert.AreEqual(E.parts[Slot.Pernas].Max - 2 * (6 - Robot.ElementMod), E.parts[Slot.Pernas].hp); // every random hit went to the only intact part (treads resist Cinético)
         Assert.AreEqual(E.chassisMax, E.chassis);
     }
 
@@ -104,7 +104,7 @@ public class CombatTests
         E.chassis = 30;
         b.Play(P, Give("arrancada", Slot.Pernas)); // legs card right before the hook
         b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Chassi);
-        Assert.AreEqual(30 - (10 + Robot.ImpactBonus), E.chassis); // Impacto hits the exposed chassis harder
+        Assert.AreEqual(30 - (10 + Robot.ImpactBonus + Robot.ElementImpact), E.chassis); // Impacto (chain) + Cinético hit the exposed chassis harder
     }
 
     [Test]
@@ -113,7 +113,7 @@ public class CombatTests
         E.parts[Slot.Cabeca].hp = 0;
         E.chassis = 30;
         b.Play(P, Give("gancho", Slot.BracoEsq), Slot.Chassi);
-        Assert.AreEqual(30 - 10, E.chassis);
+        Assert.AreEqual(30 - 10 - Robot.ElementImpact, E.chassis); // only the Cinético element bonus
     }
 
     [Test]

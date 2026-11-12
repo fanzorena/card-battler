@@ -246,7 +246,7 @@ namespace CardBattler.UI
                 if (isNew)
                 {
                     var part = c.source == Slot.Frame ? null : p.parts[c.source].def;
-                    v = CardView.Create(hand, c.def, part?.maker, SlotIcons.Key(c.source), c);
+                    v = CardView.Create(hand, c.def, part?.maker, SlotIcons.Key(c.source), c, part?.element);
                     v.Rect.anchorMin = v.Rect.anchorMax = new Vector2(0, 1);
                     v.Rect.pivot = new Vector2(0.5f, 0.5f);
                     v.onClick = Clicked;

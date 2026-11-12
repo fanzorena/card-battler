@@ -330,7 +330,9 @@
         "analise",
         "analise",
         "ponto_fraco"
-      ]
+      ],
+      "resist": "Elétrico",
+      "weakTo": "Cinético"
     },
     {
       "id": "elmo_bastion",
@@ -344,7 +346,8 @@
         "cabeca_dura",
         "cabeca_dura",
         "mirar"
-      ]
+      ],
+      "weakTo": "Elétrico"
     },
     {
       "id": "coroa_nyx",
@@ -358,7 +361,9 @@
         "varredura",
         "varredura",
         "intrusao"
-      ]
+      ],
+      "resist": "Químico",
+      "weakTo": "Térmico"
     },
     {
       "id": "carcaca_remendada",
@@ -373,7 +378,8 @@
         "bloquear",
         "bloquear",
         "remendo"
-      ]
+      ],
+      "weakTo": "Químico"
     },
     {
       "id": "placa_m2",
@@ -388,7 +394,9 @@
         "bloquear",
         "bloquear",
         "muralha"
-      ]
+      ],
+      "resist": "Cinético",
+      "weakTo": "Elétrico"
     },
     {
       "id": "chassi_aero",
@@ -403,7 +411,8 @@
         "bloquear",
         "defletir",
         "defletir"
-      ]
+      ],
+      "resist": "Elétrico"
     },
     {
       "id": "torax_refrigerado",
@@ -418,7 +427,9 @@
         "bloquear",
         "bloquear",
         "dissipar"
-      ]
+      ],
+      "resist": "Térmico",
+      "weakTo": "Químico"
     },
     {
       "id": "punho_hidraulico",
@@ -478,7 +489,8 @@
         "aparar",
         "investida",
         "investida"
-      ]
+      ],
+      "resist": "Cinético"
     },
     {
       "id": "lamina_plasma",
@@ -508,7 +520,8 @@
         "choque",
         "choque",
         "arco"
-      ]
+      ],
+      "resist": "Elétrico"
     },
     {
       "id": "injetor",
@@ -523,7 +536,8 @@
         "acido",
         "acido",
         "toxico"
-      ]
+      ],
+      "resist": "Químico"
     },
     {
       "id": "lanca_chamas",
@@ -538,7 +552,8 @@
         "labareda",
         "labareda",
         "inferno"
-      ]
+      ],
+      "resist": "Térmico"
     },
     {
       "id": "rodas_entrega",
@@ -568,7 +583,9 @@
         "firmar",
         "esmagar",
         "esmagar"
-      ]
+      ],
+      "resist": "Cinético",
+      "weakTo": "Elétrico"
     },
     {
       "id": "pernas_digitigradas",
@@ -817,7 +834,7 @@
       "legs": "pernas_digitigradas",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 10,
+      "bonusChassis": 12,
       "dossier": {
         "rumors": [
           "\"O Kiro despreza sucata. Diz que robô de ferro-velho é imprevisível... e perde pra eles mais do que admite.\" — Celeste, dona do Fim da Linha",
@@ -825,7 +842,7 @@
         ],
         "worksWell": [
           "Peças Ferrovelho: muitos golpes baratos e reparo para aguentar a mira dele.",
-          "Corrosão e Calor: o desgaste contínuo pega o Kiro, que não tem como se reparar."
+          "Golpes Cinéticos: o sensor Kagemori dele é fraco a pancada, e o Impacto pega forte quando o chassi abre."
         ],
         "avoid": [
           "Copiar o estilo Kagemori dele: ele conhece cada truque.",
@@ -833,7 +850,7 @@
         ],
         "goodBuilds": [
           "inicial",
-          "nyx"
+          "duelista"
         ],
         "badBuilds": [
           "kagemori",
@@ -858,7 +875,7 @@
       "legs": "hover",
       "core": "reator_k",
       "maxCardsPerTurn": 4,
-      "bonusChassis": 6,
+      "bonusChassis": 8,
       "bonusEnergy": 1,
       "dossier": {
         "rumors": [
@@ -918,7 +935,7 @@
           "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
         }
       ],
-      "bonusChassis": 4,
+      "bonusChassis": 2,
       "dossier": {
         "rumors": [
           "\"Quando o Mandíbula sangra, ele morde. E a mordida escolhe onde dói e atravessa qualquer blindagem.\" — ex-campeão dos fossos",
@@ -930,14 +947,15 @@
           "Guardar uma Esquiva para a Mordida do Campeão (na metade da vida dele)."
         ],
         "avoid": [
-          "Builds frágeis só de precisão (Kagemori pura, Duelista): ele quebra as peças e expõe o chassi rápido."
+          "Builds lentas ou de chassi fino (Nyx pura, Duelista Ferrovelho): ele quebra as peças e expõe o chassi rápido.",
+          "Bater só com Cinético: as placas Bastion dele resistem a pancada."
         ],
         "goodBuilds": [
           "duelista_misto",
           "inicial"
         ],
         "badBuilds": [
-          "kagemori",
+          "nyx",
           "duelista"
         ]
       }
@@ -1060,7 +1078,7 @@
     {
       "id": "elementos",
       "title": "Elementos e status",
-      "text": "Elementos das partes e os status que o deck consegue aplicar: Calor (tira energia em 10+), Sobrecarga (−1 energia no próximo turno) e Corrosão (1 de dano por turno na parte)."
+      "text": "Cada ataque leva o elemento da peça de onde a carta vem e aplica um efeito quando acerta: Cinético dá Impacto (+2 contra parte avariada ou chassi exposto), Térmico dá +1 Calor, Elétrico dá Sobrecarga e Químico dá +1 Corrosão na parte. Algumas peças resistem a um elemento (−1 de dano por golpe) ou são fracas a outro (+1)."
     },
     {
       "id": "deck",
@@ -1105,7 +1123,7 @@
     {
       "id": "impacto",
       "title": "Impacto",
-      "text": "+4 de dano contra parte avariada ou chassi exposto."
+      "text": "Dano extra contra parte avariada ou chassi exposto: +4 por golpe no Encadear de Impacto, +2 por ataque Cinético."
     },
     {
       "id": "esquivar",

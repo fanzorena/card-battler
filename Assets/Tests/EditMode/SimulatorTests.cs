@@ -29,7 +29,7 @@ public class SimulatorTests
     [Test]
     public void Aggregate_CountsPlaysDamageEnergyAndDraws()
     {
-        var battle = new Battle(content, 3);
+        var battle = new Battle(content, 3, null, "enemy_sucata");  // no element resistances on the target
         battle.player.hand.Clear();
         battle.enemy.armor = 0;
         var soco = new Card(content.Card("soco"), Slot.BracoEsq);
@@ -45,7 +45,7 @@ public class SimulatorTests
         Assert.AreEqual(1, r.energyUsed);
         Assert.AreEqual(3, r.energyGen);
         Assert.AreEqual(5, r.cards.Values.Sum(c => c.drawn)); // opening hand
-        Assert.AreEqual(4, r.enemyCards.Values.Sum(c => c.drawn)); // enemy's first hand
+        Assert.AreEqual(battle.enemy.frame.hand, r.enemyCards.Values.Sum(c => c.drawn)); // enemy's first hand
     }
 
     [Test]

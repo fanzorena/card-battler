@@ -22,6 +22,7 @@ namespace CardBattler.Combat
     public class PartDef
     {
         public string id, name, slot, maker, element;
+        public string resist, weakTo; // element names: -1 / +1 damage per hit taken
         public int integrity, weight, energy, heatPerTurn;
         public bool ignoresTerrain; // shortcut: no terrain rules yet, flag is data only
         public string[] cards = new string[0];
