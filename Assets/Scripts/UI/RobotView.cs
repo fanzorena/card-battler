@@ -110,7 +110,10 @@ namespace CardBattler.UI
             pv.glow = Theme.Box(pv.rt, "TargetGlow", Theme.Alpha(Theme.Warn, 0), Theme.Rounded, raycast: true);
             pv.glow.rectTransform.Fill(-10);
             pv.glow.gameObject.AddComponent<Clicker>().onClick = () => onClick?.Invoke(slot);
-            draw(pv, def, w, h);
+            // Art from Resources/RobotParts/<id>.svg (viewBox = part box); procedural shapes for parts without art.
+            var art = Resources.Load<Sprite>("RobotParts/" + def.id);
+            if (art) Body(pv, w / 2, h / 2, w, h, Color.white, art);
+            else draw(pv, def, w, h);
             if (pv.body.Count > 0) Detail(pv.rt, pv.body.OrderByDescending(x => x.g.rectTransform.sizeDelta.x * x.g.rectTransform.sizeDelta.y).First().g);
             pv.crackA = Shape(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);
             pv.crackB = Shape(pv.rt, w * 0.6f, h * 0.6f, w * 0.45f, 3, Theme.Alpha(Color.black, 0), rot: -35);
