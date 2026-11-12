@@ -21,7 +21,8 @@ namespace CardBattler.UI
         public GarageScreen(GameUI app, RectTransform root) { this.app = app; this.root = root; }
 
         Content C => app.content;
-        GarageSave G => app.garage;
+        GarageSave G => app.Garage;
+        Career Car => app.careerMode ? app.career : null; // null in Treino livre (everything unlocked)
 
         static readonly (string icon, string slot, Func<RobotDef, string> get, Action<RobotDef, string> set, float x, float y)[] Slots =
         {
@@ -34,13 +35,13 @@ namespace CardBattler.UI
         };
 
         // Why the build can't go on to the opponent selection (null = it can).
-        public static string ContinueBlocker(Content c, RobotDef b)
+        public static string ContinueBlocker(Content c, RobotDef b, Career career = null)
         {
-            var errors = c.Validate(b);
+            var errors = career?.Validate(c, b) ?? c.Validate(b);
             return errors.Count == 0 ? null : string.Join("\n", errors);
         }
 
-        void Changed() { G.Save(GameUI.SavePath); Rebuild(); }
+        void Changed() { app.SaveGarage(); Rebuild(); }
 
         void Rebuild()
         {
@@ -62,6 +63,8 @@ namespace CardBattler.UI
 
             Theme.Label(root, "GARAGEM", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 400, 60);
             Theme.Label(root, "Monte o robô", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
+            if (app.careerMode) Theme.Label(root, $"{app.career.credits} créditos · {app.career.scrap} sucata · só peças que você tem", Theme.Small, Theme.Warn).rectTransform.Place(980, 80, 700, 30);
+            else Theme.Label(root, "TREINO LIVRE · todas as peças liberadas", Theme.Small, Theme.Exposed).rectTransform.Place(980, 80, 700, 30);
             ((RectTransform)Theme.Button(root, "←  MENU", () => app.ShowTitle(), Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
             for (int i = 0; i < GarageSave.SlotCount; i++)
             {
@@ -78,18 +81,18 @@ namespace CardBattler.UI
             robot.transform.localScale = new Vector3(1.15f, 1.15f, 1);
             robot.Build(C, b);
 
-            var frames = C.frames.Select(f => f.id).ToArray();
+            var frames = C.frames.Where(f => Car == null || Car.OwnsFrame(f)).Select(f => f.id).ToArray();
             SlotWidget(60, 120, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}", frame.passiveText,
                 () => { b.frame = Cycle(frames, b.frame, -1); Changed(); }, () => { b.frame = Cycle(frames, b.frame, 1); Changed(); },
                 dir => With(b, x => x.frame = Cycle(frames, b.frame, dir)));
 
             foreach (var (icon, slot, get, set, x, y) in Slots)
             {
-                var ids = C.PartsFor(slot).Select(p => p.id).ToArray();
+                var ids = C.PartsFor(slot).Where(p => Car == null || Car.Owns(p)).Select(p => p.id).ToArray();
                 var part = C.Part(get(b));
                 string stats = slot == "Nucleo"
                     ? $"{part.energy} energia/turno{(part.heatPerTurn > 0 ? $" · +{part.heatPerTurn} Calor/turno" : "")} · Peso {part.weight}"
-                    : $"Integridade {part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}";
+                    : $"Integridade {(Car != null && Car.HpOf(C, part.id) < part.integrity ? $"<color=#{Theme.HexOf(Theme.Bad)}>{Car.HpOf(C, part.id)}</color>/" : "")}{part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}";
                 string cards = string.Join(", ", part.cards.GroupBy(id => id).Select(g => $"{g.Count()}x {C.Card(g.Key).name}"));
                 SlotWidget(x, y, icon, part.name, part.maker, stats, cards,
                     () => { set(b, Cycle(ids, get(b), -1)); Changed(); }, () => { set(b, Cycle(ids, get(b), 1)); Changed(); },
@@ -104,7 +107,7 @@ namespace CardBattler.UI
             fill.fillAmount = Mathf.Clamp01((float)weight / frame.carry);
             wl.text = $"PESO {weight} / {frame.carry}" + (weight > frame.carry ? "  — acima da carga do frame" : "");
             Theme.HelpIcon(root, "peso", 30).Place(1030, 825, 30, 30);
-            var blocker = ContinueBlocker(C, b);
+            var blocker = ContinueBlocker(C, b, Car);
             if (blocker != null) Theme.Label(root, blocker, Theme.Body, Theme.Bad).rectTransform.Place(60, 876, 1000, 90);
 
             // Right column: stats sheet or deck
@@ -118,7 +121,7 @@ namespace CardBattler.UI
             else { sheet = content; DrawSheet(BuildStats.Of(C, b), null); }
 
             // Continue to the opponent selection
-            var go = Theme.Button(root, "CONTINUAR  →", app.ShowOpponents, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 32);
+            var go = Theme.Button(root, "CONTINUAR  →", app.careerMode ? app.ShowJob : app.ShowOpponents, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 32);
             go.name = "Continuar";
             ((RectTransform)go.transform).Place(1520, 970, 360, 84);
             go.interactable = blocker == null;

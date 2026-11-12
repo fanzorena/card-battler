@@ -1122,5 +1122,40 @@
       "title": "Sucata",
       "text": "Descarte uma carta para ganhar 1 energia (o Vira-lata compra 1 na primeira sucata do turno)."
     }
+  ],
+  "jobs": [
+    {
+      "id": "celeste_fossos",
+      "name": "Os Fossos da Celeste",
+      "fixer": "Celeste",
+      "intro": "Celeste te chama no Fim da Linha: \"Quer subir? Então prova nos Fossos. Quatro lutas, uma por noite, e no fim o campeão. Robô quebrado não se conserta sozinho: guarda sucata.\"",
+      "outro": "Celeste conta as fichas: \"Derrubou o Mandíbula. O Circuito Regional vai querer te ver, Navarro.\"",
+      "stages": [
+        {
+          "enemy": "enemy_sucata",
+          "credits": 20,
+          "scrap": 2,
+          "text": "Aquecimento no Fosso do porto. Ninguém aposta nesse aí."
+        },
+        {
+          "enemy": "enemy",
+          "credits": 30,
+          "scrap": 3,
+          "text": "Um segurança de carga da Bastion faz bico nas lutas. Couraça grossa, reator quente."
+        },
+        {
+          "enemy": "enemy_kiro",
+          "credits": 40,
+          "scrap": 3,
+          "text": "O Kiro Sato apareceu pra te medir. Patrocinado pela Kagemori, ele não perde de bom grado."
+        },
+        {
+          "enemy": "boss_mandibula",
+          "credits": 80,
+          "scrap": 0,
+          "text": "O campeão dos Fossos. Vence ele e o Circuito Regional abre as portas."
+        }
+      ]
+    }
   ]
 }

@@ -9,22 +9,28 @@ using UnityEngine.UI;
 namespace CardBattler.UI
 {
     // App root: canvas, event system, background, overlay and screen switching. Spawns itself in any scene.
+    // Two modes: career (profile save: owned parts, money, jobs) and "Treino livre" (every part unlocked).
     public class GameUI : MonoBehaviour
     {
         public Content content;
-        public GarageSave garage;
+        public GarageSave garage;      // Treino livre builds
+        public Career career;          // loaded career (null until Jogar)
+        public bool careerMode;        // which garage/flow is active
         public RectTransform screens, overlay;
         public Battle battle;
-        public string screen;          // "title", "about", "history", "garage", "opponents" or "battle"
+        public string screen;          // "title", "about", "history", "garage", "opponents", "job" or "battle"
         public string lastEnemy;       // for the rematch button
+        public Action<Battle> afterBattle; // set for career fights: their result goes back to the career
         public bool logBattles = true; // tests turn the log files off
+        public string careerPath;      // tests use a temp file
         BattleLogger logger;
-        GarageScreen garageScreen;
-        BattleScreen battleScreen;
 
         public static string SavePath => Path.Combine(Application.persistentDataPath, "garage.json");
+        public static string CareerPath => Path.Combine(Application.persistentDataPath, "career.json");
         // Editor: <projeto>/Logs/Battles. Build: persistentDataPath/Battles.
         public static string LogDir => Path.GetFullPath(Path.Combine(Application.isEditor ? Path.Combine(Application.dataPath, "..", "Logs") : Application.persistentDataPath, "Battles"));
+
+        public GarageSave Garage => careerMode ? career.garage : garage;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -39,6 +45,7 @@ namespace CardBattler.UI
             content = Content.Load();
             Theme.Texts = content;
             garage = GarageSave.Load(SavePath, content);
+            careerPath ??= CareerPath;
 
             var canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -68,22 +75,20 @@ namespace CardBattler.UI
             for (int y = 0; y <= 1080; y += 80) Theme.Solid(root, "GridH", Theme.Alpha(Theme.Line, 0.18f)).rectTransform.Place(0, y, 1920, 1);
         }
 
-        void Clear()
+        // Leaves any battle and clears the screen.
+        RectTransform Screen(string name)
         {
-            Tooltip.Hide();
-            Theme.ClearChildren(screens);
-            garageScreen = null; battleScreen = null;
-        }
-
-        public void ShowTitle(string page = "title")
-        {
-            logger?.Dispose();
+            logger?.Dispose(); // writes "Interrompida" if a battle was abandoned
             logger = null;
             battle = null;
-            Clear();
-            screen = page;
-            new TitleScreen(this, Theme.Node(screens, "Title").Fill(), page).Build();
+            afterBattle = null;
+            Tooltip.Hide();
+            Theme.ClearChildren(screens);
+            screen = name;
+            return Theme.Node(screens, name).Fill();
         }
+
+        public void ShowTitle(string page = "title") => new TitleScreen(this, Screen(page), page).Build();
 
         public static void Quit()
         {
@@ -100,7 +105,8 @@ namespace CardBattler.UI
             switch (screen)
             {
                 case "title": Quit(); break;
-                case "about": case "history": case "garage": ShowTitle(); break;
+                case "about": case "history": case "job": ShowTitle(); break;
+                case "garage": if (careerMode) ShowJob(); else ShowTitle(); break;
                 case "opponents": ShowGarage(); break;
             }
         }
@@ -111,38 +117,70 @@ namespace CardBattler.UI
             if (kb != null && kb.escapeKey.wasPressedThisFrame) Back();
         }
 
+        // ---- Modes ----
+        public bool HasCareer => File.Exists(careerPath);
+        public Career LoadedCareer => career ??= Career.Load(careerPath, content);
+
+        public void PlayCareer()
+        {
+            career ??= Career.Load(careerPath, content) ?? Career.New(content);
+            careerMode = true;
+            SaveCareer();
+            ShowJob();
+        }
+
+        public void NewCareer()
+        {
+            career = Career.New(content);
+            careerMode = true;
+            SaveCareer();
+            ShowJob();
+        }
+
+        public void FreePlay()
+        {
+            careerMode = false;
+            ShowGarage();
+        }
+
+        public void SaveCareer() { if (career != null) career.Save(careerPath); }
+        public void SaveGarage() { if (careerMode) SaveCareer(); else garage.Save(SavePath); }
+
+        // ---- Screens ----
+        public void ShowJob() => new JobScreen(this, Screen("job")).Build();
+
         public void ShowOpponents()
         {
-            if (GarageScreen.ContinueBlocker(content, garage.Current) != null) { ShowGarage(); return; }
-            logger?.Dispose();
-            logger = null;
-            battle = null;
-            Clear();
-            screen = "opponents";
-            new OpponentScreen(this, Theme.Node(screens, "Opponents").Fill()).Build();
+            if (GarageScreen.ContinueBlocker(content, Garage.Current, careerMode ? career : null) != null) { ShowGarage(); return; }
+            new OpponentScreen(this, Screen("opponents")).Build();
         }
 
-        public void ShowGarage()
+        public void ShowGarage() => new GarageScreen(this, Screen("garage")).Build();
+
+        // Treino livre fight.
+        public void StartBattle(RobotDef build, string enemyId) => Run(new Battle(content, Environment.TickCount, build.Clone(), enemyId), enemyId, null);
+
+        // Career job fight: damage carries over, the result goes back to the career.
+        public void StartJobFight()
         {
-            logger?.Dispose(); // writes "Interrompida" if a battle was abandoned
-            logger = null;
-            battle = null;
-            Clear();
-            screen = "garage";
-            garageScreen = new GarageScreen(this, Theme.Node(screens, "Garage").Fill());
-            garageScreen.Build();
+            var enemy = career.Stage(content).enemy;
+            var b = career.StartBattle(content, Environment.TickCount, enemy);
+            Run(b, enemy, done =>
+            {
+                career.FinishJobFight(content, done, new System.Random(Environment.TickCount));
+                SaveCareer();
+                ShowJob();
+            });
         }
 
-        public void StartBattle(RobotDef build, string enemyId)
+        void Run(Battle b, string enemyId, Action<Battle> after)
         {
-            logger?.Dispose();
-            battle = new Battle(content, Environment.TickCount, build.Clone(), enemyId);
+            var root = Screen("battle");
+            battle = b;
             logger = logBattles ? new BattleLogger(battle, LogDir) : null;
             lastEnemy = enemyId;
-            Clear();
-            screen = "battle";
-            battleScreen = new BattleScreen(this, Theme.Node(screens, "Battle").Fill(), battle);
-            battleScreen.Build();
+            afterBattle = after;
+            new BattleScreen(this, root, battle).Build();
         }
 
         void OnDestroy() => logger?.Dispose();

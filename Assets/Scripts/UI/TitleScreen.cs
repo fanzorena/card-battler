@@ -27,7 +27,7 @@ namespace CardBattler.UI
             var robot = RobotView.Create(root, false, false);
             robot.Rect.Center(1530, 560, RobotView.W, RobotView.H);
             robot.transform.localScale = new Vector3(1.5f, 1.5f, 1);
-            robot.Build(app.content, app.garage.Current);
+            robot.Build(app.content, (app.HasCareer ? app.LoadedCareer?.Build : null) ?? app.garage.Current);
 
             if (page == "about") About();
             else if (page == "history") History();
@@ -37,21 +37,29 @@ namespace CardBattler.UI
         void Menu()
         {
             int count = HistoryCount(GameUI.LogDir);
-            var items = new (string label, System.Action action)[]
+            bool saved = app.HasCareer;
+            bool armed = false; // "Novo jogo" over an existing save needs a second click
+            Text newLabel = null;
+            var items = new System.Collections.Generic.List<(string label, System.Action action)> { (saved ? "CONTINUAR" : "JOGAR", app.PlayCareer) };
+            if (saved) items.Add(("NOVO JOGO", () =>
             {
-                ("JOGAR", app.ShowGarage),
-                ("SOBRE", () => app.ShowTitle("about")),
-                ($"HISTÓRICO ({count})", () => app.ShowTitle("history")),
-                ("SAIR", GameUI.Quit),
-            };
-            for (int i = 0; i < items.Length; i++)
+                if (armed) { app.NewCareer(); return; }
+                armed = true;
+                if (newLabel) newLabel.text = "CLIQUE DE NOVO: APAGA O SAVE";
+            }));
+            items.Add(("TREINO LIVRE", app.FreePlay));
+            items.Add(("SOBRE", () => app.ShowTitle("about")));
+            items.Add(($"HISTÓRICO ({count})", () => app.ShowTitle("history")));
+            items.Add(("SAIR", GameUI.Quit));
+            for (int i = 0; i < items.Count; i++)
             {
                 bool main = i == 0;
-                var b = Theme.Button(root, items[i].label, items[i].action, main ? Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f) : Theme.Panel, main ? 38 : 30);
+                var b = Theme.Button(root, items[i].label, items[i].action, main ? Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f) : Theme.Panel, main ? 36 : 28);
                 b.name = "Menu:" + items[i].label.Split(' ')[0];
-                ((RectTransform)b.transform).Place(110, 330 + i * 112, 520, 92);
+                if (items[i].label == "NOVO JOGO") newLabel = b.GetComponentInChildren<Text>();
+                ((RectTransform)b.transform).Place(110, 300 + i * 96, 520, 80);
             }
-            Theme.Label(root, "ESC: sair", Theme.Small, Theme.TextDim).rectTransform.Place(116, 790, 400, 30);
+            Theme.Label(root, "Treino livre: todas as peças liberadas, sem progresso.   ESC: sair", Theme.Small, Theme.TextDim).rectTransform.Place(116, 310 + items.Count * 96, 900, 30);
         }
 
         RectTransform Page(string title)

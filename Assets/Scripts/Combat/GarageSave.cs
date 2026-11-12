@@ -19,8 +19,14 @@ namespace CardBattler.Combat
         public static GarageSave Load(string path, Content content)
         {
             GarageSave save = null;
-            try { if (File.Exists(path)) save = JsonUtility.FromJson<GarageSave>(File.ReadAllText(path)); }
+            try { if (path != null && File.Exists(path)) save = JsonUtility.FromJson<GarageSave>(File.ReadAllText(path)); }
             catch (Exception e) { Debug.LogWarning("Garagem: save ilegível, recriando. " + e.Message); }
+            return Fix(save, content);
+        }
+
+        // Always 3 named slots; unknown builds go back to the starter.
+        public static GarageSave Fix(GarageSave save, Content content)
+        {
             save ??= new GarageSave();
             var slots = new RobotDef[SlotCount];
             for (int i = 0; i < SlotCount; i++)
