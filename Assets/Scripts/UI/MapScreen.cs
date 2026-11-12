@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
@@ -12,10 +12,10 @@ namespace CardBattler.UI
     public class MapScreen
     {
         readonly GameUI app;
-        readonly RectTransform root;
-        RectTransform talkLayer;
+        readonly VisualElement root;
+        VisualElement talkLayer;
 
-        public MapScreen(GameUI app, RectTransform root) { this.app = app; this.root = root; }
+        public MapScreen(GameUI app, VisualElement root) { this.app = app; this.root = root; }
 
         Content C => app.content;
         Career K => app.career;
@@ -45,13 +45,14 @@ namespace CardBattler.UI
         public void Build()
         {
             if (InNeon) DrawNeon(); else DrawPort();
-            Theme.Label(root, InNeon ? "DISTRITO NEON" : "O PORTO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 700, 60);
-            Theme.Label(root, "Escolha aonde ir", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
-            Theme.Label(root, $"{K.credits} créditos   ·   {K.scrap} sucata", 26, Theme.Warn, TextAnchor.MiddleRight, FontStyle.Bold).rectTransform.Place(820, 34, 700, 50);
-            var clues = Theme.Button(root, $"PISTAS ({K.clues.Length})", Journal, K.clues.Length > 0 ? Theme.Mix(Theme.PanelHi, Theme.Warn, 0.35f) : Theme.Panel, 22);
+            Theme.Title(root, InNeon ? "DISTRITO NEON" : "O PORTO", 44).At(60, 26);
+            Theme.Label(root, "Escolha aonde ir", Theme.Small, Theme.TextDim).Place(62, 80, 500, 30);
+            Wallet(root, K, 900);
+            var clues = Theme.Button(root, $"PISTAS ({K.clues.Length})", Journal, null, 22);
+            clues.EnableInClassList("btn-highlight", K.clues.Length > 0);
             clues.name = "Pistas";
-            ((RectTransform)clues.transform).Place(1540, 34, 170, 50);
-            ((RectTransform)Theme.Button(root, "←  MENU", () => app.ShowTitle(), Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
+            clues.Place(1540, 30, 170, 54);
+            Theme.Button(root, "←  MENU", () => app.ShowTitle(), null, 22).Place(1720, 30, 160, 54);
 
             foreach (var p in Places) Poi(p);
 
@@ -67,11 +68,11 @@ namespace CardBattler.UI
                 : K.Champion(C) ? "Campeão dos Fossos. A Celeste tem mais trabalho no bar."
                 : "Suba no ranking do Fosso ou pegue outro trabalho com a Celeste.";
             if (!string.IsNullOrEmpty(K.lastResult)) hint = K.lastResult + "\n" + hint;
-            var bar = Theme.Box(root, "Hint", Theme.Alpha(Theme.Panel, 0.92f));
-            bar.rectTransform.Place(60, 960, 1300, 90);
-            Theme.Label(bar.transform, hint, 22, Theme.Ink, TextAnchor.MiddleLeft).rectTransform.Place(24, 0, 1260, 90);
+            var bar = Theme.Plate(root, "Hint").Place(60, 950, 1300, 104);
+            Theme.Icon(bar, "information", 40, Theme.Warn).At(22, 32);
+            Theme.Label(bar, hint, 22, Theme.Ink, TextAnchor.MiddleLeft).Place(80, 6, 1196, 92).Fit(Theme.Small);
 
-            talkLayer = Theme.Node(root, "Talk").Fill();
+            talkLayer = Theme.El(root, "Talk").Fill();
         }
 
         // Night skyline: building silhouettes with lit windows and neon signs (seeded, same every time).
@@ -83,15 +84,15 @@ namespace CardBattler.UI
             {
                 float w = rng.Next(70, 150), h = rng.Next(minH, maxH);
                 var bld = Theme.Solid(root, "Building", Theme.Mix(Theme.Hex("0E1018"), Theme.Hex("1C2033"), (float)rng.NextDouble()));
-                bld.rectTransform.Place(x, 760 - h, w - 6, h);
+                bld.Place(x, 760 - h, w - 6, h);
                 for (float wy = 760 - h + 16; wy < 740; wy += 26)
                     for (float wx = x + 10; wx < x + w - 20; wx += 22)
-                        if (rng.NextDouble() < 0.22) Theme.Solid(root, "Window", Theme.Alpha(Theme.Hex(rng.NextDouble() < 0.7 ? "FFC24A" : "4AD6FF"), 0.35f)).rectTransform.Place(wx, wy, 10, 12);
+                        if (rng.NextDouble() < 0.22) Theme.Solid(root, "Window", Theme.Alpha(Theme.Hex(rng.NextDouble() < 0.7 ? "FFC24A" : "4AD6FF"), 0.35f)).Place(wx, wy, 10, 12);
                 if (rng.NextDouble() < neonChance)
                 {
                     var col = Theme.Hex(neon[rng.Next(neon.Length)]);
-                    Theme.Solid(root, "Neon", Theme.Alpha(col, 0.7f)).rectTransform.Place(x + 8, 760 - h + 30, 6, Mathf.Min(120, h - 60));
-                    Theme.Box(root, "NeonGlow", Theme.Alpha(col, 0.05f), Theme.Circle).rectTransform.Center(x + 11, 760 - h + 90, 50, 150);
+                    Theme.Solid(root, "Neon", Theme.Alpha(col, 0.7f)).Place(x + 8, 760 - h + 30, 6, Mathf.Min(120, h - 60));
+                    Theme.Box(root, "NeonGlow", Theme.Alpha(col, 0.05f), Shape.Circle).Center(x + 11, 760 - h + 90, 50, 150);
                 }
                 x += w;
             }
@@ -101,57 +102,70 @@ namespace CardBattler.UI
         void DrawNeon()
         {
             Skyline(11, 0.6f, 260, 640);
-            for (int i = 0; i < 4; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("5A1C6A"), 0.14f)).rectTransform.Place(0, 480 + i * 70, 1920, 70);
-            Theme.Solid(root, "Roof", Theme.Hex("161924")).rectTransform.Place(0, 760, 1920, 320);
-            Theme.Solid(root, "RoofEdge", Theme.Alpha(Theme.Hex("4AD6FF"), 0.4f)).rectTransform.Place(0, 760, 1920, 4);
-            for (int i = 0; i < 8; i++) Theme.Solid(root, "Puddle", Theme.Alpha(Theme.Hex(i % 2 == 0 ? "FF5AD8" : "4AD6FF"), 0.1f)).rectTransform.Place(120 + i * 230, 820 + (i % 3) * 40, 120, 6);
+            for (int i = 0; i < 4; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("5A1C6A"), 0.14f)).Place(0, 480 + i * 70, 1920, 70);
+            Theme.Solid(root, "Roof", Theme.Hex("161924")).Place(0, 760, 1920, 320);
+            Theme.Solid(root, "RoofEdge", Theme.Alpha(Theme.Hex("4AD6FF"), 0.4f)).Place(0, 760, 1920, 4);
+            for (int i = 0; i < 8; i++) Theme.Solid(root, "Puddle", Theme.Alpha(Theme.Hex(i % 2 == 0 ? "FF5AD8" : "4AD6FF"), 0.1f)).Place(120 + i * 230, 820 + (i % 3) * 40, 120, 6);
             var rng = new System.Random(3);
+            var rain = new List<VisualElement>();
             for (int i = 0; i < 90; i++)
             {
-                var drop = Theme.Solid(root, "Rain", Theme.Alpha(Theme.Hex("9EB8FF"), 0.18f)).rectTransform;
+                var drop = Theme.Solid(root, "Rain", Theme.Alpha(Theme.Hex("9EB8FF"), 0.18f));
                 drop.Center(rng.Next(0, 1920), rng.Next(100, 1000), 2, rng.Next(18, 40));
-                drop.localRotation = Quaternion.Euler(0, 0, -12);
+                drop.Rotate(-12);
+                rain.Add(drop);
             }
+            // falling rain (static with reduced motion)
+            if (Application.isPlaying && !Fx.Reduced)
+                root.schedule.Execute(() =>
+                {
+                    foreach (var d in rain)
+                    {
+                        float y = d.style.top.value.value + 18, x = d.style.left.value.value - 4;
+                        if (y > 1000) { y = 90; x += 210; }
+                        d.style.top = y; d.style.left = x < -40 ? x + 1960 : x;
+                    }
+                }).Every(33);
             Road(240, 680, 620, 420); Road(620, 420, 1200, 560);
         }
 
         // Placeholder port art: water, piers, cranes, containers, neon.
         void DrawPort()
         {
-            Theme.Box(root, "Moon", Theme.Alpha(Theme.Hex("E8E1D0"), 0.85f), Theme.Circle).rectTransform.Center(1460, 150, 70, 70);
-            Theme.Box(root, "MoonGlow", Theme.Alpha(Theme.Hex("E8E1D0"), 0.035f), Theme.Circle).rectTransform.Center(1460, 150, 170, 170);
+            Theme.Box(root, "Moon", Theme.Alpha(Theme.Hex("E8E1D0"), 0.85f), Shape.Circle).Center(1460, 150, 70, 70);
+            Theme.Box(root, "MoonGlow", Theme.Alpha(Theme.Hex("E8E1D0"), 0.035f), Shape.Circle).Center(1460, 150, 170, 170);
             Skyline(7, 0.25f, 140, 420);
             var neon = new[] { "FF5AD8", "4AD6FF", "FFC24A", "7CFF6B" };
-            for (int i = 0; i < 3; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("2A1C4A"), 0.18f)).rectTransform.Place(0, 560 + i * 70, 1920, 70);
+            for (int i = 0; i < 3; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("2A1C4A"), 0.18f)).Place(0, 560 + i * 70, 1920, 70);
 
-            Theme.Solid(root, "Water", Theme.Hex("0A1A2A")).rectTransform.Place(0, 820, 1920, 260);
-            for (int i = 0; i < 18; i++) Theme.Solid(root, "Reflection", Theme.Alpha(Theme.Hex(neon[i % neon.Length]), 0.12f)).rectTransform.Place(90 + i * 104 + (i % 3) * 17, 836 + (i % 4) * 26, 34 - (i % 3) * 8, 3);
-            for (int i = 0; i < 14; i++) Theme.Solid(root, "Wave", Theme.Alpha(Theme.Hex("1F4A6A"), 0.5f)).rectTransform.Place(40 + i * 140 + (i % 2) * 40, 860 + (i % 3) * 30, 70, 3);
-            Theme.Solid(root, "Quay", Theme.Hex("1A1D28")).rectTransform.Place(0, 760, 1920, 60);
-            Theme.Solid(root, "QuayEdge", Theme.Alpha(Theme.Hex("FFC24A"), 0.35f)).rectTransform.Place(0, 816, 1920, 4);
-            foreach (var x in new[] { 260f, 1120f }) Theme.Solid(root, "Pier", Theme.Hex("1A1D28")).rectTransform.Place(x, 820, 120, 200);
+            Theme.Solid(root, "Water", Theme.Hex("0A1A2A")).Place(0, 820, 1920, 260);
+            for (int i = 0; i < 18; i++) Theme.Solid(root, "Reflection", Theme.Alpha(Theme.Hex(neon[i % neon.Length]), 0.12f)).Place(90 + i * 104 + (i % 3) * 17, 836 + (i % 4) * 26, 34 - (i % 3) * 8, 3);
+            for (int i = 0; i < 14; i++) Theme.Solid(root, "Wave", Theme.Alpha(Theme.Hex("1F4A6A"), 0.5f)).Place(40 + i * 140 + (i % 2) * 40, 860 + (i % 3) * 30, 70, 3);
+            Theme.Solid(root, "Quay", Theme.Hex("1A1D28")).Place(0, 760, 1920, 60);
+            Theme.Solid(root, "QuayEdge", Theme.Alpha(Theme.Hex("FFC24A"), 0.35f)).Place(0, 816, 1920, 4);
+            foreach (var x in new[] { 260f, 1120f }) Theme.Solid(root, "Pier", Theme.Hex("1A1D28")).Place(x, 820, 120, 200);
             // cranes
             foreach (var x in new[] { 700f, 1700f })
             {
-                Theme.Solid(root, "Crane", Theme.Hex("2A2F45")).rectTransform.Place(x, 180, 18, 580);
-                Theme.Solid(root, "CraneArm", Theme.Hex("2A2F45")).rectTransform.Place(x - 160, 180, 320, 14);
-                Theme.Solid(root, "Cable", Theme.Alpha(Theme.Ink, 0.15f)).rectTransform.Place(x + 120, 194, 2, 220);
-                Theme.Box(root, "Lamp", Theme.Hex("FF5A4A"), Theme.Circle).rectTransform.Center(x + 9, 172, 12, 12);
+                Theme.Solid(root, "Crane", Theme.Hex("2A2F45")).Place(x, 180, 18, 580);
+                Theme.Solid(root, "CraneArm", Theme.Hex("2A2F45")).Place(x - 160, 180, 320, 14);
+                Theme.Solid(root, "Cable", Theme.Alpha(Theme.Ink, 0.15f)).Place(x + 120, 194, 2, 220);
+                Theme.Box(root, "Lamp", Theme.Hex("FF5A4A"), Shape.Circle).Center(x + 9, 172, 12, 12);
             }
             // containers
             var cols = new[] { "6B2E2E", "2E4A6B", "6B5A2E", "2E6B4F", "4A2E6B" };
             for (int i = 0; i < 9; i++)
-                Theme.Box(root, "Container", Theme.Alpha(Theme.Hex(cols[i % cols.Length]), 0.55f)).rectTransform.Place(620 + (i % 5) * 92 - (i / 5) * 40, 706 - (i / 5) * 52, 86, 48);
+                Theme.Box(root, "Container", Theme.Alpha(Theme.Hex(cols[i % cols.Length]), 0.55f)).Place(620 + (i % 5) * 92 - (i / 5) * 40, 706 - (i / 5) * 52, 86, 48);
             // dirt roads between places
             Road(430, 640, 900, 380); Road(900, 380, 1360, 620); Road(430, 640, 1360, 620); Road(1360, 620, 1560, 300); Road(200, 300, 430, 640);
         }
 
         void Road(float x0, float y0, float x1, float y1)
         {
-            var r = Theme.Solid(root, "Road", Theme.Alpha(Theme.Hex("3A3F55"), 0.6f)).rectTransform;
+            var r = Theme.Solid(root, "Road", Theme.Alpha(Theme.Hex("3A3F55"), 0.6f));
             float dx = x1 - x0, dy = y1 - y0;
             r.Center((x0 + x1) / 2, (y0 + y1) / 2, Mathf.Sqrt(dx * dx + dy * dy), 6);
-            r.localRotation = Quaternion.Euler(0, 0, -Mathf.Atan2(dy, dx) * Mathf.Rad2Deg);
+            r.Rotate(Mathf.Atan2(dy, dx) * Mathf.Rad2Deg);
         }
 
         void Poi((string id, string name, string sub, float x, float y, string color) p)
@@ -159,34 +173,49 @@ namespace CardBattler.UI
             bool open = IsOpen(p.id);
             bool teaser = (p.id == "ferro" || p.id == "neon") && !open; // shown by name even while locked
             var color = open ? Theme.Hex(p.color) : Theme.TextDim;
-            var node = Theme.Node(root, "Place:" + p.id);
-            node.Center(p.x, p.y, 300, 220);
-            Theme.Box(node, "Glow", Theme.Alpha(color, open ? 0.18f : 0.06f), Theme.Circle).rectTransform.Center(150, 70, 190, 190);
-            var pin = Theme.Box(node, "Pin", Theme.Mix(Theme.Bg, color, 0.25f), Theme.Circle, raycast: true);
-            pin.rectTransform.Center(150, 64, 128, 128);
-            pin.gameObject.AddComponent<Mask>().showMaskGraphic = true;
-            Theme.Box(pin.transform, "Ring", color, Theme.Ring).rectTransform.Fill();
-            if (open || teaser) Scene(pin.transform, p.id, open);
-            else Theme.Label(pin.transform, "?", 44, color, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Fill();
-            var plate = Theme.Box(node, "Plate", Theme.Alpha(Theme.Panel, 0.94f));
-            plate.rectTransform.Center(150, 160, 300, 74);
-            Theme.Label(plate.transform, open || teaser ? p.name.ToUpperInvariant() : "???", 22, open ? Theme.Ink : Theme.TextDim, TextAnchor.UpperCenter, FontStyle.Bold).rectTransform.Place(0, 8, 300, 30);
-            Theme.Label(plate.transform, open ? p.sub : teaser ? "TRANCADO · em breve" : "Trancado", 17, open ? color : Theme.TextDim, TextAnchor.UpperCenter).rectTransform.Place(0, 40, 300, 26);
-            if (p.id == "bar" && (K.BettorWaiting(C) || !K.InJob && K.offer.Length == 0))
-                Theme.Chip(node, "!", Theme.Warn, 22).transform.parent.GetComponent<RectTransform>().Center(205, 22, 34, 34);
             var id = p.id;
-            pin.gameObject.AddComponent<Clicker>().onClick = () => Open(id);
+            var node = Theme.El(root, "Place:" + p.id, "poi").Center(p.x, p.y, 300, 220).OnClick(() => Open(id));
+            node.EnableInClassList("locked", !open);
+            Theme.Box(node, "Glow", Theme.Alpha(color, open ? 0.18f : 0.06f), Shape.Circle).Classes("poi-glow").Center(150, 70, 190, 190);
+            var pin = Theme.Box(node, "Pin", Theme.Mix(Theme.Bg, color, 0.25f), Shape.Circle).Classes("poi-pin").Center(150, 64, 128, 128);
+            pin.style.overflow = Overflow.Hidden;
+            if (open || teaser) Scene(pin, p.id, open);
+            else Theme.Title(pin, "?", 44, color, TextAnchor.MiddleCenter).Fill();
+            Theme.Box(pin, "Ring", color, Shape.Ring).Fill();
+            var plate = Theme.Plate(node, "Plate", "poi-plate").Center(150, 162, 300, 78);
+            Theme.Label(plate, open || teaser ? p.name.ToUpperInvariant() : "???", 21, open ? Theme.Ink : Theme.TextDim, TextAnchor.UpperCenter, FontStyle.Bold).Place(6, 8, 288, 30).OneLine();
+            Theme.Label(plate, open ? p.sub : teaser ? "TRANCADO · em breve" : "Trancado", 17, open ? color : Theme.TextDim, TextAnchor.UpperCenter).Place(6, 42, 288, 26).OneLine();
+            if (p.id == "bar" && (K.BettorWaiting(C) || !K.InJob && K.offer.Length == 0))
+            {
+                var alert = Theme.Chip(node, "!", Theme.Warn, 22).parent.Center(205, 22, 36, 36);
+                alert.AddToClassList("alert");
+                Fx.Pulse(alert, 0.45f, 1, 1.2f);
+            }
+            Theme.Hover(node, open ? $"{p.name}: {p.sub}" : teaser ? $"{p.name}: ainda trancado." : "Lugar ainda desconhecido.");
+        }
+
+        // Credits and scrap with Kenney icons, right-aligned before the header buttons.
+        public static void Wallet(VisualElement root, Career k, float x)
+        {
+            var row = Theme.Row(root, "Wallet", 10).Place(x, 30, 620, 54);
+            row.style.justifyContent = Justify.FlexEnd;
+            row.style.alignItems = Align.Center;
+            Theme.Icon(row, "coin", 30, Theme.Warn);
+            Theme.Title(row, $"{k.credits}", 28, Theme.Warn);
+            Theme.Label(row, "créditos", Theme.Small, Theme.TextDim).style.marginRight = 16;
+            Theme.Icon(row, "wrench", 30, Theme.Hex("C8A27A"));
+            Theme.Title(row, $"{k.scrap}", 28, Theme.Hex("C8A27A"));
+            Theme.Label(row, "sucata", Theme.Small, Theme.TextDim);
         }
 
         // Little illustration inside a place's round card (128 px). Shapes only, original placeholder art.
-        static void Scene(Transform pin, string id, bool open)
+        static void Scene(VisualElement pin, string id, bool open)
         {
-            Image S(float x, float y, float w, float h, Color c, Sprite sp = null, float rot = 0)
+            VisualElement S(float x, float y, float w, float h, Color c, Shape sp = Shape.Rounded, float rot = 0)
             {
-                var i = Theme.Box(pin, "s", c, sp ?? Theme.Rounded);
-                i.rectTransform.Center(x, y, w, h);
-                i.rectTransform.localRotation = Quaternion.Euler(0, 0, rot);
-                return i;
+                var e = Theme.Box(pin, "s", open ? c : Theme.Mix(c, Theme.Bg, 0.45f), sp).Center(x, y, w, h).Rotate(rot);
+                if (sp == Shape.Rounded) { var st = e.style; st.borderTopLeftRadius = st.borderTopRightRadius = st.borderBottomLeftRadius = st.borderBottomRightRadius = 3; }
+                return e;
             }
             Color wall = Theme.Hex("232838"), dark = Theme.Hex("12151F");
             switch (id)
@@ -195,41 +224,41 @@ namespace CardBattler.UI
                     S(64, 84, 96, 70, wall); S(86, 104, 20, 32, dark);
                     for (int i = 0; i < 3; i++) S(30 + i * 20, 96, 12, 10, Theme.Alpha(Theme.Hex("FFC24A"), 0.7f));
                     S(64, 38, 70, 22, Theme.Hex("2A1E10"));
-                    Theme.Label(pin, "BAR", 18, Theme.Hex("FFC24A"), TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(64, 38, 70, 22);
+                    Theme.Label(pin, "BAR", 18, Theme.Hex("FFC24A"), TextAnchor.MiddleCenter, FontStyle.Bold).Center(64, 38, 70, 22);
                     S(64, 38, 84, 34, Theme.Alpha(Theme.Hex("FFC24A"), 0.15f));
                     break;
                 case "oficina": // garage with a roll-up door and a wrench
                     S(64, 80, 100, 74, wall); S(64, 44, 108, 14, Theme.Hex("2E3448"));
                     for (int i = 0; i < 5; i++) S(64, 66 + i * 10, 64, 5, Theme.Hex("3A4258"));
                     S(64, 92, 64, 10, Theme.Alpha(Theme.Hex("4AD6FF"), 0.5f)); // light under the door
-                    S(98, 34, 8, 34, Theme.Hex("4AD6FF"), rot: -40); S(108, 24, 16, 16, Theme.Hex("4AD6FF"), Theme.Ring);
+                    S(98, 34, 8, 34, Theme.Hex("4AD6FF"), rot: -40); S(108, 24, 16, 16, Theme.Hex("4AD6FF"), Shape.Ring);
                     break;
                 case "fosso": // the pit: a ring of light, ropes, crowd heads
-                    S(64, 80, 104, 44, Theme.Hex("2A0E10"), Theme.Circle);
-                    S(64, 80, 104, 44, Theme.Hex("FF5A4A"), Theme.Ring);
+                    S(64, 80, 104, 44, Theme.Hex("2A0E10"), Shape.Circle);
+                    S(64, 80, 104, 44, Theme.Hex("FF5A4A"), Shape.Ring);
                     S(64, 66, 96, 3, Theme.Alpha(Theme.Ink, 0.4f)); S(64, 74, 100, 3, Theme.Alpha(Theme.Ink, 0.3f));
-                    for (int i = 0; i < 7; i++) S(22 + i * 14, 40 + (i % 2) * 6, 10, 10, Theme.Hex("1A1D28"), Theme.Circle);
-                    S(64, 30, 20, 20, Theme.Alpha(Theme.Hex("FF5A4A"), 0.6f), Theme.Circle);
+                    for (int i = 0; i < 7; i++) S(22 + i * 14, 40 + (i % 2) * 6, 10, 10, Theme.Hex("1A1D28"), Shape.Circle);
+                    S(64, 30, 20, 20, Theme.Alpha(Theme.Hex("FF5A4A"), 0.6f), Shape.Circle);
                     break;
                 case "ferro": // scrap pile behind a fence, padlock while closed
                     S(44, 92, 46, 22, Theme.Hex("4A4F60"), rot: 18); S(78, 88, 52, 26, Theme.Hex("5A4A3A"), rot: -12);
-                    S(62, 70, 36, 24, Theme.Hex("3A4A5A"), rot: 8); S(56, 54, 26, 26, Theme.Hex("6A6F80"), Theme.Ring);
+                    S(62, 70, 36, 24, Theme.Hex("3A4A5A"), rot: 8); S(56, 54, 26, 26, Theme.Hex("6A6F80"), Shape.Ring);
                     for (int i = 0; i < 6; i++) S(18 + i * 18, 100, 3, 50, Theme.Alpha(Theme.Ink, 0.25f));
                     S(18 + 50, 82, 100, 3, Theme.Alpha(Theme.Ink, 0.25f));
-                    if (!open) { S(96, 40, 22, 18, Theme.Hex("8A8FA3")); S(96, 28, 16, 16, Theme.Hex("8A8FA3"), Theme.Ring); }
+                    if (!open) { S(96, 40, 22, 18, Theme.Hex("8A8FA3")); S(96, 28, 16, 16, Theme.Hex("8A8FA3"), Shape.Ring); }
                     break;
                 case "neon": case "porto": // train car with lit windows on a rail
                     S(64, 98, 120, 4, Theme.Hex("8A8FA3"));
                     S(64, 74, 104, 40, Theme.Hex(id == "neon" ? "3A2350" : "3A3020"));
                     for (int i = 0; i < 4; i++) S(28 + i * 24, 70, 16, 14, Theme.Alpha(Theme.Hex(id == "neon" ? "B45AFF" : "FFC24A"), 0.8f));
                     S(64, 46, 70, 4, Theme.Alpha(Theme.Ink, 0.4f));
-                    if (!open) { S(100, 36, 22, 18, Theme.Hex("8A8FA3")); S(100, 24, 16, 16, Theme.Hex("8A8FA3"), Theme.Ring); }
+                    if (!open) { S(100, 36, 22, 18, Theme.Hex("8A8FA3")); S(100, 24, 16, 16, Theme.Hex("8A8FA3"), Shape.Ring); }
                     break;
                 case "circuito": // rooftop ring under the rain, neon billboard
-                    S(64, 92, 110, 30, Theme.Hex("10202A"), Theme.Circle);
-                    S(64, 92, 110, 30, Theme.Hex("4AD6FF"), Theme.Ring);
+                    S(64, 92, 110, 30, Theme.Hex("10202A"), Shape.Circle);
+                    S(64, 92, 110, 30, Theme.Hex("4AD6FF"), Shape.Ring);
                     S(64, 46, 80, 26, Theme.Hex("1A1030"));
-                    Theme.Label(pin, "CR", 18, Theme.Hex("FF5AD8"), TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(64, 46, 80, 26);
+                    Theme.Label(pin, "CR", 18, Theme.Hex("FF5AD8"), TextAnchor.MiddleCenter, FontStyle.Bold).Center(64, 46, 80, 26);
                     for (int i = 0; i < 6; i++) S(20 + i * 18, 70, 2, 16, Theme.Alpha(Theme.Hex("9EB8FF"), 0.5f), rot: -12);
                     break;
                 case "glitch": // dark room, three glowing screens, cables
@@ -239,7 +268,6 @@ namespace CardBattler.UI
                     S(40, 104, 60, 3, Theme.Alpha(Theme.Ink, 0.3f), rot: 10); S(86, 106, 50, 3, Theme.Alpha(Theme.Ink, 0.3f), rot: -14);
                     break;
             }
-            if (!open) foreach (var g in pin.GetComponentsInChildren<Graphic>()) if (g.name == "s") g.color = Theme.Mix(g.color, Theme.Bg, 0.45f);
         }
 
         // Clicking a place.
@@ -334,7 +362,7 @@ namespace CardBattler.UI
 
         public void Next() { if (index < lines.Count - 1) { index++; DrawTalk(); } }
 
-        public void CloseTalk() { Theme.ClearChildren(talkLayer); }
+        public void CloseTalk() { talkLayer.Clear(); }
 
         public string CurrentLine => lines == null || talkLayer.childCount == 0 ? null : lines[index].text;
         public string[] CurrentChoices => lines == null || index < lines.Count - 1 ? new string[0] : choices.Select(c => c.label).ToArray();
@@ -342,45 +370,62 @@ namespace CardBattler.UI
 
         void DrawTalk()
         {
-            Theme.ClearChildren(talkLayer);
-            var shade = Theme.Solid(talkLayer, "Shade", Theme.Alpha(Color.black, 0.45f));
-            shade.rectTransform.Fill();
-            shade.raycastTarget = true;
-            var box = Theme.Box(talkLayer, "Dialogue", Theme.Alpha(Theme.Panel, 0.98f), raycast: true);
-            box.rectTransform.Place(200, 640, 1520, 400);
-            Theme.Box(box.transform, "Edge", Theme.Alpha(Theme.Warn, 0.6f), Theme.Frame).rectTransform.Fill(-2);
+            talkLayer.Clear();
+            var shade = Theme.El(talkLayer, "Shade", "shade").Fill();
+            shade.pickingMode = PickingMode.Position;
+            var box = Theme.Plate(talkLayer, "Dialogue", "dialogue").Place(200, 620, 1520, 420);
+            box.pickingMode = PickingMode.Position;
             var line = lines[index];
-            Portraits.Create(box.transform, line.who, 170).Place(36, 36, 170, 170);
-            Theme.Label(box.transform, line.who.ToUpperInvariant(), 24, Portraits.ColorOf(line.who), style: FontStyle.Bold).rectTransform.Place(240, 36, 1000, 34);
-            Theme.Label(box.transform, line.text, 28, Theme.Ink).rectTransform.Place(240, 80, 1240, 150);
-            Theme.Label(box.transform, $"{index + 1}/{lines.Count}", 18, Theme.TextDim, TextAnchor.UpperRight).rectTransform.Place(1300, 36, 180, 30);
+            Portraits.Create(box, line.who, 170).Place(36, 36, 170, 170);
+            Theme.Title(box, line.who.ToUpperInvariant(), 24, Portraits.ColorOf(line.who)).At(240, 34);
+            Theme.Label(box, $"{index + 1}/{lines.Count}", Theme.Small, Theme.TextDim, TextAnchor.UpperRight).Place(1300, 36, 180, 30);
+            var text = Theme.Scroll(box, "Line").Place(240, 76, 1240, 190);
+            Typewriter(Theme.Label(text, line.text, 28, Theme.Ink).Classes("prose"), line.text);
+            if (index == 0) Fx.Enter(box, 0, 30);
 
             if (index < lines.Count - 1)
             {
-                var next = Theme.Button(box.transform, "CONTINUAR  ▸", Next, Theme.PanelHi, 24);
+                var next = Theme.Primary(box, "CONTINUAR  ▸", Next, 24);
                 next.name = "Proximo";
-                ((RectTransform)next.transform).Place(1200, 300, 280, 66);
+                next.Place(1200, 314, 280, 76);
+                Theme.Label(box, "ou clique fora da caixa", 15, Theme.TextDim, TextAnchor.MiddleRight).Place(760, 314, 420, 76);
+                shade.RegisterCallback<ClickEvent>(_ => Next());
                 return;
             }
+            var row = Theme.Row(box, "Choices", 16).Place(240, 300, 1240, 96);
             for (int i = 0; i < choices.Count; i++)
             {
-                var b = Theme.Button(box.transform, choices[i].label, choices[i].action, i == 0 ? Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.5f) : Theme.PanelHi, 22);
-                b.name = "Escolha:" + choices[i].label;
-                ((RectTransform)b.transform).Place(240 + i * 420, 270, 400, 70);
+                var c = choices[i];
+                var b = i == 0 ? Theme.Primary(row, c.label, c.action, 22) : Theme.Button(row, c.label, c.action, null, 22);
+                b.name = "Escolha:" + c.label;
+                b.style.height = 76; b.style.flexGrow = 1; b.style.flexBasis = 0;
+                Fx.Enter(b, i + 2);
             }
+        }
+
+        // Reveals the line letter by letter; a click on the text shows it all at once.
+        static void Typewriter(Label label, string full)
+        {
+            if (Fx.Reduced || !Application.isPlaying || full.Contains("<")) return;
+            int shown = 0;
+            label.text = "";
+            label.schedule.Execute(() => { shown = Mathf.Min(full.Length, shown + 2); label.text = full.Substring(0, shown); }).Every(16).Until(() => shown >= full.Length);
+            label.pickingMode = PickingMode.Position;
+            label.RegisterCallback<ClickEvent>(e => { if (shown < full.Length) { shown = full.Length; label.text = full; e.StopPropagation(); } });
         }
 
         // ---- Pistas journal ----
         void Journal()
         {
-            Theme.ClearChildren(talkLayer);
-            var shade = Theme.Solid(talkLayer, "Shade", Theme.Alpha(Color.black, 0.6f));
-            shade.rectTransform.Fill();
-            shade.raycastTarget = true;
-            var page = Theme.Box(talkLayer, "Journal", Theme.Paper, raycast: true);
-            page.rectTransform.Center(960, 540, 1100, 760);
-            Theme.Solid(page.transform, "Header", Theme.Hex("2B251D")).rectTransform.Place(0, 0, 1100, 70);
-            Theme.Label(page.transform, "PISTAS", 32, Theme.Hex("E8D9B8"), TextAnchor.MiddleLeft, FontStyle.Bold).rectTransform.Place(30, 0, 600, 70);
+            talkLayer.Clear();
+            var shade = Theme.El(talkLayer, "Shade", "shade").Fill();
+            shade.pickingMode = PickingMode.Position;
+            shade.RegisterCallback<ClickEvent>(_ => CloseTalk());
+            var page = Theme.Plate(talkLayer, "Journal", "paper").Center(960, 540, 1100, 780);
+            page.pickingMode = PickingMode.Position;
+            var header = Theme.El(page, "Header", "paper-header").Place(0, 0, 1100, 72);
+            Theme.Icon(header, "book", 40, Theme.Hex("E8D9B8")).At(26, 16);
+            Theme.Title(header, "PISTAS", 32, Theme.Hex("E8D9B8"), TextAnchor.MiddleLeft).Place(80, 0, 600, 72);
             var sb = new System.Text.StringBuilder();
             if (K.clues.Length == 0) sb.Append("<i>Nada anotado ainda. Tem gente no porto que sabe mais do que fala.</i>");
             foreach (var id in K.clues)
@@ -390,10 +435,12 @@ namespace CardBattler.UI
                 sb.AppendLine(clue.text);
                 sb.AppendLine($"<color=#B9A98A><i>Fonte: {clue.source}</i></color>\n");
             }
-            Theme.Label(page.transform, sb.ToString(), 24, Theme.Hex("E8E1D0")).rectTransform.Place(36, 96, 1028, 540);
-            var close = Theme.Button(page.transform, "FECHAR", CloseTalk, Theme.Hex("3A3226"), 24);
+            var body = Theme.Scroll(page, "Body").Place(36, 96, 1028, 560);
+            Theme.Label(body, sb.ToString().TrimEnd(), 24, Theme.Hex("E8E1D0")).Classes("prose");
+            var close = Theme.Button(page, "FECHAR", CloseTalk, null, 24);
             close.name = "Fechar";
-            ((RectTransform)close.transform).Place(36, 670, 220, 64);
+            close.Place(36, 686, 220, 66);
+            Fx.Enter(page, 0, 30);
         }
     }
 }

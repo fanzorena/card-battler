@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using CardBattler.Combat;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
-using UnityEngine.UI;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
-    // App root: canvas, event system, background, overlay and screen switching. Spawns itself in any scene.
+    // App root: UI Toolkit document, background, 1920x1080 stage (screens + overlay) and screen switching. Spawns itself in any scene.
     // Two modes: career (profile save: owned parts, money, jobs) and "Treino livre" (every part unlocked).
     public class GameUI : MonoBehaviour
     {
@@ -16,7 +16,7 @@ namespace CardBattler.UI
         public GarageSave garage;      // Treino livre builds
         public Career career;          // loaded career (null until Jogar)
         public bool careerMode;        // which garage/flow is active
-        public RectTransform screens, overlay;
+        public VisualElement Root, stage, screens, overlay;
         public Battle battle;
         public string screen;          // "title", "about", "history", "garage", "opponents", "map", "job", "workshop", "pit" or "battle"
         public string careerHub = "map"; // career screen the garage returns to
@@ -48,45 +48,51 @@ namespace CardBattler.UI
             garage = GarageSave.Load(SavePath, content);
             careerPath ??= CareerPath;
 
-            var canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            var scaler = gameObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = Theme.Reference;
-            scaler.matchWidthOrHeight = 0.5f;
-            gameObject.AddComponent<GraphicRaycaster>();
-            if (FindAnyObjectByType<EventSystem>() == null)
-                new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
-
-            var root = (RectTransform)transform;
-            Background(root);
-            screens = Theme.Node(root, "Screens").Fill();
-            overlay = Theme.Node(root, "Overlay").Fill();
+            Root = new VisualElement { name = "App" };
+            Root.AddToClassList("app");
+            if (Theme.Sheet) Root.styleSheets.Add(Theme.Sheet);
+            Root.style.unityFont = Theme.Font;
+            Root.Fill();
+            Background(Root);
+            // Fixed 1920x1080 stage centered in the panel (PanelSettings: scale with screen size, expand).
+            stage = Theme.El(Root, "Stage", "stage");
+            screens = Theme.El(stage, "Screens").Fill();
+            overlay = Theme.El(stage, "Overlay").Fill();
+            var doc = gameObject.GetComponent<UIDocument>() ?? gameObject.AddComponent<UIDocument>();
+            if (!doc.panelSettings) doc.panelSettings = Resources.Load<PanelSettings>("UI/PanelSettings");
+            doc.rootVisualElement?.Add(Root);
             gameObject.AddComponent<Fx>().overlay = overlay;
             Fx.I = GetComponent<Fx>();
             Tooltip.Init(overlay);
             ShowTitle();
         }
 
-        static void Background(RectTransform root)
+        static void Background(VisualElement root)
         {
-            Theme.Solid(root, "Bg", Theme.Bg).rectTransform.Fill();
-            Theme.Box(root, "Glow", Theme.Alpha(Theme.Hex("2A1C4A"), 0.55f), Theme.Circle).rectTransform.Center(960, 540, 2600, 1500);
-            for (int x = 0; x <= 1920; x += 80) Theme.Solid(root, "GridV", Theme.Alpha(Theme.Line, 0.18f)).rectTransform.Place(x, 0, 1, 1080);
-            for (int y = 0; y <= 1080; y += 80) Theme.Solid(root, "GridH", Theme.Alpha(Theme.Line, 0.18f)).rectTransform.Place(0, y, 1920, 1);
+            var bg = Theme.El(root, "Bg", "bg").Fill();
+            Theme.El(bg, "Grid", "bg-grid").Fill();
+            Theme.El(bg, "Glow", "bg-glow").Fill();
         }
 
+        // Buttons on screen (tests and shortcuts find them by name).
+        public List<Button> Buttons => Root.Query<Button>().ToList();
+        public Button ButtonNamed(string name) => Root.Q<Button>(name);
+        public VisualElement Named(string name) => Root.Q(name);
+
         // Leaves any battle and clears the screen.
-        RectTransform Screen(string name)
+        VisualElement Screen(string name)
         {
             logger?.Dispose(); // writes "Interrompida" if a battle was abandoned
             logger = null;
             battle = null;
             afterBattle = null;
             Tooltip.Hide();
-            Theme.ClearChildren(screens);
+            screens.Clear();
+            overlay.Query(className: "float").ForEach(e => e.RemoveFromHierarchy());
             screen = name;
-            return Theme.Node(screens, name).Fill();
+            var root = Theme.El(screens, name, "screen").Fill();
+            Fx.Enter(root, 0, 16);
+            return root;
         }
 
         public void ShowTitle(string page = "title") => new TitleScreen(this, Screen(page), page).Build();

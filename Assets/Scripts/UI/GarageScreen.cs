@@ -4,8 +4,7 @@ using System.Globalization;
 using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
@@ -14,11 +13,11 @@ namespace CardBattler.UI
     public class GarageScreen
     {
         readonly GameUI app;
-        readonly RectTransform root;
-        RectTransform sheet;
+        readonly VisualElement root;
+        VisualElement sheet;
         static bool showDeck;
 
-        public GarageScreen(GameUI app, RectTransform root) { this.app = app; this.root = root; }
+        public GarageScreen(GameUI app, VisualElement root) { this.app = app; this.root = root; }
 
         Content C => app.content;
         GarageSave G => app.Garage;
@@ -26,12 +25,12 @@ namespace CardBattler.UI
 
         static readonly (string icon, string slot, Func<RobotDef, string> get, Action<RobotDef, string> set, float x, float y)[] Slots =
         {
-            ("Cabeca", "Cabeca", b => b.head, (b, v) => b.head = v, 410, 120),
-            (SlotIcons.Nucleo, "Nucleo", b => b.core, (b, v) => b.core = v, 760, 120),
-            ("BracoEsq", "Braco", b => b.armL, (b, v) => b.armL = v, 60, 300),
-            ("BracoDir", "Braco", b => b.armR, (b, v) => b.armR = v, 760, 300),
-            ("Torso", "Torso", b => b.torso, (b, v) => b.torso = v, 60, 480),
-            ("Pernas", "Pernas", b => b.legs, (b, v) => b.legs = v, 760, 480),
+            ("Cabeca", "Cabeca", b => b.head, (b, v) => b.head = v, 400, 124),
+            (SlotIcons.Nucleo, "Nucleo", b => b.core, (b, v) => b.core = v, 740, 124),
+            ("BracoEsq", "Braco", b => b.armL, (b, v) => b.armL = v, 60, 316),
+            ("BracoDir", "Braco", b => b.armR, (b, v) => b.armR = v, 740, 316),
+            ("Torso", "Torso", b => b.torso, (b, v) => b.torso = v, 60, 508),
+            ("Pernas", "Pernas", b => b.legs, (b, v) => b.legs = v, 740, 508),
         };
 
         // Why the build can't go on to the opponent selection (null = it can).
@@ -45,7 +44,7 @@ namespace CardBattler.UI
 
         void Rebuild()
         {
-            Theme.ClearChildren(root);
+            root.Clear();
             Tooltip.Hide();
             Build();
         }
@@ -61,30 +60,29 @@ namespace CardBattler.UI
             var b = G.Current;
             var frame = C.Frame(b.frame);
 
-            Theme.Label(root, "GARAGEM", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 400, 60);
-            Theme.Label(root, "Monte o robô", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
-            if (app.careerMode) Theme.Label(root, $"{app.career.credits} créditos · {app.career.scrap} sucata · só peças que você tem", Theme.Small, Theme.Warn).rectTransform.Place(980, 80, 700, 30);
-            else Theme.Label(root, "TREINO LIVRE · todas as peças liberadas", Theme.Small, Theme.Exposed).rectTransform.Place(980, 80, 700, 30);
-            ((RectTransform)Theme.Button(root, app.careerMode ? "←  VOLTAR" : "←  MENU", app.Back, Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
+            Theme.Title(root, "GARAGEM", 44).At(60, 26);
+            Theme.Label(root, app.careerMode ? $"{app.career.credits} créditos · {app.career.scrap} sucata · só peças que você tem" : "TREINO LIVRE · todas as peças liberadas",
+                Theme.Small, app.careerMode ? Theme.Warn : Theme.Exposed).At(62, 80);
+            var tabs = Theme.Row(root, "Builds", 10).Place(420, 30, 560, 54);
             for (int i = 0; i < GarageSave.SlotCount; i++)
             {
                 int k = i;
-                bool sel = G.selected == i;
-                var btn = Theme.Button(root, G.slots[i].name, () => { G.selected = k; Changed(); }, sel ? Theme.Mix(Theme.PanelHi, Theme.Warn, 0.35f) : Theme.Panel);
-                ((RectTransform)btn.transform).Place(420 + i * 180, 34, 170, 50);
+                var btn = Theme.Button(tabs, G.slots[i].name, () => { G.selected = k; Changed(); }, null, Theme.Body, "btn-tab");
+                btn.EnableInClassList("selected", G.selected == i);
+                btn.Size(176, 54);
+                Theme.Hover(btn, $"Robô {i + 1} de {GarageSave.SlotCount}: você guarda até {GarageSave.SlotCount} montagens.");
             }
+            Theme.Button(root, app.careerMode ? "←  VOLTAR" : "←  MENU", app.Back, null, 22).Place(1720, 30, 160, 54);
 
             // Robot area
-            Theme.Box(root, "Area", Theme.Alpha(Theme.Panel, 0.6f)).rectTransform.Place(40, 110, 1040, 880);
-            var robot = RobotView.Create(root, false, false);
-            robot.Rect.Center(560, 555, RobotView.W, RobotView.H);
-            robot.transform.localScale = new Vector3(1.15f, 1.15f, 1);
-            robot.Build(C, b);
+            Theme.Plate(root, "Area", "panel-glass").Place(40, 110, 1040, 880);
+            Theme.El(root, "Pedestal", "pedestal").Center(560, 836, 520, 90);
+            RobotView.Create(root, false, true).At(560, 590, 1.1f).Build(C, b);
 
             var frames = C.frames.Where(f => Car == null || Car.OwnsFrame(f)).Select(f => f.id).ToArray();
-            SlotWidget(60, 120, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}", frame.passiveText,
+            SlotWidget(60, 124, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}", frame.passiveText,
                 () => { b.frame = Cycle(frames, b.frame, -1); Changed(); }, () => { b.frame = Cycle(frames, b.frame, 1); Changed(); },
-                dir => With(b, x => x.frame = Cycle(frames, b.frame, dir)));
+                dir => With(b, x => x.frame = Cycle(frames, b.frame, dir)), frames.Length);
 
             foreach (var (icon, slot, get, set, x, y) in Slots)
             {
@@ -96,39 +94,44 @@ namespace CardBattler.UI
                 string cards = string.Join(", ", part.cards.GroupBy(id => id).Select(g => $"{g.Count()}x {C.Card(g.Key).name}"));
                 SlotWidget(x, y, icon, part.name, part.maker, stats, cards,
                     () => { set(b, Cycle(ids, get(b), -1)); Changed(); }, () => { set(b, Cycle(ids, get(b), 1)); Changed(); },
-                    dir => With(b, r => set(r, Cycle(ids, get(b), dir))));
+                    dir => With(b, r => set(r, Cycle(ids, get(b), dir))), ids.Length);
             }
 
             // Weight bar + what blocks the build
             int weight = C.Weight(b);
             var (fill, wl) = Theme.Bar(root, weight > frame.carry ? Theme.Bad : Theme.Good, Theme.Body);
-            var wbar = (RectTransform)fill.transform.parent;
-            wbar.Place(60, 820, 960, 40);
-            fill.fillAmount = Mathf.Clamp01((float)weight / frame.carry);
+            fill.parent.Place(60, 890, 960, 40);
+            Theme.SetFill(fill, (float)weight / frame.carry);
             wl.text = $"PESO {weight} / {frame.carry}" + (weight > frame.carry ? "  — acima da carga do frame" : "");
-            Theme.HelpIcon(root, "peso", 30).Place(1030, 825, 30, 30);
+            Theme.HelpIcon(root, "peso", 32).Place(1030, 894, 32, 32);
             var blocker = ContinueBlocker(C, b, Car);
-            if (blocker != null) Theme.Label(root, blocker, Theme.Body, Theme.Bad).rectTransform.Place(60, 876, 1000, 90);
+            if (blocker != null) Theme.Label(root, blocker, Theme.Body, Theme.Bad).Place(60, 936, 1000, 50).Fit(Theme.Small);
 
             // Right column: stats sheet or deck
             var deck = C.Deck(b);
-            var tabSheet = Theme.Button(root, "FICHA DO ROBÔ", () => { showDeck = false; Rebuild(); }, showDeck ? Theme.Panel : Theme.PanelHi);
-            ((RectTransform)tabSheet.transform).Place(1120, 110, 300, 54);
-            var tabDeck = Theme.Button(root, $"DECK ({deck.Count})", () => { showDeck = true; Rebuild(); }, showDeck ? Theme.PanelHi : Theme.Panel);
-            ((RectTransform)tabDeck.transform).Place(1430, 110, 240, 54);
-            var content = Theme.Node(root, "TabContent").Place(1120, 176, 760, 770);
-            if (showDeck) DeckGrid(content, deck);
-            else { sheet = content; DrawSheet(BuildStats.Of(C, b), null); }
+            var tabRow = Theme.Row(root, "Tabs", 10).Place(1120, 110, 760, 56);
+            var tabSheet = Theme.Button(tabRow, "FICHA DO ROBÔ", () => { showDeck = false; Rebuild(); }, null, Theme.Body, "btn-tab").Size(300, 56);
+            tabSheet.EnableInClassList("selected", !showDeck);
+            var tabDeck = Theme.Button(tabRow, $"DECK ({deck.Count})", () => { showDeck = true; Rebuild(); }, null, Theme.Body, "btn-tab").Size(240, 56);
+            tabDeck.EnableInClassList("selected", showDeck);
+            var panel = Theme.Plate(root, "TabContent").Place(1120, 176, 760, 770);
+            if (showDeck) DeckGrid(Theme.Scroll(panel).Fill(12), deck);
+            else { sheet = panel; DrawSheet(BuildStats.Of(C, b), null); }
 
             // Continue to the opponent selection
-            var go = Theme.Button(root, "CONTINUAR  →", app.careerMode ? () => app.ShowCareer(app.careerHub) : app.ShowOpponents, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 32);
+            var go = Theme.Primary(root, "CONTINUAR  →", app.careerMode ? () => app.ShowCareer(app.careerHub) : app.ShowOpponents, 32);
             go.name = "Continuar";
-            ((RectTransform)go.transform).Place(1520, 970, 360, 84);
-            go.interactable = blocker == null;
-            if (blocker != null) Theme.Label(root, "Ajuste o robô para continuar", Theme.Small, Theme.Bad, TextAnchor.MiddleRight).rectTransform.Place(1120, 990, 390, 40);
+            go.Place(1520, 966, 360, 88);
+            go.SetEnabled(blocker == null);
+            if (blocker != null) Theme.Label(root, "Ajuste o robô para continuar", Theme.Small, Theme.Bad, TextAnchor.MiddleRight).Place(1120, 990, 390, 40);
 
-            var log = Theme.Button(root, (BattleLogger.MirrorToConsole ? "[x]" : "[ ]") + " Log no console", () => { BattleLogger.MirrorToConsole = !BattleLogger.MirrorToConsole; Rebuild(); }, Theme.Panel, Theme.Small);
-            ((RectTransform)log.transform).Place(60, 1010, 260, 44);
+            // Wheels skid on the Fosso scrap floor: point at the legs slot when the player owns other legs.
+            if (Car != null && C.Part(b.legs).wheels && Car.owned.Any(id => C.Part(id) is { slot: "Pernas", wheels: false }))
+                Theme.Label(root, "Dica: no piso de sucata do Fosso as rodas esquivam só metade. Troque as pernas (slot de baixo à direita).", Theme.Small, Theme.Exposed, TextAnchor.MiddleLeft)
+                    .Place(340, 1004, 760, 50).Fit(15);
+
+            var log = Theme.Button(root, (BattleLogger.MirrorToConsole ? "[x]" : "[ ]") + " Log no console", () => { BattleLogger.MirrorToConsole = !BattleLogger.MirrorToConsole; Rebuild(); }, null, Theme.Small, "btn-small");
+            log.Place(60, 1004, 260, 50);
         }
 
         // Copy of the build with one change (for the hover preview).
@@ -139,34 +142,27 @@ namespace CardBattler.UI
             "Fácil" => Theme.Good, "Moderado" => Theme.Warn, "Difícil" => Theme.Exposed, "Chefe" => Theme.Bad, _ => Theme.TextDim,
         };
 
-        void SlotWidget(float x, float y, string iconKey, string name, string maker, string stats, string cards, Action prev, Action next, Func<int, RobotDef> preview)
+        void SlotWidget(float x, float y, string iconKey, string name, string maker, string stats, string cards, Action prev, Action next, Func<int, RobotDef> preview, int options)
         {
             var accent = maker == null ? Theme.TextDim : Theme.Maker(maker);
-            var box = Theme.Box(root, "Slot:" + iconKey, Theme.Panel);
-            box.rectTransform.Place(x, y, 300, 170);
-            var o = box.gameObject.AddComponent<Outline>(); o.effectColor = Theme.Alpha(accent, 0.5f); o.effectDistance = new Vector2(2, -2);
-            Theme.Solid(box.transform, "Stripe", accent).rectTransform.Place(0, 10, 5, 150);
-            SlotIcons.Icon(box.transform, iconKey, 52, maker == null ? Theme.Warn : accent).Place(12, 8, 52, 52);
-            var n = Theme.Label(box.transform, name, 24, Theme.Ink, style: FontStyle.Bold);
-            n.rectTransform.Place(72, 6, 156, 32);
-            n.resizeTextForBestFit = true; n.verticalOverflow = VerticalWrapMode.Truncate; n.resizeTextMinSize = 15; n.resizeTextMaxSize = 24;
-            if (maker != null)
-            {
-                var chip = Theme.Chip(box.transform, maker.ToUpperInvariant(), accent, 14);
-                ((RectTransform)chip.transform.parent).Place(72, 40, 124, 22);
-            }
-            Theme.Label(box.transform, stats, 16, Theme.Ink).rectTransform.Place(16, 70, 276, 40);
-            Theme.Label(box.transform, cards, 15, Theme.TextDim).rectTransform.Place(16, 112, 276, 54);
-            var l = Theme.Button(box.transform, "<", prev, Theme.PanelHi);
-            ((RectTransform)l.transform).Place(232, 8, 30, 32);
-            var r = Theme.Button(box.transform, ">", next, Theme.PanelHi);
-            ((RectTransform)r.transform).Place(264, 8, 30, 32);
+            var box = Theme.Plate(root, "Slot:" + iconKey, "slot-card").Place(x, y, 300, 176);
+            Theme.Border(box, Theme.Alpha(accent, 0.55f), 2);
+            Theme.Solid(box, "Stripe", accent).Place(0, 12, 5, 150);
+            SlotIcons.Icon(box, iconKey, 52, maker == null ? Theme.Warn : accent).Place(12, 10, 52, 52);
+            Theme.Label(box, name, 22, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(72, 6, 152, 32).OneLine();
+            if (maker != null) Theme.Chip(box, maker.ToUpperInvariant(), accent, 13).parent.At(72, 40);
+            var info = Theme.Scroll(box, "Info").Place(14, 70, 278, 100);
+            Theme.Label(info, stats, 16, Theme.Ink);
+            Theme.Label(info, cards, 16, Theme.TextDim).style.marginTop = 4;
+            Theme.Hover(info, $"{name}", stats, cards);
+            var l = Theme.Button(box, "◀", prev, null, 18, "btn-arrow").Place(228, 8, 32, 34);
+            var r = Theme.Button(box, "▶", next, null, 18, "btn-arrow").Place(262, 8, 32, 34);
+            l.SetEnabled(options > 1); r.SetEnabled(options > 1);
             // Hovering an arrow previews the part it would switch to on the stats sheet.
             foreach (var (btn, dir) in new[] { (l, -1), (r, 1) })
             {
-                var h = btn.gameObject.AddComponent<HoverAction>();
-                h.enter = () => { if (sheet) DrawSheet(BuildStats.Of(C, G.Current), BuildStats.Of(C, preview(dir))); };
-                h.exit = () => { if (sheet) DrawSheet(BuildStats.Of(C, G.Current), null); };
+                btn.RegisterCallback<PointerEnterEvent>(_ => { if (sheet != null) DrawSheet(BuildStats.Of(C, G.Current), BuildStats.Of(C, preview(dir))); });
+                btn.RegisterCallback<PointerLeaveEvent>(_ => { if (sheet != null) DrawSheet(BuildStats.Of(C, G.Current), null); });
             }
         }
 
@@ -197,71 +193,52 @@ namespace CardBattler.UI
 
         void DrawSheet(BuildStats s, BuildStats preview)
         {
-            Theme.ClearChildren(sheet);
-            var bg = Theme.Box(sheet, "Sheet", Theme.Panel);
-            bg.rectTransform.Fill();
+            sheet.Clear();
             var rows = SheetRows(s);
             var prev = preview == null ? null : SheetRows(preview);
-            float y = 14;
+            Theme.Label(sheet, preview == null ? "Passe o mouse em ◀ ou ▶ de um slot para comparar a peça." : "Comparando com a peça do botão sob o mouse.",
+                Theme.Small, preview == null ? Theme.TextDim : Theme.Warn, TextAnchor.MiddleLeft).Place(20, 10, 720, 30);
+            var list = Theme.Scroll(sheet, "Rows").Place(8, 44, 744, 716);
             for (int i = 0; i < rows.Count; i++)
             {
                 var (help, label, value, number, higherBetter, icon) = rows[i];
-                bool wide = help == "passiva";
-                float h = wide ? 58 : 38;
-                float x = 14;
-                Theme.HelpIcon(sheet, help, 26).Place(x, y + 4, 26, 26);
-                x += 34;
-                if (icon.HasValue) { SlotIcons.Icon(sheet, icon.Value, 30, Theme.Ink).Place(x, y + 2, 30, 30); x += 38; }
+                var row = Theme.Row(list, "Row:" + help, 8);
+                row.AddToClassList("sheet-row");
+                Theme.HelpIcon(row, help, 26);
+                if (icon.HasValue) SlotIcons.Icon(row, icon.Value, 30, Theme.Ink);
                 var shownLabel = prev != null && icon.HasValue ? prev[i].label : label;
-                Theme.Label(sheet, shownLabel, 19, icon.HasValue ? Theme.Ink : Theme.TextDim, TextAnchor.MiddleLeft).rectTransform.Place(x, y, 250 - (x - 48), 34);
+                Theme.Label(row, shownLabel, 19, icon.HasValue ? Theme.Ink : Theme.TextDim, TextAnchor.MiddleLeft).Size(icon.HasValue ? 214 : 252, 34).OneLine();
                 var shownValue = prev != null ? prev[i].value : value;
-                var v = Theme.Label(sheet, shownValue, wide ? 16 : 20, Theme.Ink, wide ? TextAnchor.UpperLeft : TextAnchor.MiddleLeft, wide ? FontStyle.Normal : FontStyle.Bold);
-                v.rectTransform.Place(300, y + (wide ? 4 : 0), wide ? 440 : 330, h - 4);
+                var v = Theme.Label(row, shownValue, 20, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold);
+                v.style.flexGrow = 1; v.style.flexShrink = 1;
                 if (prev != null && number.HasValue && prev[i].number.HasValue && Math.Abs(prev[i].number.Value - number.Value) > 0.001f)
                 {
                     float d = prev[i].number.Value - number.Value;
                     bool good = higherBetter ? d > 0 : d < 0;
                     string txt = (d > 0 ? "+" : "") + (Math.Abs(d % 1) > 0.001f ? d.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR")) : ((int)d).ToString());
-                    var chip = Theme.Chip(sheet, txt, good ? Theme.Good : Theme.Bad, 18);
-                    ((RectTransform)chip.transform.parent).Place(650, y + 3, 90, 30);
+                    Theme.Chip(row, txt, good ? Theme.Good : Theme.Bad, 18).parent.AddToClassList("delta");
                 }
                 else if (prev != null && !number.HasValue && prev[i].value != value)
-                {
-                    var chip = Theme.Chip(sheet, "muda", Theme.Warn, 16);
-                    ((RectTransform)chip.transform.parent).Place(650, y + 3, 90, 30);
-                }
-                y += h;
+                    Theme.Chip(row, "muda", Theme.Warn, 16).parent.AddToClassList("delta");
             }
-            Theme.Label(sheet, preview == null ? "Passe o mouse em < ou > de um slot para comparar a peça." : "Comparando com a peça do botão sob o mouse.",
-                15, preview == null ? Theme.TextDim : Theme.Warn, TextAnchor.MiddleLeft).rectTransform.Place(14, y + 6, 720, 26);
         }
 
-        void DeckGrid(RectTransform parent, List<CardDef> deck)
+        void DeckGrid(VisualElement parent, List<CardDef> deck)
         {
-            const float s = 0.58f;
-            int col = 0, row = 0;
+            const float s = 0.6f;
+            var grid = Theme.El(parent, "Grid", "card-grid");
             var srcs = new[] { (G.Current.head, "Cabeca"), (G.Current.torso, "Torso"), (G.Current.armL, "BracoEsq"), (G.Current.armR, "BracoDir"), (G.Current.legs, "Pernas") };
             foreach (var d in deck)
             {
                 var src = srcs.FirstOrDefault(p => C.Part(p.Item1).cards.Contains(d.id));
                 string maker = src.Item1 != null ? C.Part(src.Item1).maker : null;
-                var card = CardView.Create(parent, d, maker, src.Item2 ?? "Frame", null, src.Item1 != null ? C.Part(src.Item1).element : null);
+                var slot = Theme.El(grid, "CardSlot", "card-slot").Size(CardView.W * s, CardView.H * s);
+                var card = CardView.Create(slot, d, maker, src.Item2 ?? "Frame", null, src.Item1 != null ? C.Part(src.Item1).element : null);
                 card.interactive = false;
-                card.Rect.anchorMin = card.Rect.anchorMax = new Vector2(0, 1);
-                card.Rect.pivot = new Vector2(0, 1);
-                card.transform.localScale = new Vector3(s, s, 1);
-                card.Rect.anchoredPosition = new Vector2(col * (CardView.W * s + 10), -row * (CardView.H * s + 10));
+                card.Root.AddToClassList("mini");
+                card.Root.style.scale = new Scale(new Vector3(s, s, 1));
                 card.SetState(true, d.cost, Kinds.TargetBadge(d, d.cost >= 2 || d.choose), false, false);
-                if (++col == 6) { col = 0; row++; }
             }
         }
-    }
-
-    // Enter/exit callbacks for any UI element (used for hover previews).
-    public class HoverAction : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
-    {
-        public Action enter, exit;
-        public void OnPointerEnter(PointerEventData e) => enter?.Invoke();
-        public void OnPointerExit(PointerEventData e) => exit?.Invoke();
     }
 }
