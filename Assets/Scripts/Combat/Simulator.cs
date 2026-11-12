@@ -142,7 +142,7 @@ namespace CardBattler.Combat
                             if (!s.RepairWithScrap(content, hurt)) break;
                         }
                     int stage = s.stage;
-                    var b = s.StartBattle(content, seed + i * 31 + stage, s.Stage(content).enemy);
+                    var b = s.StartBattle(content, seed + i * 31 + stage, s.Stage(content).enemy, Career.ArenaFor(s.Stage(content), Career.Arena));
                     while (b.result == Result.None && b.turn < TurnLimit) { Bot.PlayTurn(b); b.EndPlayerTurn(); }
                     s.FinishJobFight(content, b, rng);
                     if (!s.InJob) r.lostAt[stage]++;

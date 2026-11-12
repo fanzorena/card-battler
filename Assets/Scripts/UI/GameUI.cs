@@ -176,7 +176,7 @@ namespace CardBattler.UI
         public void StartJobFight()
         {
             var enemy = career.Stage(content).enemy;
-            var b = career.StartBattle(content, Environment.TickCount, enemy);
+            var b = career.StartBattle(content, Environment.TickCount, enemy, Career.ArenaFor(career.Stage(content), Career.Arena));
             Run(b, enemy, done =>
             {
                 career.FinishJobFight(content, done, new System.Random(Environment.TickCount));
@@ -192,7 +192,7 @@ namespace CardBattler.UI
         public void StartLadderFight(string ladder)
         {
             var enemy = career.LadderStage(content, ladder).enemy;
-            var b = career.StartBattle(content, Environment.TickCount, enemy, Career.ArenaOf(ladder));
+            var b = career.StartBattle(content, Environment.TickCount, enemy, Career.ArenaFor(career.LadderStage(content, ladder), Career.ArenaOf(ladder)));
             Run(b, enemy, done =>
             {
                 career.FinishLadderFight(content, done, ladder);
