@@ -31,6 +31,23 @@ public class AnimationTests
     }
 
     [Test]
+    public void Portraits_KnownCharactersAndFallback()
+    {
+        var go = new GameObject("PortraitTest", typeof(RectTransform));
+        try
+        {
+            foreach (var who in new[] { "Celeste", "Kiro Sato (rival)", "Mandíbula, Campeão dos Fossos", "Apostador velho", "Mecânica", "Locutor" })
+            {
+                Assert.IsTrue(Portraits.Has(who), who);
+                Assert.Greater(Portraits.Create(go.transform, who, 100).GetComponentsInChildren<UnityEngine.UI.Image>().Length, 6, who);
+            }
+            Assert.IsFalse(Portraits.Has("Placa"));
+            Assert.AreEqual("P", Portraits.Create(go.transform, "Placa", 100).GetComponentInChildren<UnityEngine.UI.Text>().text);
+        }
+        finally { Object.DestroyImmediate(go); }
+    }
+
+    [Test]
     public void AttackEvents_CarryTheElementForHitEffects()
     {
         var c = Content.Load();

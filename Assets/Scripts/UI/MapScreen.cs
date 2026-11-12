@@ -61,7 +61,31 @@ namespace CardBattler.UI
         // Placeholder port art: water, piers, cranes, containers, neon.
         void DrawPort()
         {
+            // Night skyline: moon, haze, building silhouettes with lit windows and neon signs (seeded, same every time).
+            Theme.Box(root, "Moon", Theme.Alpha(Theme.Hex("E8E1D0"), 0.85f), Theme.Circle).rectTransform.Center(1460, 150, 70, 70);
+            Theme.Box(root, "MoonGlow", Theme.Alpha(Theme.Hex("E8E1D0"), 0.035f), Theme.Circle).rectTransform.Center(1460, 150, 170, 170);
+            var rng = new System.Random(7);
+            var neon = new[] { "FF5AD8", "4AD6FF", "FFC24A", "7CFF6B" };
+            for (float x = 0; x < 1920;)
+            {
+                float w = rng.Next(70, 150), h = rng.Next(140, 420);
+                var bld = Theme.Solid(root, "Building", Theme.Mix(Theme.Hex("0E1018"), Theme.Hex("1C2033"), (float)rng.NextDouble()));
+                bld.rectTransform.Place(x, 760 - h, w - 6, h);
+                for (float wy = 760 - h + 16; wy < 740; wy += 26)
+                    for (float wx = x + 10; wx < x + w - 20; wx += 22)
+                        if (rng.NextDouble() < 0.22) Theme.Solid(root, "Window", Theme.Alpha(Theme.Hex(rng.NextDouble() < 0.7 ? "FFC24A" : "4AD6FF"), 0.35f)).rectTransform.Place(wx, wy, 10, 12);
+                if (rng.NextDouble() < 0.25)
+                {
+                    var col = Theme.Hex(neon[rng.Next(neon.Length)]);
+                    Theme.Solid(root, "Neon", Theme.Alpha(col, 0.7f)).rectTransform.Place(x + 8, 760 - h + 30, 6, Mathf.Min(120, h - 60));
+                    Theme.Box(root, "NeonGlow", Theme.Alpha(col, 0.05f), Theme.Circle).rectTransform.Center(x + 11, 760 - h + 90, 50, 150);
+                }
+                x += w;
+            }
+            for (int i = 0; i < 3; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("2A1C4A"), 0.18f)).rectTransform.Place(0, 560 + i * 70, 1920, 70);
+
             Theme.Solid(root, "Water", Theme.Hex("0A1A2A")).rectTransform.Place(0, 820, 1920, 260);
+            for (int i = 0; i < 18; i++) Theme.Solid(root, "Reflection", Theme.Alpha(Theme.Hex(neon[i % neon.Length]), 0.12f)).rectTransform.Place(90 + i * 104 + (i % 3) * 17, 836 + (i % 4) * 26, 34 - (i % 3) * 8, 3);
             for (int i = 0; i < 14; i++) Theme.Solid(root, "Wave", Theme.Alpha(Theme.Hex("1F4A6A"), 0.5f)).rectTransform.Place(40 + i * 140 + (i % 2) * 40, 860 + (i % 3) * 30, 70, 3);
             Theme.Solid(root, "Quay", Theme.Hex("1A1D28")).rectTransform.Place(0, 760, 1920, 60);
             Theme.Solid(root, "QuayEdge", Theme.Alpha(Theme.Hex("FFC24A"), 0.35f)).rectTransform.Place(0, 816, 1920, 4);
@@ -99,9 +123,11 @@ namespace CardBattler.UI
             node.Center(p.x, p.y, 300, 220);
             Theme.Box(node, "Glow", Theme.Alpha(color, open ? 0.18f : 0.06f), Theme.Circle).rectTransform.Center(150, 70, 190, 190);
             var pin = Theme.Box(node, "Pin", Theme.Mix(Theme.Bg, color, 0.25f), Theme.Circle, raycast: true);
-            pin.rectTransform.Center(150, 70, 110, 110);
+            pin.rectTransform.Center(150, 64, 128, 128);
+            pin.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             Theme.Box(pin.transform, "Ring", color, Theme.Ring).rectTransform.Fill();
-            Theme.Label(pin.transform, open ? Glyph(p.id) : "?", 44, color, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Fill();
+            if (open || teaser) Scene(pin.transform, p.id, open);
+            else Theme.Label(pin.transform, "?", 44, color, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Fill();
             var plate = Theme.Box(node, "Plate", Theme.Alpha(Theme.Panel, 0.94f));
             plate.rectTransform.Center(150, 160, 300, 74);
             Theme.Label(plate.transform, open || teaser ? p.name.ToUpperInvariant() : "???", 22, open ? Theme.Ink : Theme.TextDim, TextAnchor.UpperCenter, FontStyle.Bold).rectTransform.Place(0, 8, 300, 30);
@@ -112,7 +138,49 @@ namespace CardBattler.UI
             pin.gameObject.AddComponent<Clicker>().onClick = () => Open(id);
         }
 
-        static string Glyph(string id) => id switch { "bar" => "B", "oficina" => "O", "fosso" => "F", _ => "?" };
+        // Little illustration inside a place's round card (128 px). Shapes only, original placeholder art.
+        static void Scene(Transform pin, string id, bool open)
+        {
+            Image S(float x, float y, float w, float h, Color c, Sprite sp = null, float rot = 0)
+            {
+                var i = Theme.Box(pin, "s", c, sp ?? Theme.Rounded);
+                i.rectTransform.Center(x, y, w, h);
+                i.rectTransform.localRotation = Quaternion.Euler(0, 0, rot);
+                return i;
+            }
+            Color wall = Theme.Hex("232838"), dark = Theme.Hex("12151F");
+            switch (id)
+            {
+                case "bar": // building, door, glowing sign, lit windows
+                    S(64, 84, 96, 70, wall); S(86, 104, 20, 32, dark);
+                    for (int i = 0; i < 3; i++) S(30 + i * 20, 96, 12, 10, Theme.Alpha(Theme.Hex("FFC24A"), 0.7f));
+                    S(64, 38, 70, 22, Theme.Hex("2A1E10"));
+                    Theme.Label(pin, "BAR", 18, Theme.Hex("FFC24A"), TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(64, 38, 70, 22);
+                    S(64, 38, 84, 34, Theme.Alpha(Theme.Hex("FFC24A"), 0.15f));
+                    break;
+                case "oficina": // garage with a roll-up door and a wrench
+                    S(64, 80, 100, 74, wall); S(64, 44, 108, 14, Theme.Hex("2E3448"));
+                    for (int i = 0; i < 5; i++) S(64, 66 + i * 10, 64, 5, Theme.Hex("3A4258"));
+                    S(64, 92, 64, 10, Theme.Alpha(Theme.Hex("4AD6FF"), 0.5f)); // light under the door
+                    S(98, 34, 8, 34, Theme.Hex("4AD6FF"), rot: -40); S(108, 24, 16, 16, Theme.Hex("4AD6FF"), Theme.Ring);
+                    break;
+                case "fosso": // the pit: a ring of light, ropes, crowd heads
+                    S(64, 80, 104, 44, Theme.Hex("2A0E10"), Theme.Circle);
+                    S(64, 80, 104, 44, Theme.Hex("FF5A4A"), Theme.Ring);
+                    S(64, 66, 96, 3, Theme.Alpha(Theme.Ink, 0.4f)); S(64, 74, 100, 3, Theme.Alpha(Theme.Ink, 0.3f));
+                    for (int i = 0; i < 7; i++) S(22 + i * 14, 40 + (i % 2) * 6, 10, 10, Theme.Hex("1A1D28"), Theme.Circle);
+                    S(64, 30, 20, 20, Theme.Alpha(Theme.Hex("FF5A4A"), 0.6f), Theme.Circle);
+                    break;
+                case "ferro": // scrap pile behind a fence, padlock while closed
+                    S(44, 92, 46, 22, Theme.Hex("4A4F60"), rot: 18); S(78, 88, 52, 26, Theme.Hex("5A4A3A"), rot: -12);
+                    S(62, 70, 36, 24, Theme.Hex("3A4A5A"), rot: 8); S(56, 54, 26, 26, Theme.Hex("6A6F80"), Theme.Ring);
+                    for (int i = 0; i < 6; i++) S(18 + i * 18, 100, 3, 50, Theme.Alpha(Theme.Ink, 0.25f));
+                    S(18 + 50, 82, 100, 3, Theme.Alpha(Theme.Ink, 0.25f));
+                    if (!open) { S(96, 40, 22, 18, Theme.Hex("8A8FA3")); S(96, 28, 16, 16, Theme.Hex("8A8FA3"), Theme.Ring); }
+                    break;
+            }
+            if (!open) foreach (var g in pin.GetComponentsInChildren<Graphic>()) if (g.name == "s") g.color = Theme.Mix(g.color, Theme.Bg, 0.45f);
+        }
 
         // Clicking a place.
         public void Open(string id)
@@ -204,12 +272,8 @@ namespace CardBattler.UI
             box.rectTransform.Place(200, 640, 1520, 400);
             Theme.Box(box.transform, "Edge", Theme.Alpha(Theme.Warn, 0.6f), Theme.Frame).rectTransform.Fill(-2);
             var line = lines[index];
-            // Portrait placeholder: initial in a ring.
-            var face = Theme.Box(box.transform, "Portrait", Theme.Mix(Theme.Bg, Theme.Warn, 0.2f), Theme.Circle);
-            face.rectTransform.Place(40, 40, 160, 160);
-            Theme.Box(face.transform, "Ring", Theme.Warn, Theme.Ring).rectTransform.Fill();
-            Theme.Label(face.transform, line.who.Substring(0, 1), 72, Theme.Warn, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Fill();
-            Theme.Label(box.transform, line.who.ToUpperInvariant(), 24, Theme.Warn, style: FontStyle.Bold).rectTransform.Place(240, 36, 1000, 34);
+            Portraits.Create(box.transform, line.who, 170).Place(36, 36, 170, 170);
+            Theme.Label(box.transform, line.who.ToUpperInvariant(), 24, Portraits.ColorOf(line.who), style: FontStyle.Bold).rectTransform.Place(240, 36, 1000, 34);
             Theme.Label(box.transform, line.text, 28, Theme.Ink).rectTransform.Place(240, 80, 1240, 150);
             Theme.Label(box.transform, $"{index + 1}/{lines.Count}", 18, Theme.TextDim, TextAnchor.UpperRight).rectTransform.Place(1300, 36, 180, 30);
 
