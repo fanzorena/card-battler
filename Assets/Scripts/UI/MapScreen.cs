@@ -20,21 +20,32 @@ namespace CardBattler.UI
         Content C => app.content;
         Career K => app.career;
 
-        // id, name, subtitle, position, color. "ferro" is always locked (teaser).
-        public static readonly (string id, string name, string sub, float x, float y, string color)[] Places =
+        // id, name, subtitle, position, color. Locked teasers ("ferro", "neon") show their name.
+        public static readonly (string id, string name, string sub, float x, float y, string color)[] Porto =
         {
             ("bar", "Bar Fim da Linha", "Celeste arruma lutas", 430, 640, "FFC24A"),
             ("oficina", "Oficina do Cais", "Reparos e garagem", 900, 380, "4AD6FF"),
             ("fosso", "O Fosso", "Ranking até o campeão", 1360, 620, "FF5A4A"),
             ("ferro", "Ferro-velho", "Compra, venda e plantas", 1560, 300, "C8A27A"),
+            ("neon", "Trem para o Neon", "Distrito Neon", 200, 300, "B45AFF"),
+        };
+        public static readonly (string id, string name, string sub, float x, float y, string color)[] Neon =
+        {
+            ("circuito", "Circuito Regional", "Lutas nos telhados", 1200, 560, "4AD6FF"),
+            ("glitch", "Esconderijo da Glitch", "Hacker e informante", 620, 420, "B45AFF"),
+            ("porto", "Trem para o porto", "Voltar ao porto", 240, 680, "FFC24A"),
         };
 
-        public bool IsOpen(string id) => K.IsOpen(id);
+        bool InNeon => K.region == "neon";
+        public (string id, string name, string sub, float x, float y, string color)[] Places => InNeon ? Neon : Porto;
+
+        // Distrito Neon places open together with the region (first clue).
+        public bool IsOpen(string id) => K.IsOpen(id is "circuito" or "glitch" or "porto" ? "neon" : id);
 
         public void Build()
         {
-            DrawPort();
-            Theme.Label(root, "O PORTO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
+            if (InNeon) DrawNeon(); else DrawPort();
+            Theme.Label(root, InNeon ? "DISTRITO NEON" : "O PORTO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 700, 60);
             Theme.Label(root, "Escolha aonde ir", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
             Theme.Label(root, $"{K.credits} créditos   ·   {K.scrap} sucata", 26, Theme.Warn, TextAnchor.MiddleRight, FontStyle.Bold).rectTransform.Place(820, 34, 700, 50);
             var clues = Theme.Button(root, $"PISTAS ({K.clues.Length})", Journal, K.clues.Length > 0 ? Theme.Mix(Theme.PanelHi, Theme.Warn, 0.35f) : Theme.Panel, 22);
@@ -45,7 +56,12 @@ namespace CardBattler.UI
             foreach (var p in Places) Poi(p);
 
             // Where the story stands, in one line.
-            string hint = K.InJob ? $"Trabalho em andamento: luta {Math.Min(K.stage + 1, C.Job(K.job).stages.Length)} de {C.Job(K.job).stages.Length}. Fale com a Celeste no bar."
+            string hint = InNeon ? (K.GlitchReady ? "A Glitch achou alguma coisa. Vá até o esconderijo dela."
+                    : !K.Seen("glitch_first") ? "Procure a Glitch. Ela acha qualquer registro."
+                    : K.LadderTop(C, "circuit") ? "Campeão do Circuito Regional. A Glitch continua investigando a Lumen Holding."
+                    : "Suba no Circuito Regional: duas vitórias e a Glitch consegue o acesso.")
+                : K.IsOpen("neon") && !K.Seen("glitch_first") ? "O trem para o Distrito Neon está liberado. A Celeste quer que você procure a Glitch."
+                : K.InJob ? $"Trabalho em andamento: luta {Math.Min(K.stage + 1, C.Job(K.job).stages.Length)} de {C.Job(K.job).stages.Length}. Fale com a Celeste no bar."
                 : !K.IsOpen("fosso") ? "Fale com a Celeste no Bar Fim da Linha."
                 : K.BettorWaiting(C) ? "Um apostador velho quer falar com você no bar."
                 : K.Champion(C) ? "Campeão dos Fossos. A Celeste tem mais trabalho no bar."
@@ -58,23 +74,20 @@ namespace CardBattler.UI
             talkLayer = Theme.Node(root, "Talk").Fill();
         }
 
-        // Placeholder port art: water, piers, cranes, containers, neon.
-        void DrawPort()
+        // Night skyline: building silhouettes with lit windows and neon signs (seeded, same every time).
+        void Skyline(int seed, float neonChance, int minH, int maxH)
         {
-            // Night skyline: moon, haze, building silhouettes with lit windows and neon signs (seeded, same every time).
-            Theme.Box(root, "Moon", Theme.Alpha(Theme.Hex("E8E1D0"), 0.85f), Theme.Circle).rectTransform.Center(1460, 150, 70, 70);
-            Theme.Box(root, "MoonGlow", Theme.Alpha(Theme.Hex("E8E1D0"), 0.035f), Theme.Circle).rectTransform.Center(1460, 150, 170, 170);
-            var rng = new System.Random(7);
+            var rng = new System.Random(seed);
             var neon = new[] { "FF5AD8", "4AD6FF", "FFC24A", "7CFF6B" };
             for (float x = 0; x < 1920;)
             {
-                float w = rng.Next(70, 150), h = rng.Next(140, 420);
+                float w = rng.Next(70, 150), h = rng.Next(minH, maxH);
                 var bld = Theme.Solid(root, "Building", Theme.Mix(Theme.Hex("0E1018"), Theme.Hex("1C2033"), (float)rng.NextDouble()));
                 bld.rectTransform.Place(x, 760 - h, w - 6, h);
                 for (float wy = 760 - h + 16; wy < 740; wy += 26)
                     for (float wx = x + 10; wx < x + w - 20; wx += 22)
                         if (rng.NextDouble() < 0.22) Theme.Solid(root, "Window", Theme.Alpha(Theme.Hex(rng.NextDouble() < 0.7 ? "FFC24A" : "4AD6FF"), 0.35f)).rectTransform.Place(wx, wy, 10, 12);
-                if (rng.NextDouble() < 0.25)
+                if (rng.NextDouble() < neonChance)
                 {
                     var col = Theme.Hex(neon[rng.Next(neon.Length)]);
                     Theme.Solid(root, "Neon", Theme.Alpha(col, 0.7f)).rectTransform.Place(x + 8, 760 - h + 30, 6, Mathf.Min(120, h - 60));
@@ -82,6 +95,33 @@ namespace CardBattler.UI
                 }
                 x += w;
             }
+        }
+
+        // Distrito Neon: taller towers, more signs, magenta haze, rain over the rooftops.
+        void DrawNeon()
+        {
+            Skyline(11, 0.6f, 260, 640);
+            for (int i = 0; i < 4; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("5A1C6A"), 0.14f)).rectTransform.Place(0, 480 + i * 70, 1920, 70);
+            Theme.Solid(root, "Roof", Theme.Hex("161924")).rectTransform.Place(0, 760, 1920, 320);
+            Theme.Solid(root, "RoofEdge", Theme.Alpha(Theme.Hex("4AD6FF"), 0.4f)).rectTransform.Place(0, 760, 1920, 4);
+            for (int i = 0; i < 8; i++) Theme.Solid(root, "Puddle", Theme.Alpha(Theme.Hex(i % 2 == 0 ? "FF5AD8" : "4AD6FF"), 0.1f)).rectTransform.Place(120 + i * 230, 820 + (i % 3) * 40, 120, 6);
+            var rng = new System.Random(3);
+            for (int i = 0; i < 90; i++)
+            {
+                var drop = Theme.Solid(root, "Rain", Theme.Alpha(Theme.Hex("9EB8FF"), 0.18f)).rectTransform;
+                drop.Center(rng.Next(0, 1920), rng.Next(100, 1000), 2, rng.Next(18, 40));
+                drop.localRotation = Quaternion.Euler(0, 0, -12);
+            }
+            Road(240, 680, 620, 420); Road(620, 420, 1200, 560);
+        }
+
+        // Placeholder port art: water, piers, cranes, containers, neon.
+        void DrawPort()
+        {
+            Theme.Box(root, "Moon", Theme.Alpha(Theme.Hex("E8E1D0"), 0.85f), Theme.Circle).rectTransform.Center(1460, 150, 70, 70);
+            Theme.Box(root, "MoonGlow", Theme.Alpha(Theme.Hex("E8E1D0"), 0.035f), Theme.Circle).rectTransform.Center(1460, 150, 170, 170);
+            Skyline(7, 0.25f, 140, 420);
+            var neon = new[] { "FF5AD8", "4AD6FF", "FFC24A", "7CFF6B" };
             for (int i = 0; i < 3; i++) Theme.Solid(root, "Haze", Theme.Alpha(Theme.Hex("2A1C4A"), 0.18f)).rectTransform.Place(0, 560 + i * 70, 1920, 70);
 
             Theme.Solid(root, "Water", Theme.Hex("0A1A2A")).rectTransform.Place(0, 820, 1920, 260);
@@ -103,7 +143,7 @@ namespace CardBattler.UI
             for (int i = 0; i < 9; i++)
                 Theme.Box(root, "Container", Theme.Alpha(Theme.Hex(cols[i % cols.Length]), 0.55f)).rectTransform.Place(620 + (i % 5) * 92 - (i / 5) * 40, 706 - (i / 5) * 52, 86, 48);
             // dirt roads between places
-            Road(430, 640, 900, 380); Road(900, 380, 1360, 620); Road(430, 640, 1360, 620); Road(1360, 620, 1560, 300);
+            Road(430, 640, 900, 380); Road(900, 380, 1360, 620); Road(430, 640, 1360, 620); Road(1360, 620, 1560, 300); Road(200, 300, 430, 640);
         }
 
         void Road(float x0, float y0, float x1, float y1)
@@ -117,7 +157,7 @@ namespace CardBattler.UI
         void Poi((string id, string name, string sub, float x, float y, string color) p)
         {
             bool open = IsOpen(p.id);
-            bool teaser = p.id == "ferro" && !open; // shown by name even while locked
+            bool teaser = (p.id == "ferro" || p.id == "neon") && !open; // shown by name even while locked
             var color = open ? Theme.Hex(p.color) : Theme.TextDim;
             var node = Theme.Node(root, "Place:" + p.id);
             node.Center(p.x, p.y, 300, 220);
@@ -178,6 +218,26 @@ namespace CardBattler.UI
                     S(18 + 50, 82, 100, 3, Theme.Alpha(Theme.Ink, 0.25f));
                     if (!open) { S(96, 40, 22, 18, Theme.Hex("8A8FA3")); S(96, 28, 16, 16, Theme.Hex("8A8FA3"), Theme.Ring); }
                     break;
+                case "neon": case "porto": // train car with lit windows on a rail
+                    S(64, 98, 120, 4, Theme.Hex("8A8FA3"));
+                    S(64, 74, 104, 40, Theme.Hex(id == "neon" ? "3A2350" : "3A3020"));
+                    for (int i = 0; i < 4; i++) S(28 + i * 24, 70, 16, 14, Theme.Alpha(Theme.Hex(id == "neon" ? "B45AFF" : "FFC24A"), 0.8f));
+                    S(64, 46, 70, 4, Theme.Alpha(Theme.Ink, 0.4f));
+                    if (!open) { S(100, 36, 22, 18, Theme.Hex("8A8FA3")); S(100, 24, 16, 16, Theme.Hex("8A8FA3"), Theme.Ring); }
+                    break;
+                case "circuito": // rooftop ring under the rain, neon billboard
+                    S(64, 92, 110, 30, Theme.Hex("10202A"), Theme.Circle);
+                    S(64, 92, 110, 30, Theme.Hex("4AD6FF"), Theme.Ring);
+                    S(64, 46, 80, 26, Theme.Hex("1A1030"));
+                    Theme.Label(pin, "CR", 18, Theme.Hex("FF5AD8"), TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(64, 46, 80, 26);
+                    for (int i = 0; i < 6; i++) S(20 + i * 18, 70, 2, 16, Theme.Alpha(Theme.Hex("9EB8FF"), 0.5f), rot: -12);
+                    break;
+                case "glitch": // dark room, three glowing screens, cables
+                    S(64, 70, 110, 80, Theme.Hex("12101C"));
+                    S(40, 60, 34, 24, Theme.Alpha(Theme.Hex("B45AFF"), 0.8f)); S(84, 60, 34, 24, Theme.Alpha(Theme.Hex("4AD6FF"), 0.8f));
+                    S(62, 88, 40, 20, Theme.Alpha(Theme.Hex("7CFF6B"), 0.7f));
+                    S(40, 104, 60, 3, Theme.Alpha(Theme.Ink, 0.3f), rot: 10); S(86, 106, 50, 3, Theme.Alpha(Theme.Ink, 0.3f), rot: -14);
+                    break;
             }
             if (!open) foreach (var g in pin.GetComponentsInChildren<Graphic>()) if (g.name == "s") g.color = Theme.Mix(g.color, Theme.Bg, 0.45f);
         }
@@ -185,7 +245,10 @@ namespace CardBattler.UI
         // Clicking a place.
         public void Open(string id)
         {
-            if (!IsOpen(id)) { Talk(Lines(id == "ferro" ? "ferro_velho" : "locked"), null); return; }
+            if (!IsOpen(id)) { Talk(id == "neon" ? new List<LineDef> { new LineDef { who = "Placa", text = "TREM PARA O DISTRITO NEON — SÓ COM CONVITE." } } : Lines(id == "ferro" ? "ferro_velho" : "locked"), null); return; }
+            if (id == "neon" || id == "porto") { K.region = id; app.SaveCareer(); app.ShowMap(); return; }
+            if (id == "circuito") { app.ShowCareer("circuit"); return; }
+            if (id == "glitch") { Glitch(); return; }
             if (id == "ferro") app.ShowCareer("ferro");
             else if (id == "oficina") app.ShowCareer("workshop");
             else if (id == "fosso") app.ShowCareer("pit");
@@ -206,8 +269,8 @@ namespace CardBattler.UI
         public void Celeste()
         {
             var lines = new List<LineDef>();
-            foreach (var once in new[] { "celeste_first", "celeste_unlock", "ferro_open" })
-                if (!K.Seen(once) && (once == "celeste_first" || K.IsOpen(once == "ferro_open" ? "ferro" : "fosso"))) { lines.AddRange(Lines(once)); K.MarkSeen(once); app.SaveCareer(); }
+            foreach (var once in new[] { "celeste_first", "celeste_unlock", "ferro_open", "neon_open" })
+                if (!K.Seen(once) && (once == "celeste_first" || K.IsOpen(once == "ferro_open" ? "ferro" : once == "neon_open" ? "neon" : "fosso"))) { lines.AddRange(Lines(once)); K.MarkSeen(once); app.SaveCareer(); }
             if (K.InJob)
             {
                 lines.AddRange(Lines("celeste_busy"));
@@ -241,6 +304,21 @@ namespace CardBattler.UI
             {
                 ("Anotar nas pistas", () => { K.LearnClue(C, Career.ClueRigged); app.SaveCareer(); app.ShowMap(); }),
             });
+        }
+
+        // Glitch: introduction once, then waits for two Circuito wins, then finds the sale record (second clue).
+        public void Glitch()
+        {
+            var lines = new List<LineDef>();
+            if (!K.Seen("glitch_first")) { lines.AddRange(Lines("glitch_first")); K.MarkSeen("glitch_first"); app.SaveCareer(); }
+            if (K.GlitchReady)
+            {
+                lines.AddRange(Lines("glitch_clue"));
+                Talk(lines, new List<(string, Action)> { ("Anotar nas pistas", () => { K.LearnClue(C, Career.ClueSale); app.SaveCareer(); app.ShowMap(); }) });
+                return;
+            }
+            if (lines.Count == 0) lines.AddRange(Lines(K.clues.Contains(Career.ClueSale) ? "glitch_done" : "glitch_wait"));
+            Talk(lines, new List<(string, Action)> { ("Ir ao Circuito", () => app.ShowCareer("circuit")), ("Sair", CloseTalk) });
         }
 
         // ---- Dialogue box: one line at a time, then the choices ----

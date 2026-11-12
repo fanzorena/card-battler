@@ -967,6 +967,131 @@
         ]
       },
       "terrain": "fosso"
+    },
+    {
+      "id": "enemy_drift",
+      "name": "Drifter da Laje",
+      "tier": "Moderado",
+      "strategies": [
+        "status",
+        "sucateiro"
+      ],
+      "frame": "vira_lata",
+      "head": "sensor_k7",
+      "torso": "chassi_aero",
+      "armL": "pulso_tesla",
+      "armR": "injetor",
+      "legs": "hover",
+      "core": "reator_k",
+      "maxCardsPerTurn": 4,
+      "bonusChassis": 10,
+      "terrain": "neon_chuva",
+      "dossier": {
+        "rumors": [
+          "\"Ele flutua de um telhado pro outro e choca quem chega perto. Na chuva, o choque dói o dobro.\" — Glitch",
+          "\"Corrosão de um braço, choque do outro: ele ganha no desgaste.\""
+        ],
+        "worksWell": [
+          "Pernas Hover (peças Nyx): ignoram a chuva, e o choque dele perde o bônus.",
+          "Golpes Cinéticos: o sensor Kagemori dele é fraco a pancada."
+        ],
+        "avoid": [
+          "Peças Kagemori: ele resiste a choque e conhece a precisão delas.",
+          "Ficar parado no telhado molhado: o Elétrico dele bate +2."
+        ],
+        "goodBuilds": [
+          "nyx",
+          "inicial"
+        ],
+        "badBuilds": [
+          "kagemori"
+        ]
+      },
+      "bonusEnergy": 0
+    },
+    {
+      "id": "enemy_muralha",
+      "name": "Muralha de Neon",
+      "tier": "Difícil",
+      "strategies": [
+        "defensivo",
+        "adaptativo",
+        "sucateiro"
+      ],
+      "frame": "bastiao",
+      "head": "elmo_bastion",
+      "torso": "torax_refrigerado",
+      "armL": "pulso_tesla",
+      "armR": "canhao_30mm",
+      "legs": "hover",
+      "core": "bateria_reciclada",
+      "maxCardsPerTurn": 4,
+      "bonusChassis": 6,
+      "terrain": "neon_chuva",
+      "dossier": {
+        "rumors": [
+          "\"Segurança de boate: fecha a guarda e espera você cansar. Quando você fraqueja, o canhão fala.\" — Glitch",
+          "\"O tórax dele aguenta fogo, mas ácido faz estrago.\""
+        ],
+        "worksWell": [
+          "Químico (Injetor): o tórax refrigerado dele é fraco a ácido.",
+          "Golpes que ignoram blindagem."
+        ],
+        "avoid": [
+          "Térmico contra o tórax: ele resiste a fogo.",
+          "Atacar sem plano quando ele está blindado."
+        ],
+        "goodBuilds": [
+          "nyx"
+        ],
+        "badBuilds": [
+          "bastion"
+        ]
+      },
+      "bonusEnergy": 2
+    },
+    {
+      "id": "enemy_kiro_revanche",
+      "name": "Kiro Sato (revanche)",
+      "tier": "Chefe",
+      "strategies": [
+        "combista",
+        "cirurgiao",
+        "adaptativo",
+        "sucateiro",
+        "status"
+      ],
+      "frame": "duelista",
+      "head": "sensor_k7",
+      "torso": "chassi_aero",
+      "armL": "lamina_plasma",
+      "armR": "pulso_tesla",
+      "legs": "pernas_digitigradas",
+      "core": "reator_k",
+      "maxCardsPerTurn": 4,
+      "bonusChassis": 8,
+      "terrain": "neon_chuva",
+      "dossier": {
+        "rumors": [
+          "\"O Kiro voltou do Fosso com raiva. Agora luta em casa, na chuva, e o pulso dele está turbinado.\" — Glitch",
+          "\"Ele ainda despreza sucata. E ainda perde pra ela mais do que admite.\""
+        ],
+        "worksWell": [
+          "Golpes Cinéticos: o sensor dele é fraco a pancada.",
+          "Esquiva e blindagem na hora do combo dele."
+        ],
+        "avoid": [
+          "Peças Kagemori: ele conhece cada truque.",
+          "Ficar parado na chuva levando choque."
+        ],
+        "goodBuilds": [
+          "inicial"
+        ],
+        "badBuilds": [
+          "kagemori"
+        ]
+      },
+      "bonusEnergy": 0
     }
   ],
   "presets": [
@@ -1379,6 +1504,71 @@
           "text": "O Duda abriu o Ferro-velho pra você. Ele vende peça boa, compra o que sobra e às vezes tem planta de fabricação."
         }
       ]
+    },
+    {
+      "id": "neon_open",
+      "lines": [
+        {
+          "who": "Celeste",
+          "text": "Essa história do teu pai não termina aqui no porto. Pega o trem pro Distrito Neon."
+        },
+        {
+          "who": "Celeste",
+          "text": "Procura a Glitch. Ela acha qualquer registro que já passou por um cabo. E lá tem o Circuito Regional, luta de verdade, nos telhados."
+        }
+      ]
+    },
+    {
+      "id": "glitch_first",
+      "lines": [
+        {
+          "who": "Glitch",
+          "text": "Navarro. A Celeste avisou que você vinha. Senta, não encosta nos cabos."
+        },
+        {
+          "who": "Glitch",
+          "text": "Eu acho coisas. Contas, contratos, gente que sumiu. Mas acesso custa caro aqui em cima."
+        },
+        {
+          "who": "Glitch",
+          "text": "Sobe no Circuito Regional. Duas vitórias e os patrocinadores te deixam entrar nas salas certas. Aí eu trabalho."
+        }
+      ]
+    },
+    {
+      "id": "glitch_wait",
+      "lines": [
+        {
+          "who": "Glitch",
+          "text": "Ainda não. Duas vitórias no Circuito e eu consigo o acesso que preciso."
+        }
+      ]
+    },
+    {
+      "id": "glitch_clue",
+      "lines": [
+        {
+          "who": "Glitch",
+          "text": "Consegui. Olha isso: registro de venda, semana em que o Tomás sumiu."
+        },
+        {
+          "who": "Glitch",
+          "text": "Um núcleo protótipo, 'Áurea', vendido pra Lumen Holding. Empresa de fachada: sem endereço, sem funcionário, sem nada."
+        },
+        {
+          "who": "Glitch",
+          "text": "E o intermediário que assinou a venda era um promotor de eventos dos Fossos. Nome apagado do registro. Alguém limpou isso com cuidado."
+        }
+      ]
+    },
+    {
+      "id": "glitch_done",
+      "lines": [
+        {
+          "who": "Glitch",
+          "text": "Tô cavando a Lumen Holding. Quando eu achar quem paga as contas dela, você vai ser o primeiro a saber."
+        }
+      ]
     }
   ],
   "clues": [
@@ -1387,6 +1577,12 @@
       "title": "A luta do Tomás foi comprada",
       "source": "Apostador velho, Bar Fim da Linha",
       "text": "O robô do Tomás Navarro, ex-campeão dos Fossos, travou no terceiro round quando estava ganhando: alguém mexeu no núcleo antes da luta. Na mesma noite o núcleo Áurea, protótipo dele, desapareceu, e depois o próprio Tomás. O promotor que armou a luta hoje subiu na vida."
+    },
+    {
+      "id": "venda_aurea",
+      "title": "O núcleo Áurea foi vendido",
+      "source": "Glitch, Distrito Neon",
+      "text": "Na semana em que o Tomás sumiu, o núcleo Áurea foi vendido para a Lumen Holding, uma empresa de fachada sem endereço nem funcionários. O intermediário foi um promotor de eventos dos Fossos; o nome foi apagado do registro."
     }
   ],
   "terrains": [
@@ -1504,6 +1700,26 @@
       "part": "reator_k",
       "scrap": 5,
       "credits": 40
+    }
+  ],
+  "circuit": [
+    {
+      "enemy": "enemy_drift",
+      "credits": 35,
+      "scrap": 3,
+      "text": "Primeira laje do Circuito Regional. O Drifter adora plateia molhada."
+    },
+    {
+      "enemy": "enemy_muralha",
+      "credits": 50,
+      "scrap": 3,
+      "text": "Segunda laje. A Muralha de Neon não sai do lugar, e ninguém passa por ela."
+    },
+    {
+      "enemy": "enemy_kiro_revanche",
+      "credits": 90,
+      "scrap": 2,
+      "text": "O topo do Circuito. Kiro Sato quer a revanche, em casa, na chuva."
     }
   ]
 }

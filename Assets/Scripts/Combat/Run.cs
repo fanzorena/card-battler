@@ -69,12 +69,15 @@ namespace CardBattler.Combat
         public string[] unlocked = new string[0]; // map places opened ("oficina", "fosso")
         public int pitRank;                      // Fosso ladder fights won (== pit.Length: champion)
         public string lastPit;                   // short text about the last Fosso fight
+        public int circuitRank;                  // Circuito Regional fights won
+        public string lastCircuit;
+        public string region = "porto";          // map shown: "porto" or "neon"
         public string[] clues = new string[0];   // clue ids in the Pistas journal
         public string[] seen = new string[0];    // one-time dialogues already heard
         public string[] blueprints = new string[0]; // known crafting blueprints
         public const int SellOffPrice = 10;      // parts the shop doesn't stock
 
-        public const string ClueRigged = "luta_armada";
+        public const string ClueRigged = "luta_armada", ClueSale = "venda_aurea";
         public static readonly string[] PortPlaces = { "oficina", "fosso" }; // opened by the first job win
 
         public RobotDef Build => garage.Current;
@@ -121,12 +124,12 @@ namespace CardBattler.Combat
         // Battle with the current build; damage from earlier fights carries over.
         public const string Arena = "fosso"; // the job and the ranking ladder are both fought in the Fossos
 
-        public Battle StartBattle(Content c, int seed, string enemyId)
+        public Battle StartBattle(Content c, int seed, string enemyId, string arena = Arena)
         {
             if (offer.Length > 0) throw new InvalidOperationException("Escolha a recompensa antes da próxima luta.");
             var errors = Validate(c);
             if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
-            var b = new Battle(c, seed, Build.Clone(), enemyId, false, c.terrains.Any(t => t.id == Arena) ? Arena : null);
+            var b = new Battle(c, seed, Build.Clone(), enemyId, false, c.terrains.Any(t => t.id == arena) ? arena : null);
             foreach (var p in b.player.parts.Values) p.hp = HpOf(c, p.def.id);
             b.player.chassis = Math.Max(1, b.player.chassisMax - chassisDamage);
             return b;
@@ -237,33 +240,58 @@ namespace CardBattler.Combat
         // ---- Map / Fosso / Pistas ----
         public bool IsOpen(string place) => place == "bar" || unlocked.Contains(place);
         public void Unlock(string place) { if (!unlocked.Contains(place)) unlocked = unlocked.Append(place).ToArray(); }
-        public bool Champion(Content c) => pitRank >= c.pit.Length;
-        public StageDef PitStage(Content c) => c.pit[Math.Min(pitRank, c.pit.Length - 1)];
+        public bool Champion(Content c) => LadderTop(c, "pit");
+        public StageDef PitStage(Content c) => LadderStage(c, "pit");
+
+        // Ranking ladders: "pit" (Fosso, porto) and "circuit" (Circuito Regional, Distrito Neon).
+        public static StageDef[] Ladder(Content c, string ladder) => ladder == "circuit" ? c.circuit : c.pit;
+        public static string ArenaOf(string ladder) => ladder == "circuit" ? "neon_chuva" : Arena;
+        public int RankIn(string ladder) => ladder == "circuit" ? circuitRank : pitRank;
+        public bool LadderTop(Content c, string ladder) => RankIn(ladder) >= Ladder(c, ladder).Length;
+        public StageDef LadderStage(Content c, string ladder) { var s = Ladder(c, ladder); return s[Math.Min(RankIn(ladder), s.Length - 1)]; }
+        public string LastLadder(string ladder) => ladder == "circuit" ? lastCircuit : lastPit;
+        // Glitch finds the sale record once you have two Circuito wins.
+        public bool GlitchReady => circuitRank >= 2 && !clues.Contains(ClueSale);
         // The old bettor shows up in the bar once you're champion, until he's told his story.
         public bool BettorWaiting(Content c) => Champion(c) && !clues.Contains(ClueRigged);
         public bool Seen(string dialogueId) => seen.Contains(dialogueId);
         public void MarkSeen(string dialogueId) { if (!Seen(dialogueId)) seen = seen.Append(dialogueId).ToArray(); }
-        public void LearnClue(Content c, string id) { c.Clue(id); if (!clues.Contains(id)) clues = clues.Append(id).ToArray(); }
+        public void LearnClue(Content c, string id)
+        {
+            c.Clue(id);
+            if (!clues.Contains(id)) clues = clues.Append(id).ToArray();
+            if (id == ClueRigged) Unlock("neon"); // the first clue points to the Distrito Neon
+        }
 
         // Ranking fight. Win: money, one rung up, damage stays. Loss: one rung down and nothing else
         // (the Fosso crew patches the robot for free, no credits charged).
-        public void FinishPitFight(Content c, Battle b)
+        public void FinishPitFight(Content c, Battle b) => FinishLadderFight(c, b, "pit");
+
+        public void FinishLadderFight(Content c, Battle b, string ladder)
         {
-            var st = PitStage(c);
+            var st = LadderStage(c, ladder);
             var name = c.Robot(st.enemy).name;
+            bool circuit = ladder == "circuit";
+            string where = circuit ? "no Circuito" : "no Fosso";
+            int rank = RankIn(ladder), top = Ladder(c, ladder).Length;
+            string text;
             if (b.result == Result.Win)
             {
                 KeepDamage(c, b);
                 credits += st.credits;
                 scrap += st.scrap;
-                pitRank = Math.Min(c.pit.Length, pitRank + 1);
-                if (Champion(c)) Unlock("ferro");
-                lastPit = $"Vitória no Fosso contra {name}: +{st.credits} créditos, +{st.scrap} sucata." + (Champion(c) ? " Você é o novo campeão dos Fossos!" : "");
-                return;
+                rank = Math.Min(top, rank + 1);
+                text = $"Vitória {where} contra {name}: +{st.credits} créditos, +{st.scrap} sucata."
+                       + (rank >= top ? circuit ? " Você é o campeão do Circuito Regional!" : " Você é o novo campeão dos Fossos!" : "");
             }
-            damaged = new PartHp[0]; chassisDamage = 0;
-            pitRank = Math.Max(0, pitRank - 1);
-            lastPit = $"Derrota no Fosso contra {name}. Você caiu uma posição no ranking. O pessoal do Fosso remendou o robô de graça.";
+            else
+            {
+                damaged = new PartHp[0]; chassisDamage = 0;
+                rank = Math.Max(0, rank - 1);
+                text = $"Derrota {where} contra {name}. Você caiu uma posição no ranking. A equipe remendou o robô de graça.";
+            }
+            if (circuit) { circuitRank = rank; lastCircuit = text; }
+            else { pitRank = rank; lastPit = text; if (Champion(c)) Unlock("ferro"); }
         }
 
         public void Choose(string partId)
@@ -320,6 +348,8 @@ namespace CardBattler.Combat
                     if (ok)
                     {
                         s.pitRank = Math.Clamp(s.pitRank, 0, c.pit.Length);
+                        s.circuitRank = Math.Clamp(s.circuitRank, 0, c.circuit.Length);
+                        if (s.region != "neon" || !s.IsOpen("neon")) s.region = "porto";
                         s.garage = GarageSave.Fix(s.garage, c);
                         return s;
                     }

@@ -24,7 +24,7 @@ namespace CardBattler.UI
 
         public void Build()
         {
-            Theme.Label(root, page == "workshop" ? "OFICINA" : page == "pit" ? "FOSSO" : page == "ferro" ? "FERRO-VELHO" : "TRABALHO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
+            Theme.Label(root, page == "workshop" ? "OFICINA" : page == "pit" ? "FOSSO" : page == "circuit" ? "CIRCUITO REGIONAL" : page == "ferro" ? "FERRO-VELHO" : "TRABALHO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
             Theme.Label(root, $"{K.credits} créditos   ·   {K.scrap} sucata", 26, Theme.Warn, TextAnchor.MiddleRight, FontStyle.Bold).rectTransform.Place(1000, 34, 700, 50);
             var back = Theme.Button(root, "←  MAPA", app.ShowMap, Theme.Panel, 22);
             back.name = "Mapa";
@@ -32,7 +32,7 @@ namespace CardBattler.UI
 
             if (page == "workshop") Workshop();
             else if (page == "ferro") Ferro();
-            else if (page == "pit") Pit();
+            else if (page == "pit" || page == "circuit") Ladder(page);
             else if (!K.InJob) Offer(C.jobs[0]);
             else if (K.offer.Length > 0) Reward();
             else if (K.JobDone(C)) Done();
@@ -284,28 +284,32 @@ namespace CardBattler.UI
         }
 
         // ---- Fosso: ranking ladder up to the champion. Losing costs only the ranking ----
-        void Pit()
+        void Ladder(string ladder)
         {
-            bool champ = K.Champion(C);
-            Theme.Label(root, champ ? "Você é o campeão dos Fossos. Defenda o título quando quiser." : $"Ranking do Fosso · posição {C.pit.Length - K.pitRank + 1} · perder só custa a posição",
+            bool circuit = ladder == "circuit";
+            var stages = Career.Ladder(C, ladder);
+            bool champ = K.LadderTop(C, ladder);
+            string title = circuit ? "Circuito Regional" : "Fosso";
+            Theme.Label(root, champ ? $"Você é o campeão do {title}. Defenda o título quando quiser." : $"Ranking do {title} · posição {stages.Length - K.RankIn(ladder) + 1} · perder só custa a posição",
                 Theme.Small, champ ? Theme.Good : Theme.TextDim).rectTransform.Place(62, 80, 1000, 30);
-            Track(root, C.pit, K.pitRank, 60, 120, "DEGRAU");
+            Track(root, stages, K.RankIn(ladder), 60, 120, circuit ? "LAJE" : "DEGRAU");
 
-            var st = K.PitStage(C);
+            var st = K.LadderStage(C, ladder);
+            var last = K.LastLadder(ladder);
             var talk = Theme.Box(root, "Announcer", Theme.Alpha(Theme.Panel, 0.96f));
             talk.rectTransform.Place(60, 316, 1000, 190);
-            var text = (string.IsNullOrEmpty(K.lastPit) ? "" : $"<color=#{Theme.HexOf(Theme.Warn)}>{K.lastPit}</color>\n")
+            var text = (string.IsNullOrEmpty(last) ? "" : $"<color=#{Theme.HexOf(Theme.Warn)}>{last}</color>\n")
                        + (champ ? "<b>Locutor:</b> <i>O campeão está na casa! Quem sobe pra tirar o cinturão?</i>" : $"<b>Locutor:</b> <i>{st.text}</i>");
             Portraits.Create(talk.transform, "Locutor", 150).Place(20, 20, 150, 150);
             Theme.Label(talk.transform, text, 22, Theme.Ink).rectTransform.Place(190, 18, 786, 160);
             Status(60, 524);
 
             var dossier = Theme.Node(root, "Dossier").Place(1120, 110, 760, 760);
-            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy), Career.Arena);
+            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy), Career.ArenaOf(ladder));
 
             ((RectTransform)Theme.Button(root, "GARAGEM", app.ShowGarage, Theme.Panel, 26).transform).Place(1120, 970, 220, 84);
             var errors = K.Validate(C);
-            var fight = Theme.Button(root, champ ? "DEFENDER TÍTULO" : "LUTAR", app.StartPitFight, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), champ ? 28 : 34);
+            var fight = Theme.Button(root, champ ? "DEFENDER TÍTULO" : "LUTAR", () => app.StartLadderFight(ladder), Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), champ ? 28 : 34);
             fight.name = "Lutar";
             ((RectTransform)fight.transform).Place(1520, 970, 360, 84);
             fight.interactable = errors.Count == 0 && K.offer.Length == 0;

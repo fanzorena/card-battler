@@ -3,6 +3,18 @@
 Valores que mudaram em relação ao documento de design / versão anterior, para atualizar o documento.
 Medido com o simulador (Card Battler > Simulador), 500 lutas por confronto, jogador greedy.
 
+## 2026-11-12 — inimigos do Distrito Neon (`feature/distrito-neon`)
+
+Todos lutam na chuva (Elétrico +2). Ajuste para a meta:
+
+| Inimigo | Categoria | Chassi extra | Cartas/turno | Energia extra | Vitória greedy |
+|---|---|---|---|---|---|
+| Drifter da Laje | Moderado | 10 | 4 | 0 | 67.5% |
+| Muralha de Neon | Difícil | 6 | 4 | 2 | 55.2% |
+| Kiro Sato (revanche) | Chefe | 8 | 4 | 0 | 59.4% |
+
+Categorias (média): Fácil 99.8%, Moderado 67.9%, Difícil 56.6%, Chefe 57.6%.
+
 ## 2026-11-12 — terrenos (`feature/terrain`)
 
 ### Regras novas (código)
