@@ -106,6 +106,7 @@ namespace CardBattler.Combat
         public TerrainDef[] terrains = new TerrainDef[0];
         public TerrainDef Terrain(string id) => string.IsNullOrEmpty(id) ? null : terrains.FirstOrDefault(t => t.id == id) ?? throw new ArgumentException("Terreno desconhecido: " + id);
         public StageDef[] pit = new StageDef[0];
+        public StageDef[] circuit = new StageDef[0];       // Circuito Regional ladder (Distrito Neon)
         public ShopItem[] shop = new ShopItem[0];
         public BlueprintDef[] blueprints = new BlueprintDef[0];
         public BlueprintDef Blueprint(string id) => blueprints.FirstOrDefault(b => b.id == id) ?? throw new ArgumentException("Planta desconhecida: " + id);          // Fosso ranking ladder, last = champion

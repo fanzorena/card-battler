@@ -107,7 +107,7 @@ namespace CardBattler.UI
             {
                 case "title": Quit(); break;
                 case "about": case "history": case "map": ShowTitle(); break;
-                case "job": case "workshop": case "pit": case "ferro": ShowMap(); break;
+                case "job": case "workshop": case "pit": case "ferro": case "circuit": ShowMap(); break;
                 case "garage": if (careerMode) ShowCareer(careerHub); else ShowTitle(); break;
                 case "opponents": ShowGarage(); break;
             }
@@ -186,15 +186,18 @@ namespace CardBattler.UI
         }
 
         // Fosso ranking fight: losing costs only the ranking position.
-        public void StartPitFight()
+        public void StartPitFight() => StartLadderFight("pit");
+
+        // Ranking fight (Fosso or Circuito): losing costs only the ranking position.
+        public void StartLadderFight(string ladder)
         {
-            var enemy = career.PitStage(content).enemy;
-            var b = career.StartBattle(content, Environment.TickCount, enemy);
+            var enemy = career.LadderStage(content, ladder).enemy;
+            var b = career.StartBattle(content, Environment.TickCount, enemy, Career.ArenaOf(ladder));
             Run(b, enemy, done =>
             {
-                career.FinishPitFight(content, done);
+                career.FinishLadderFight(content, done, ladder);
                 SaveCareer();
-                ShowCareer("pit");
+                ShowCareer(ladder);
             });
         }
 
