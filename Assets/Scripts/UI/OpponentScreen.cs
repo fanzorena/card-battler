@@ -64,7 +64,7 @@ namespace CardBattler.UI
             Dossier(C, dossier, op);
 
             // Player's robot preview
-            var build = app.garage.Current;
+            var build = app.Garage.Current;
             var stats = BuildStats.Of(C, build);
             var mine = Theme.Box(root, "Mine", Theme.Panel);
             mine.rectTransform.Place(40, 880, 700, 180);

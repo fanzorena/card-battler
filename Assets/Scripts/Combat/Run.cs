@@ -28,70 +28,110 @@ namespace CardBattler.Combat
         public int hp;
     }
 
-    // Progress through a job: inventory, currencies and damage that carries over between fights.
+    // The player's persistent profile: money, inventory, builds, damage carried between fights and the job in progress.
     [Serializable]
-    public class RunState
+    public class Career
     {
-        public const int RepairPerScrap = 3;
+        public const int RepairPerScrap = 3, CreditsPerPoint = 2;
 
-        public string job;
-        public int stage, credits, scrap, chassisDamage;
-        public string[] owned = new string[0];   // part ids
-        public string[] offer = new string[0];   // reward choice pending after a win
+        public int credits, scrap;
+        public string[] owned = new string[0];   // part ids (one entry per copy)
+        public string[] frames = new string[0];  // owned frame ids
+        public GarageSave garage = new GarageSave();
         public PartHp[] damaged = new PartHp[0]; // parts below full integrity
-        public RobotDef build;
-        public bool failed;
+        public int chassisDamage;
+        public string job;                       // job in progress (null/empty = none)
+        public int stage;
+        public string[] offer = new string[0];   // reward choice pending after a win
+        public string lastResult;                // short text about the last fight, for the job screen
 
-        public bool Done(Content c) => !failed && stage >= c.Job(job).stages.Length;
-        public bool Over(Content c) => failed || Done(c);
-        public StageDef Current(Content c) => c.Job(job).stages[Math.Min(stage, c.Job(job).stages.Length - 1)];
+        public RobotDef Build => garage.Current;
+        public bool InJob => !string.IsNullOrEmpty(job);
 
-        public static RunState Start(Content c, string jobId)
+        public static Career New(Content c)
         {
-            var b = c.Robot("player").Clone();
-            b.id = "run"; b.name = "Vira-lata (Rafa)";
-            c.Job(jobId); // throws on unknown job
-            return new RunState { job = jobId, build = b, owned = b.PartIds.ToArray() };
+            var starter = c.Robot("player");
+            var career = new Career { owned = starter.PartIds.ToArray(), frames = new[] { starter.frame } };
+            career.garage = GarageSave.Load(null, c); // three starter slots
+            return career;
         }
 
+        public bool Owns(PartDef p) => owned.Contains(p.id);
+        public bool OwnsFrame(FrameDef f) => frames.Contains(f.id);
         public int HpOf(Content c, string partId) => damaged.FirstOrDefault(d => d.part == partId)?.hp ?? c.Part(partId).integrity;
+        public int MissingIntegrity(Content c) => damaged.Sum(d => c.Part(d.part).integrity - d.hp) + chassisDamage;
+        public int FullRepairCost(Content c) => MissingIntegrity(c) * CreditsPerPoint;
 
-        // Builds may only use owned parts (frame stays Vira-lata until frames can be found).
-        public List<string> Validate(Content c)
+        // Builds may only use owned parts and frames.
+        public List<string> Validate(Content c, RobotDef b = null)
         {
-            var errors = c.Validate(build);
-            foreach (var id in build.PartIds.Where(id => !owned.Contains(id)).Distinct())
-                errors.Add($"Você não tem a peça {c.Part(id).name}.");
-            if (build.armL == build.armR && owned.Count(o => o == build.armL) < 2)
-                errors.Add("Você só tem um " + c.Part(build.armL).name + ".");
+            b ??= Build;
+            var errors = c.Validate(b);
+            if (!frames.Contains(b.frame)) errors.Add($"Você não tem o frame {c.Frame(b.frame).name}.");
+            foreach (var g in b.PartIds.GroupBy(id => id))
+                if (owned.Count(o => o == g.Key) < g.Count())
+                    errors.Add(owned.Contains(g.Key) ? $"Você só tem {owned.Count(o => o == g.Key)} {c.Part(g.Key).name}." : $"Você não tem a peça {c.Part(g.Key).name}.");
             return errors;
         }
 
-        public Battle StartBattle(Content c, int seed)
+        // ---- Job ----
+        public StageDef Stage(Content c) => c.Job(job).stages[Math.Min(stage, c.Job(job).stages.Length - 1)];
+        public bool JobDone(Content c) => InJob && stage >= c.Job(job).stages.Length;
+
+        public void StartJob(Content c, string jobId)
         {
-            if (Over(c)) throw new InvalidOperationException("Trabalho encerrado.");
+            c.Job(jobId); // throws on unknown job
+            job = jobId; stage = 0; offer = new string[0]; lastResult = null;
+        }
+
+        public void EndJob() { job = null; stage = 0; offer = new string[0]; }
+
+        // Battle with the current build; damage from earlier fights carries over.
+        public Battle StartBattle(Content c, int seed, string enemyId)
+        {
             if (offer.Length > 0) throw new InvalidOperationException("Escolha a recompensa antes da próxima luta.");
             var errors = Validate(c);
             if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
-            var b = new Battle(c, seed, build.Clone(), Current(c).enemy);
+            var b = new Battle(c, seed, Build.Clone(), enemyId);
             foreach (var p in b.player.parts.Values) p.hp = HpOf(c, p.def.id);
             b.player.chassis = Math.Max(1, b.player.chassisMax - chassisDamage);
             return b;
         }
 
-        // Records the outcome: damage carries over; a win pays the stage reward and offers 2 parts of the beaten robot.
-        public void Finish(Content c, Battle b, System.Random rng)
+        // Keeps the damage the robot took in a fight.
+        public void KeepDamage(Content c, Battle b)
         {
-            if (b.result != Result.Win) { failed = true; return; }
-            var st = Current(c);
+            // shortcut: two copies of the same part share one damage entry (the worst one); track per copy if that matters.
+            var hp = b.player.parts.Values.GroupBy(p => p.def.id).ToDictionary(g => g.Key, g => Math.Max(0, g.Min(p => p.hp)));
+            damaged = owned.Distinct()
+                .Select(id => new PartHp { part = id, hp = hp.TryGetValue(id, out var h) ? h : HpOf(c, id) })
+                .Where(d => d.hp < c.Part(d.part).integrity).ToArray();
+            chassisDamage = b.player.chassisMax - b.player.chassis;
+        }
+
+        // Job fight outcome. Win: damage carries over, stage reward and a choice of 2 parts from the beaten robot.
+        // Loss: the job ends and the robot is repaired for credits (never lose parts).
+        public void FinishJobFight(Content c, Battle b, System.Random rng)
+        {
+            var st = Stage(c);
+            if (b.result != Result.Win)
+            {
+                KeepDamage(c, b);
+                int cost = Math.Min(credits, FullRepairCost(c));
+                credits -= cost;
+                damaged = new PartHp[0]; chassisDamage = 0;
+                lastResult = $"Derrota contra {c.Robot(st.enemy).name}. O trabalho acabou e o reparo custou {cost} créditos.";
+                EndJob();
+                return;
+            }
+            KeepDamage(c, b);
             credits += st.credits;
             scrap += st.scrap;
-            var hp = b.player.parts.Values.ToDictionary(p => p.def.id, p => p.hp);
-            damaged = owned.Distinct().Where(id => hp.TryGetValue(id, out var h) ? h < c.Part(id).integrity : HpOf(c, id) < c.Part(id).integrity)
-                .Select(id => new PartHp { part = id, hp = hp.TryGetValue(id, out var h) ? Math.Max(0, h) : HpOf(c, id) }).ToArray();
-            chassisDamage = b.player.chassisMax - b.player.chassis;
-            var loot = c.Robot(st.enemy).PartIds.Where(id => !owned.Contains(id)).Distinct().OrderBy(_ => rng.Next()).Take(2).ToArray();
-            offer = loot;
+            // New parts first; an arm already owned can come as a second copy (one per arm).
+            offer = c.Robot(st.enemy).PartIds.Distinct()
+                .Where(id => !owned.Contains(id) || (c.Part(id).slot == "Braco" && owned.Count(o => o == id) < 2))
+                .Select(id => (id, k: rng.Next())).OrderBy(x => owned.Contains(x.id)).ThenBy(x => x.k).Select(x => x.id).Take(2).ToArray();
+            lastResult = $"Vitória contra {c.Robot(st.enemy).name}: +{st.credits} créditos, +{st.scrap} sucata.";
             stage++;
         }
 
@@ -104,8 +144,9 @@ namespace CardBattler.Combat
 
         public void SkipReward() => offer = new string[0];
 
+        // ---- Repairs ----
         // 1 sucata repairs RepairPerScrap integrity on a part (or the chassis when partId is null).
-        public bool Repair(Content c, string partId)
+        public bool RepairWithScrap(Content c, string partId)
         {
             if (scrap <= 0) return false;
             if (partId == null)
@@ -124,16 +165,35 @@ namespace CardBattler.Combat
             return true;
         }
 
-        public static RunState Load(string path, Content c)
+        public bool RepairAllWithCredits(Content c)
+        {
+            int cost = FullRepairCost(c);
+            if (cost == 0 || credits < cost) return false;
+            credits -= cost;
+            damaged = new PartHp[0]; chassisDamage = 0;
+            return true;
+        }
+
+        // ---- Save ----
+        // Missing/corrupt file or unknown ids (content changed) start a new career.
+        public static Career Load(string path, Content c)
         {
             try
             {
-                if (!File.Exists(path)) return null;
-                var s = JsonUtility.FromJson<RunState>(File.ReadAllText(path));
-                if (s == null || c.jobs.All(j => j.id != s.job) || s.build == null || s.owned.Any(id => c.parts.All(p => p.id != id))) return null;
-                return s;
+                if (path != null && File.Exists(path))
+                {
+                    var s = JsonUtility.FromJson<Career>(File.ReadAllText(path));
+                    bool ok = s != null && s.owned.All(id => c.parts.Any(p => p.id == id)) && s.frames.All(id => c.frames.Any(f => f.id == id))
+                              && (!s.InJob || c.jobs.Any(j => j.id == s.job));
+                    if (ok)
+                    {
+                        s.garage = GarageSave.Fix(s.garage, c);
+                        return s;
+                    }
+                }
             }
-            catch (Exception e) { Debug.LogWarning("Trabalho salvo ilegível: " + e.Message); return null; }
+            catch (Exception e) { Debug.LogWarning("Carreira salva ilegível, começando outra: " + e.Message); }
+            return null;
         }
 
         public void Save(string path)

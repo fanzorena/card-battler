@@ -392,7 +392,8 @@ namespace CardBattler.UI
         void Quit()
         {
             if (!quitArmed) { quitArmed = true; Say("<color=#FFC24A>Clique em Desistir de novo para sair da luta.</color>"); Fx.Delay(3, () => quitArmed = false); return; }
-            app.ShowOpponents();
+            if (app.afterBattle != null) app.afterBattle(b); // a job fight given up counts as a loss
+            else app.ShowOpponents();
         }
 
         // ---- Feedback from log events ----
@@ -505,7 +506,15 @@ namespace CardBattler.UI
             shade.raycastTarget = true;
             Theme.Label(shade.transform, win ? "VITÓRIA" : "DERROTA", 110, win ? Theme.Good : Theme.Bad, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(960, 400, 1200, 140);
             Theme.Label(shade.transform, $"{b.enemy.name} · turno {b.turn}", Theme.Title, Theme.TextDim, TextAnchor.MiddleCenter).rectTransform.Center(960, 490, 1200, 50);
-            var build = app.garage.Current;
+            if (app.afterBattle != null)
+            {
+                var after = app.afterBattle;
+                var cont = Theme.Button(shade.transform, "CONTINUAR  →", () => after(b), Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 30);
+                cont.name = "Continuar";
+                ((RectTransform)cont.transform).Center(960, 600, 360, 80);
+                return;
+            }
+            var build = app.Garage.Current;
             var enemyId = app.lastEnemy;
             ((RectTransform)Theme.Button(shade.transform, "REVANCHE", () => app.StartBattle(build, enemyId), Theme.PanelHi, 26).transform).Center(640, 600, 320, 76);
             ((RectTransform)Theme.Button(shade.transform, "OUTRO ADVERSÁRIO", app.ShowOpponents, Theme.PanelHi, 26).transform).Center(960, 600, 320, 76);

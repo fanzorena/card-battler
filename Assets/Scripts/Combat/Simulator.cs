@@ -113,8 +113,9 @@ namespace CardBattler.Combat
 
         static void Inc(Dictionary<string, int> d, string k) => d[k] = (d.TryGetValue(k, out var v) ? v : 0) + 1;
 
-        // Plays a whole job: damage carries over, the bot spends scrap on repairs (broken parts first, then the chassis)
-        // and takes the first part offered. shortcut: the bot never rebuilds with new parts, so rewards don't help it.
+        // Plays a whole job with a fresh career: damage carries over, the bot spends scrap on repairs (most damaged
+        // equipped part first, then the chassis), pays a full repair with credits when it can, and takes the first part offered.
+        // shortcut: the bot never rebuilds with new parts, so rewards don't help it.
         public static JobResult RunJob(Content content, string jobId, int runs, int seed)
         {
             var job = content.Job(jobId);
@@ -122,23 +123,25 @@ namespace CardBattler.Combat
             for (int i = 0; i < runs; i++)
             {
                 var rng = new System.Random(seed + i);
-                var s = RunState.Start(content, jobId);
-                while (!s.Over(content))
+                var s = Career.New(content);
+                s.StartJob(content, jobId);
+                while (s.InJob && !s.JobDone(content))
                 {
-                    while (s.scrap > 0)
-                    {
-                        var hurt = s.build.PartIds.Where(id => s.HpOf(content, id) < content.Part(id).integrity)
-                            .OrderBy(id => s.HpOf(content, id)).FirstOrDefault();
-                        if (!s.Repair(content, hurt ?? (s.chassisDamage > 0 ? null : "")) ) break;
-                    }
+                    if (!s.RepairAllWithCredits(content))
+                        while (s.scrap > 0)
+                        {
+                            var hurt = s.Build.PartIds.Where(id => s.HpOf(content, id) < content.Part(id).integrity).OrderBy(id => s.HpOf(content, id)).FirstOrDefault();
+                            if (hurt == null && s.chassisDamage == 0) break;
+                            if (!s.RepairWithScrap(content, hurt)) break;
+                        }
                     int stage = s.stage;
-                    var b = s.StartBattle(content, seed + i * 31 + stage);
+                    var b = s.StartBattle(content, seed + i * 31 + stage, s.Stage(content).enemy);
                     while (b.result == Result.None && b.turn < TurnLimit) { Bot.PlayTurn(b); b.EndPlayerTurn(); }
-                    s.Finish(content, b, rng);
-                    if (s.failed) r.lostAt[stage]++;
+                    s.FinishJobFight(content, b, rng);
+                    if (!s.InJob) r.lostAt[stage]++;
                     else if (s.offer.Length > 0) s.Choose(s.offer[0]);
                 }
-                if (s.Done(content)) r.completed++;
+                if (s.InJob && s.JobDone(content)) r.completed++;
             }
             return r;
         }
@@ -179,12 +182,7 @@ namespace CardBattler.Combat
             var results = RunAll(content, cfg, progress, Path.Combine(dir, "battles"));
             var utf8 = new UTF8Encoding(false);
             var md = Markdown(results, cfg, DateTime.Now - t0, content);
-            var jobs = new StringBuilder("
-## Trabalhos (sequência de lutas com dano acumulado)
-
-| Trabalho | Concluídos | Onde as tentativas terminaram |
-|---|---|---|
-");
+            var jobs = new StringBuilder("\n## Trabalhos (sequência de lutas com dano acumulado)\n\n| Trabalho | Concluídos | Onde as tentativas terminaram |\n|---|---|---|\n");
             foreach (var j in content.jobs)
             {
                 var jr = RunJob(content, j.id, cfg.matches, cfg.seed);
