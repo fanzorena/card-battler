@@ -3,6 +3,26 @@
 Valores que mudaram em relação ao documento de design / versão anterior, para atualizar o documento.
 Medido com o simulador (Card Battler > Simulador), 500 lutas por confronto, jogador greedy.
 
+## 2026-11-12 — esteiras como recompensa-tutorial (`feature/celeste-treads-reward`)
+
+| Mudança | Antes | Depois |
+|---|---|---|
+| Esteiras: peso | 5 | 3 (cabe no Vira-lata inicial no lugar das rodas) |
+| Esteiras: cartas | 2× Firmar, 2× Esmagar | Firmar, Arrancada, 2× Esquivar |
+| Mandíbula: chassi extra | −1 | +2 (as esteiras dele também mudaram) |
+| Trabalho da Celeste, estágio 1 | — | recompensa garantida: Esteiras |
+
+Vira-lata inicial, 300 lutas, vitória contra Bastião / Kiro / Mandíbula:
+
+| Arena | Rodas | Esteiras |
+|---|---|---|
+| Piso de sucata | 76% / 61% / 50% | 89% / 80% / 62% |
+| Neutra | 90% / 80% / 72% | 89% / 80% / 62% |
+
+Variantes testadas: trocar 1 Firmar por Arrancada (esteiras ainda perdiam), Esmagar ignorando resistência (sem efeito), as duas juntas (perdiam).
+
+Categorias: Fácil 99.8%, Moderado 70.6%, Difícil 56.6%, Chefe 59.1%. Trabalho da Celeste (bot escolhendo as pernas): 18.2% → 47% (terminam em: Sucateiro 0.2%, Bastião 9.8%, Kiro 21.4%, Mandíbula 21.6%).
+
 ## 2026-11-12 — inimigos do Distrito Neon (`feature/distrito-neon`)
 
 Todos lutam na chuva (Elétrico +2). Ajuste para a meta:

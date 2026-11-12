@@ -581,9 +581,9 @@
       "weight": 3,
       "cards": [
         "firmar",
-        "firmar",
-        "esmagar",
-        "esmagar"
+        "arrancada",
+        "esquivar",
+        "esquivar"
       ],
       "resist": "Cinético",
       "weakTo": "Elétrico"
@@ -773,7 +773,7 @@
         ],
         "goodBuilds": [
           "kagemori",
-          "duelista_misto"
+          "inicial"
         ],
         "badBuilds": [
           "bastion",
@@ -942,7 +942,7 @@
           "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
         }
       ],
-      "bonusChassis": -1,
+      "bonusChassis": 2,
       "dossier": {
         "rumors": [
           "\"Quando o Mandíbula sangra, ele morde. E a mordida escolhe onde dói e atravessa qualquer blindagem.\" — ex-campeão dos fossos",
