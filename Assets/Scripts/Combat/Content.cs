@@ -50,6 +50,13 @@ namespace CardBattler.Combat
         public string signature, text; // signature: card id added to the hand and played first in that turn
     }
 
+    // One explanation shown by the "?" icons and keyword tooltips (single source for every screen).
+    [Serializable]
+    public class GlossaryEntry
+    {
+        public string id, title, text;
+    }
+
     // Pre-fight intel on an enemy (stand-in for exploration). goodBuilds/badBuilds are preset ids the
     // simulator checks against real results, so the text stays true after balance changes.
     [Serializable]
@@ -87,7 +94,9 @@ namespace CardBattler.Combat
         public MakerDef[] makers;
         public RobotDef[] robots;
         public RobotDef[] presets; // player builds used by the simulator
+        public GlossaryEntry[] glossary = new GlossaryEntry[0];
         public JobDef[] jobs = new JobDef[0];
+        public GlossaryEntry Glossary(string id) => glossary.FirstOrDefault(g => g.id == id);
 
         public CardDef Card(string id) => cards.FirstOrDefault(c => c.id == id) ?? throw new ArgumentException("Carta desconhecida: " + id);
         public PartDef Part(string id) => parts.FirstOrDefault(p => p.id == id) ?? throw new ArgumentException("Parte desconhecida: " + id);

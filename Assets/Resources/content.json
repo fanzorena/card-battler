@@ -1011,6 +1011,118 @@
       "core": "bateria_reciclada"
     }
   ],
+  "glossary": [
+    {
+      "id": "chassi",
+      "title": "Chassi",
+      "text": "A vida real do robô. Só pode ser atacado depois que alguma parte for destruída; o dano que passa de uma parte quebrada também vai para ele. Chassi em 0 = derrota. Vem do frame."
+    },
+    {
+      "id": "integridade",
+      "title": "Integridade total",
+      "text": "Soma da integridade das 5 partes. Partes resistentes demoram mais para quebrar, e é quebrando uma parte que o inimigo expõe o seu chassi."
+    },
+    {
+      "id": "integridade_parte",
+      "title": "Integridade da parte",
+      "text": "Quanto dano a parte aguenta. Em 0 ela fica avariada: as cartas dela custam +1 e perdem os bônus, e o chassi fica exposto. Pernas avariadas anulam a esquiva."
+    },
+    {
+      "id": "energia",
+      "title": "Energia por turno",
+      "text": "Quanta energia o núcleo gera no começo de cada turno para pagar cartas. Sucatear uma carta dá +1. Calor 10+ e Sobrecarga tiram 1."
+    },
+    {
+      "id": "calor_turno",
+      "title": "Calor por turno",
+      "text": "Calor que o próprio núcleo gera a cada turno. O Calor cai 2 por turno; com 10 ou mais o robô gera 1 energia a menos."
+    },
+    {
+      "id": "mao",
+      "title": "Tamanho da mão",
+      "text": "Quantas cartas você compra até ter no começo do turno. Vem do frame."
+    },
+    {
+      "id": "peso",
+      "title": "Peso / Carga",
+      "text": "Soma do peso das partes contra a carga do frame. Acima da carga o robô não pode lutar."
+    },
+    {
+      "id": "bonus",
+      "title": "Bônus de fabricante",
+      "text": "Com 3 ou mais partes do mesmo fabricante (núcleo incluído) o robô ganha o bônus dele. Dá para ter dois bônus com 3 + 3 partes."
+    },
+    {
+      "id": "passiva",
+      "title": "Passiva do frame",
+      "text": "Efeito fixo do frame que vale a luta toda, mais a carta assinatura que ele coloca no deck."
+    },
+    {
+      "id": "elementos",
+      "title": "Elementos e status",
+      "text": "Elementos das partes e os status que o deck consegue aplicar: Calor (tira energia em 10+), Sobrecarga (−1 energia no próximo turno) e Corrosão (1 de dano por turno na parte)."
+    },
+    {
+      "id": "deck",
+      "title": "Composição do deck",
+      "text": "As 20 cartas: 19 vêm das partes e 1 é a carta assinatura do frame. Ataque causa dano; defesa dá blindagem, esquiva ou reparo; utilidade compra, mira ou aplica status."
+    },
+    {
+      "id": "custo_medio",
+      "title": "Custo médio",
+      "text": "Energia média por carta. Com 3 de energia por turno, um custo médio acima de 1,5 deixa poucas jogadas por turno; a sucata ajuda a completar."
+    },
+    {
+      "id": "alvo",
+      "title": "Alvo dos ataques",
+      "text": "Ataques de custo 1 acertam uma parte aleatória. Custo 2 ou mais (ou depois de Mirar) você escolhe a parte — e o chassi, quando estiver exposto."
+    },
+    {
+      "id": "encadear",
+      "title": "Encadear",
+      "text": "Bônus quando a carta vem logo depois de uma carta do outro braço ou das pernas."
+    },
+    {
+      "id": "blindagem",
+      "title": "Blindagem",
+      "text": "Absorve dano antes da integridade. Some no seu próximo turno."
+    },
+    {
+      "id": "calor",
+      "title": "Calor",
+      "text": "Com 10 ou mais, o robô gera 1 energia a menos por turno. Cai 2 por turno."
+    },
+    {
+      "id": "sobrecarga",
+      "title": "Sobrecarga",
+      "text": "O alvo gera 1 energia a menos no próximo turno."
+    },
+    {
+      "id": "corrosao",
+      "title": "Corrosão",
+      "text": "1 de dano por turno na parte, por N turnos."
+    },
+    {
+      "id": "impacto",
+      "title": "Impacto",
+      "text": "+4 de dano contra parte avariada ou chassi exposto."
+    },
+    {
+      "id": "esquivar",
+      "title": "Esquivar",
+      "text": "Anula até 6 de dano do próximo ataque."
+    },
+    {
+      "id": "ignora",
+      "title": "Ignora blindagem",
+      "text": "O dano vai direto para a integridade."
+    },
+    {
+      "id": "sucata",
+      "title": "Sucata",
+      "text": "Descarte uma carta para ganhar 1 energia (o Vira-lata compra 1 na primeira sucata do turno)."
+    }
+  ],
   "jobs": [
     {
       "id": "celeste_fossos",
