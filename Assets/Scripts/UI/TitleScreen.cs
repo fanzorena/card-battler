@@ -60,6 +60,9 @@ namespace CardBattler.UI
                 ((RectTransform)b.transform).Place(110, 300 + i * 96, 520, 80);
             }
             Theme.Label(root, "Treino livre: todas as peças liberadas, sem progresso.   ESC: sair", Theme.Small, Theme.TextDim).rectTransform.Place(116, 310 + items.Count * 96, 900, 30);
+            var motion = Theme.Button(root, (Fx.Reduced ? "[x]" : "[ ]") + " Reduzir animações", () => { Fx.Reduced = !Fx.Reduced; app.ShowTitle(); }, Theme.Panel, Theme.Small);
+            motion.name = "ReduzirAnimacoes";
+            ((RectTransform)motion.transform).Place(110, 1000, 300, 44);
         }
 
         RectTransform Page(string title)

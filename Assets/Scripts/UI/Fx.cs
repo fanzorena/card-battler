@@ -11,6 +11,14 @@ namespace CardBattler.UI
         public static Fx I;
         public RectTransform overlay; // floating numbers and particles go here (above everything)
 
+        // "Reduzir animações": no shake, particles, trails, lunges, idle motion or collapse. Floating numbers stay (they carry information).
+        const string ReducedKey = "reduzirAnimacoes";
+        public static bool Reduced
+        {
+            get => PlayerPrefs.GetInt(ReducedKey, 0) == 1;
+            set { PlayerPrefs.SetInt(ReducedKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
         void Awake() => I = this;
 
         static float Ease(float t) => 1 - Mathf.Pow(1 - Mathf.Clamp01(t), 3);
@@ -47,7 +55,7 @@ namespace CardBattler.UI
             done?.Invoke();
         }
 
-        public static void Shake(RectTransform rt, float strength = 12, float duration = 0.25f) => Run(ShakeRoutine(rt, strength, duration));
+        public static void Shake(RectTransform rt, float strength = 12, float duration = 0.25f) { if (!Reduced) Run(ShakeRoutine(rt, strength, duration)); }
         static IEnumerator ShakeRoutine(RectTransform rt, float s, float d)
         {
             var origin = rt.anchoredPosition;
@@ -95,7 +103,7 @@ namespace CardBattler.UI
         // Particles bursting out of a point (part break, sparks).
         public static void Burst(Vector2 overlayPos, Color color, int count = 14, float speed = 260)
         {
-            if (!I || !I.overlay) return;
+            if (!I || !I.overlay || Reduced) return;
             for (int i = 0; i < count; i++)
             {
                 var p = Theme.Box(I.overlay, "Spark", color, Theme.Circle);
@@ -105,6 +113,61 @@ namespace CardBattler.UI
                 var g = p.gameObject.AddComponent<CanvasGroup>();
                 Move(p.rectTransform, p.rectTransform.anchoredPosition + dir, 0.6f);
                 Run(FadeLater(g, 0.2f, 0.4f, () => Destroy(p.gameObject)));
+            }
+        }
+
+        // Quick step toward the opponent and back (attacks).
+        public static void Lunge(RectTransform rt, float dx, float duration = 0.22f) { if (!Reduced) Run(LungeRoutine(rt, dx, duration)); }
+        static IEnumerator LungeRoutine(RectTransform rt, float dx, float d)
+        {
+            var origin = rt.anchoredPosition;
+            for (float t = 0; t < d && rt; t += Time.unscaledDeltaTime)
+            {
+                rt.anchoredPosition = origin + new Vector2(dx * Mathf.Sin(Mathf.PI * t / d), 0);
+                yield return null;
+            }
+            if (rt) rt.anchoredPosition = origin;
+        }
+
+        // A glowing shot with a short fading trail from one overlay point to another.
+        public static void Projectile(Vector2 from, Vector2 to, Color color, float duration = 0.2f)
+        {
+            if (!I || !I.overlay || Reduced) return;
+            Run(ProjectileRoutine(from, to, color, duration));
+        }
+        static IEnumerator ProjectileRoutine(Vector2 from, Vector2 to, Color color, float d)
+        {
+            var head = Theme.Box(I.overlay, "Shot", color, Theme.Circle);
+            head.rectTransform.Center(from.x, from.y, 26, 26);
+            var glow = Theme.Box(head.transform, "Glow", Theme.Alpha(color, 0.35f), Theme.Circle);
+            glow.rectTransform.Fill(-14);
+            for (float t = 0; t < d && head; t += Time.unscaledDeltaTime)
+            {
+                var p = Vector2.Lerp(from, to, Ease(t / d));
+                head.rectTransform.Center(p.x, p.y, 26, 26);
+                var dot = Theme.Box(I.overlay, "Trail", Theme.Alpha(color, 0.6f), Theme.Circle);
+                dot.rectTransform.Center(p.x, p.y, 14, 14);
+                var g = dot.gameObject.AddComponent<CanvasGroup>();
+                Run(FadeLater(g, 0, 0.25f, () => Destroy(dot.gameObject)));
+                yield return null;
+            }
+            if (head) Destroy(head.gameObject);
+        }
+
+        // Defeated robot: tilts, sinks and dims.
+        public static void Collapse(RectTransform rt, float direction) { if (!Reduced) Run(CollapseRoutine(rt, direction)); }
+        static IEnumerator CollapseRoutine(RectTransform rt, float dir)
+        {
+            var g = rt.GetComponent<CanvasGroup>() ?? rt.gameObject.AddComponent<CanvasGroup>();
+            var origin = rt.anchoredPosition;
+            const float d = 0.8f;
+            for (float t = 0; t < d && rt; t += Time.unscaledDeltaTime)
+            {
+                float k = Ease(t / d);
+                rt.localRotation = Quaternion.Euler(0, 0, -14 * dir * k);
+                rt.anchoredPosition = origin + new Vector2(0, -60 * k);
+                g.alpha = 1 - 0.6f * k;
+                yield return null;
             }
         }
 

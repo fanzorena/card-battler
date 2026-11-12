@@ -370,6 +370,15 @@ namespace CardBattler.UI
             return null;
         }
 
+        // Idle: a slow sway so the robots feel alive. Stops when defeated (Collapse takes over) or with reduced motion.
+        public bool idle = true;
+        void Update()
+        {
+            if (!animated || !idle || Fx.Reduced) return;
+            float t = Time.unscaledTime * 1.7f + (facingLeft ? 1.3f : 0);
+            transform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t) * 1.1f);
+        }
+
         public Vector2 PosOf(Slot slot) => slot == Slot.Chassi || !parts.ContainsKey(slot) ? Fx.PosOf(coreRing.rectTransform) : Fx.PosOf(parts[slot].rt);
 
         public void Hit(Slot slot)

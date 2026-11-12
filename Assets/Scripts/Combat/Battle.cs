@@ -114,6 +114,7 @@ namespace CardBattler.Combat
         public string actor, evt, card, source, target, msg;
         public int cost, value, absorbed, dodged;
         public bool chained;
+        public string element; // attack: element of the source part (for hit effects)
         public string[] cards;
         public RobotState player, enemy;
     }
@@ -503,6 +504,7 @@ namespace CardBattler.Combat
             Emit(user, "attack", $"{d.name}{(impact ? " (Encadear: Impacto)" : chained ? " (Encadear)" : "")}{(kinetic > 0 ? element == "Elétrico" ? $" ({terrain.name}: +{kinetic})" : " (Cinético: Impacto)" : "")}{(mod > 0 ? " (fraqueza)" : mod < 0 ? " (resistência)" : "")}: {def.name} sofre {total} em {SlotName(slot)}" +
                 (absorbed > 0 ? $", {absorbed} na blindagem" : "") + (dodged > 0 ? $", {dodged} esquivado" : "") + ".",
                 card: d.name, source: SlotName(c.source), target: SlotName(slot), value: total, absorbed: absorbed, dodged: dodged, chained: chained);
+            history[history.Count - 1].element = element;
             broke = part != null && !wasBroken && part.Broken;
         }
 

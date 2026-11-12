@@ -424,6 +424,14 @@ namespace CardBattler.UI
                         break;
                     case "scrap": if (e.actor == "enemy") { Fx.Float(Fx.PosOf(bot.Rect), "SUCATA", Theme.Hex("C8A27A")); Say(e.msg); wait = 0.2f; } break;
                     case "attack":
+                    {
+                        lastElement = e.element;
+                        var from = bot.PosOf(SlotFrom(e.source) ?? Slot.Torso);
+                        var to = other.PosOf(SlotFrom(e.target) ?? Slot.Chassi);
+                        Fx.Lunge(bot.Rect, Mathf.Sign(to.x - from.x) * 46);
+                        Fx.Projectile(from, to, HitColor(e.element));
+                        if (!Fx.Reduced) yield return new WaitForSeconds(fast ? 0.1f : 0.18f);
+                    }
                         if (e.absorbed > 0) Fx.Float(Fx.PosOf(other.Rect) + new Vector2(0, -120), $"-{e.absorbed} BLINDAGEM", Theme.Armor, 26);
                         if (e.dodged > 0) Fx.Float(Fx.PosOf(other.Rect) + new Vector2(0, -160), "ESQUIVOU", Theme.Hex("9EF0FF"), 26);
                         if (e.chained) Fx.Float(Fx.PosOf(bot.Rect) + new Vector2(0, -200), "ENCADEAR!", Theme.Hex("FFD34D"), 28);
@@ -434,6 +442,7 @@ namespace CardBattler.UI
                         var slot = SlotFrom(e.target) ?? Slot.Chassi;
                         bot.Show(e.actor == "player" ? e.player : e.enemy, e.actor == "player" ? b.player : b.enemy);
                         bot.Hit(slot);
+                        if (lastElement != null) Fx.Burst(bot.PosOf(slot), HitColor(lastElement), 8, 180);
                         Fx.Float(bot.PosOf(slot), "-" + e.value, slot == Slot.Chassi ? Theme.Exposed : Theme.Bad, 40, slot == Slot.Chassi ? "Chassi" : SlotIcons.Key(slot));
                         wait = fast ? 0.08f : 0.18f;
                         break;
@@ -452,7 +461,14 @@ namespace CardBattler.UI
                         if (e.value > 0 && (e.evt == "armor" || e.target == "Ferrovelho" || e.target == "Bastion")) Fx.Float(Fx.PosOf(bot.Rect) + new Vector2(0, -170), $"+{e.value} BLINDAGEM", Theme.Armor, 26);
                         break;
                     case "repair": Fx.Float(bot.PosOf(SlotFrom(e.target) ?? Slot.Torso), "+" + e.value, Theme.Good, 36); Say(e.msg, e.target); break;
-                    case "heat_applied": case "overload_applied": case "corrosion_applied": case "weak_point": case "intent_cancel": case "boss_phase":
+                    case "heat_applied": Status(bot, Slot.Torso, $"+{e.value} CALOR", "FF6A3D"); Say(e.msg, e.target); break;
+                    case "overload_applied": Status(bot, Slot.Cabeca, "SOBRECARGA", "FFE14D"); Say(e.msg, e.target); break;
+                    case "corrosion_applied": Status(bot, SlotFrom(e.target) ?? Slot.Torso, $"+{e.value} CORROSÃO", "7CFF6B"); Say(e.msg, e.target); break;
+                    case "corrosion_tick": Fx.Burst(bot.PosOf(SlotFrom(e.target) ?? Slot.Torso), Theme.Hex("7CFF6B"), 6, 120); break;
+                    case "heat_tick": Status(bot, Slot.Torso, $"+{e.value} CALOR", "FF6A3D", 22); break;
+                    case "overload_penalty": case "heat_penalty": Status(bot, Slot.Chassi, "-1 ENERGIA", e.evt == "heat_penalty" ? "FF6A3D" : "FFE14D", 24); Say(e.msg); break;
+                    case "dodge_skid": Status(bot, Slot.Pernas, "DERRAPOU", "C8A27A", 24); Say(e.msg); break;
+                    case "weak_point": case "intent_cancel": case "boss_phase":
                         Say(e.evt == "boss_phase" ? $"<color=#FF5A6A><b>{e.msg}</b></color>" : e.msg, e.target);
                         if (e.evt == "boss_phase") { Banner("FASE " + (e.value + 1), Theme.Bad); wait = 0.6f; }
                         break;
@@ -463,6 +479,14 @@ namespace CardBattler.UI
             yield return new WaitForSeconds(fast ? 0.1f : 0.3f);
             done?.Invoke();
         }
+
+        string lastElement; // element of the attack being replayed, for the hit sparks
+
+        static Color HitColor(string element) => string.IsNullOrEmpty(element) ? Theme.Hex("FFE2B0") : Theme.Element(element);
+
+        // Status feedback: a small colored float next to the part, wait-free.
+        static void Status(RobotView bot, Slot slot, string text, string hex, int size = 26) =>
+            Fx.Float(bot.PosOf(slot) + new Vector2(0, -60), text, Theme.Hex(hex), size);
 
         // Text box line: the part's name is replaced by its icon at the start of the line.
         void Say(string line, string slotName = null)
@@ -506,9 +530,25 @@ namespace CardBattler.UI
             Fx.Fade(g, 1, 0.15f, () => Fx.Delay(0.6f, () => { if (g) Fx.Fade(g, 0, 0.3f, () => UnityEngine.Object.Destroy(bar.gameObject)); }));
         }
 
+        bool ending;
+
+        // Victory/defeat: the loser collapses with sparks, then the result screen fades in.
         void ShowResult()
         {
-            if (overlayLayer.Find("Result")) return;
+            if (ending || overlayLayer.Find("Result")) return;
+            ending = true;
+            if (Fx.Reduced || !Application.isPlaying) { ResultOverlay(); return; }
+            var loser = b.result == Result.Win ? enemyBot : playerBot;
+            loser.idle = false;
+            Fx.Burst(loser.PosOf(Slot.Chassi), Theme.Warn, 26, 340);
+            Fx.Collapse(loser.Rect, loser == enemyBot ? -1 : 1);
+            Banner(b.result == Result.Win ? "VITÓRIA" : "DERROTA", b.result == Result.Win ? Theme.Good : Theme.Bad);
+            Fx.Delay(1.2f, ResultOverlay);
+        }
+
+        void ResultOverlay()
+        {
+            if (!overlayLayer || overlayLayer.Find("Result")) return; // the screen may have changed during the sequence
             bool win = b.result == Result.Win;
             var shade = Theme.Solid(overlayLayer, "Result", Theme.Alpha(Color.black, 0.78f));
             shade.rectTransform.Fill();
