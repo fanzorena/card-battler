@@ -1291,7 +1291,8 @@
           "enemy": "enemy_sucata",
           "credits": 20,
           "scrap": 2,
-          "text": "Aquecimento no Fosso do porto. Ninguém aposta nesse aí."
+          "text": "Aquecimento no Fosso do porto. Ninguém aposta nesse aí.",
+          "terrain": "none"
         },
         {
           "enemy": "enemy",
@@ -1344,7 +1345,8 @@
       "enemy": "enemy_nyx",
       "credits": 15,
       "scrap": 1,
-      "text": "Posição 4 do ranking. O Rato de Laboratório luta pra testar veneno novo."
+      "text": "Posição 4 do ranking. O Rato de Laboratório luta pra testar veneno novo.",
+      "terrain": "none"
     },
     {
       "enemy": "enemy_kagemori",

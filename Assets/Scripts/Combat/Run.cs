@@ -12,6 +12,7 @@ namespace CardBattler.Combat
     {
         public string enemy, text;
         public int credits, scrap;
+        public string terrain; // arena override; "none" = neutral (tutorial fights)
     }
 
     [Serializable]
@@ -245,6 +246,7 @@ namespace CardBattler.Combat
 
         // Ranking ladders: "pit" (Fosso, porto) and "circuit" (Circuito Regional, Distrito Neon).
         public static StageDef[] Ladder(Content c, string ladder) => ladder == "circuit" ? c.circuit : c.pit;
+        public static string ArenaFor(StageDef st, string fallback) => string.IsNullOrEmpty(st.terrain) ? fallback : st.terrain;
         public static string ArenaOf(string ladder) => ladder == "circuit" ? "neon_chuva" : Arena;
         public int RankIn(string ladder) => ladder == "circuit" ? circuitRank : pitRank;
         public bool LadderTop(Content c, string ladder) => RankIn(ladder) >= Ladder(c, ladder).Length;

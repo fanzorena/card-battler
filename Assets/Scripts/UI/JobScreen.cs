@@ -96,7 +96,7 @@ namespace CardBattler.UI
             Status(60, 524);
 
             var dossier = Theme.Node(root, "Dossier").Place(1120, 110, 760, 760);
-            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy), Career.Arena);
+            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy), Career.ArenaFor(st, Career.Arena));
 
             ((RectTransform)Theme.Button(root, "GARAGEM", app.ShowGarage, Theme.Panel, 26).transform).Place(1120, 970, 220, 84);
             var quit = Theme.Button(root, "ABANDONAR", () =>
@@ -305,7 +305,7 @@ namespace CardBattler.UI
             Status(60, 524);
 
             var dossier = Theme.Node(root, "Dossier").Place(1120, 110, 760, 760);
-            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy), Career.ArenaOf(ladder));
+            OpponentScreen.Dossier(C, dossier, C.Robot(st.enemy), Career.ArenaFor(st, Career.ArenaOf(ladder)));
 
             ((RectTransform)Theme.Button(root, "GARAGEM", app.ShowGarage, Theme.Panel, 26).transform).Place(1120, 970, 220, 84);
             var errors = K.Validate(C);

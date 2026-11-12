@@ -87,6 +87,19 @@ public class TerrainTests
     }
 
     [Test]
+    public void TutorialFights_FirstJobFightAndFirstPitStepAreNeutral()
+    {
+        var c = Content.Load();
+        var job = c.Job("celeste_fossos");
+        Assert.AreEqual("none", Career.ArenaFor(job.stages[0], Career.Arena));
+        Assert.AreEqual("fosso", Career.ArenaFor(job.stages[1], Career.Arena));
+        Assert.AreEqual("none", Career.ArenaFor(c.pit[0], Career.ArenaOf("pit")));
+        Assert.AreEqual("fosso", Career.ArenaFor(c.pit[1], Career.ArenaOf("pit")));
+        var k = Career.New(c);
+        Assert.IsNull(k.StartBattle(c, 1, job.stages[0].enemy, Career.ArenaFor(job.stages[0], Career.Arena)).terrain, "arena neutra");
+    }
+
+    [Test]
     public void CareerFightsAreInTheFosso()
     {
         var c = Content.Load();
