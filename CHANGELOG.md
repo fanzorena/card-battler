@@ -2,6 +2,20 @@
 
 Versões seguem o Git Flow do projeto (`main` = último release estável). Detalhes de balanceamento em `BALANCE_CHANGES.md`.
 
+## v0.3.0 — 2026-11-12
+
+Primeira fatia de progressão: carreira com save, o trabalho da Celeste e o mapa do porto.
+
+- **Visual e UX:** robôs placeholder procedurais, efeitos simples nas cartas, ícones de parte no lugar dos nomes (cartas, painéis, robô, intenções) e zona de Sucata para arrastar cartas.
+- **Garagem:** separada da luta (Continuar leva à escolha do adversário), ficha do robô com "?" explicando cada número e comparação de peças.
+- **Tela inicial:** Jogar/Continuar, Novo jogo, Treino livre (todas as peças liberadas), Sobre para playtesters, Histórico de lutas e Sair.
+- **Trabalho da Celeste:** 4 lutas em sequência (Fácil → Moderado → Difícil → Mandíbula), dossiê antes de cada luta, dano que continua entre lutas, reparo com sucata ou créditos, recompensa de 1 entre 2 peças do robô vencido; derrota encerra o trabalho e cobra o reparo, nunca tira peças.
+- **Carreira:** save com créditos, sucata, peças e frames possuídos, 3 robôs, dano e progresso; a garagem da carreira só usa peças que você tem.
+- **Mapa do porto:** Bar Fim da Linha (diálogos com a Celeste, rumores do dossiê), Oficina (reparos e garagem), Fosso (ranking de 4 degraus até o Mandíbula; perder só custa a posição; o campeão pode defender o título), Ferro-velho trancado e diário de Pistas com a primeira pista sobre a luta do Tomás.
+- **Lore:** falas alinhadas ao documento de design (Rafa, filho do Tomás; o Vira-lata era o chassi dele; núcleo Áurea); resumo em `Docs/lore.md`.
+- **Simulador:** seção Trabalhos no relatório (taxa de conclusão do trabalho).
+- **Projeto:** empresa Anzorena Games, splash da Unity desligado, ajustes de URP.
+
 ## v0.2.0 — 2026-11-11
 
 Protótipo de combate jogável de ponta a ponta, com garagem, adversários com estratégia e ferramentas de balanceamento.
