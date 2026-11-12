@@ -24,13 +24,14 @@ namespace CardBattler.UI
 
         public void Build()
         {
-            Theme.Label(root, page == "workshop" ? "OFICINA" : page == "pit" ? "FOSSO" : "TRABALHO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
+            Theme.Label(root, page == "workshop" ? "OFICINA" : page == "pit" ? "FOSSO" : page == "ferro" ? "FERRO-VELHO" : "TRABALHO", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 500, 60);
             Theme.Label(root, $"{K.credits} créditos   ·   {K.scrap} sucata", 26, Theme.Warn, TextAnchor.MiddleRight, FontStyle.Bold).rectTransform.Place(1000, 34, 700, 50);
             var back = Theme.Button(root, "←  MAPA", app.ShowMap, Theme.Panel, 22);
             back.name = "Mapa";
             ((RectTransform)back.transform).Place(1720, 34, 160, 50);
 
             if (page == "workshop") Workshop();
+            else if (page == "ferro") Ferro();
             else if (page == "pit") Pit();
             else if (!K.InJob) Offer(C.jobs[0]);
             else if (K.offer.Length > 0) Reward();
@@ -185,15 +186,101 @@ namespace CardBattler.UI
             var side = Theme.Box(root, "Bench", Theme.Alpha(Theme.Panel, 0.96f));
             side.rectTransform.Place(1120, 120, 760, 560);
             Theme.Label(side.transform, "BANCADA", 26, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(30, 24, 700, 36);
-            Theme.Label(side.transform, $"Peças no estoque: {K.owned.Length} · frames: {K.frames.Length}\n\nNa garagem você monta os 3 robôs com as peças que já tem.", 22, Theme.Ink)
-                .rectTransform.Place(30, 76, 700, 140);
-            var garage = Theme.Button(side.transform, "ABRIR GARAGEM", app.ShowGarage, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 28);
+            Theme.Label(side.transform, $"Peças no estoque: {K.owned.Length} · frames: {K.frames.Length}\nNa garagem você monta os 3 robôs com as peças que já tem.", 20, Theme.Ink)
+                .rectTransform.Place(30, 70, 700, 60);
+            var garage = Theme.Button(side.transform, "ABRIR GARAGEM", app.ShowGarage, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 26);
             garage.name = "Garagem";
-            ((RectTransform)garage.transform).Place(30, 230, 400, 80);
-            var craft = Theme.Button(side.transform, "FABRICAR  ·  em breve", () => { }, Theme.Panel, 22);
-            craft.interactable = false;
-            ((RectTransform)craft.transform).Place(30, 330, 400, 64);
-            Theme.Label(side.transform, "Transformar sucata em peças novas. Ainda não está aberto.", 18, Theme.TextDim).rectTransform.Place(30, 404, 700, 60);
+            ((RectTransform)garage.transform).Place(30, 140, 360, 64);
+
+            // FABRICAR: known blueprints turn scrap + credits into a part.
+            Theme.Label(side.transform, "FABRICAR", 24, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(30, 226, 700, 32);
+            if (K.blueprints.Length == 0)
+                Theme.Label(side.transform, "Nenhuma planta ainda. O Ferro-velho do Duda vende e troca plantas.", 18, Theme.TextDim).rectTransform.Place(30, 264, 700, 50);
+            float y = 264;
+            foreach (var id in K.blueprints)
+            {
+                var bp = C.Blueprint(id);
+                var part = C.Part(bp.part);
+                SlotIcons.Icon(side.transform, part.slot == "Braco" ? "BracoDir" : part.slot, 40, Theme.Maker(part.maker)).Place(30, y + 6, 40, 40);
+                Theme.Label(side.transform, $"<b>{part.name}</b>  <color=#{Theme.HexOf(Theme.Maker(part.maker))}>{part.maker}</color>\n<size=16>{bp.scrap} sucata + {bp.credits} créditos</size>", 20, Theme.Ink)
+                    .rectTransform.Place(80, y, 380, 52);
+                var make = Theme.Button(side.transform, "FABRICAR", () => { if (K.Craft(C, id)) Changed(); }, Theme.Mix(Theme.PanelHi, Theme.Good, 0.4f), 20);
+                make.name = "Fabricar:" + id;
+                make.interactable = K.CanCraft(C, id);
+                ((RectTransform)make.transform).Place(500, y + 4, 220, 46);
+                y += 62;
+            }
+        }
+
+        // ---- Ferro-velho: Duda's shop (buy / sell) and his job ----
+        void Ferro()
+        {
+            Theme.Label(root, "Pátio do Duda · compra, venda e plantas", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 900, 30);
+            var duda = C.jobs.FirstOrDefault(j => j.fixer == "Duda");
+            bool done = duda != null && K.blueprints.Contains(duda.blueprint);
+            var talk = Theme.Box(root, "Duda", Theme.Alpha(Theme.Panel, 0.96f));
+            talk.rectTransform.Place(60, 120, 1000, 190);
+            Portraits.Create(talk.transform, "Duda", 150).Place(20, 20, 150, 150);
+            var line = C.Dialogue(done ? "duda_done" : "duda").lines[0];
+            string offer = duda == null || done ? "" : K.InJob ? (K.job == duda.id ? "\n<color=#FFC24A>Trabalho em andamento.</color>" : "\n<color=#8A8FA3>Termine o trabalho atual para pegar o do Duda.</color>") : $"\n<i>{duda.intro}</i>";
+            var said = Theme.Label(talk.transform, $"<b>{line.who}:</b> <i>{line.text}</i>{offer}", 20, Theme.Ink);
+            said.rectTransform.Place(190, 14, 560, 166);
+            said.resizeTextForBestFit = true; said.resizeTextMinSize = 14; said.resizeTextMaxSize = 20; said.verticalOverflow = VerticalWrapMode.Truncate;
+            if (duda != null && !done)
+            {
+                bool mine = K.job == duda.id;
+                var go = Theme.Button(talk.transform, mine ? "VER TRABALHO" : "ACEITAR TRABALHO", () =>
+                {
+                    if (!mine) { K.StartJob(C, duda.id); K.lastResult = null; app.SaveCareer(); }
+                    app.ShowJob();
+                }, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 20);
+                go.name = "TrabalhoDuda";
+                go.interactable = mine || !K.InJob;
+                ((RectTransform)go.transform).Place(770, 60, 210, 70);
+            }
+
+            // Buy
+            var buy = Theme.Box(root, "Buy", Theme.Alpha(Theme.Panel, 0.96f));
+            buy.rectTransform.Place(60, 326, 1000, 640);
+            Theme.Label(buy.transform, "COMPRAR", 24, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(24, 14, 400, 32);
+            for (int i = 0; i < C.shop.Length; i++)
+            {
+                var item = C.shop[i];
+                float x = 24 + (i % 2) * 488, y = 56 + (i / 2) * 58;
+                string label, icon; Color col;
+                if (item.part != null) { var pd = C.Part(item.part); label = $"<b>{pd.name}</b>  <size=15><color=#{Theme.HexOf(Theme.Maker(pd.maker))}>{pd.maker}</color>{(K.owned.Contains(pd.id) ? " · tem " + K.owned.Count(o => o == pd.id) : "")}</size>"; icon = pd.slot == "Braco" ? "BracoDir" : pd.slot; col = Theme.Maker(pd.maker); }
+                else if (item.frame != null) { var fd = C.Frame(item.frame); label = $"<b>Frame {fd.name}</b>  <size=15>chassi {fd.chassis} · mão {fd.hand}</size>"; icon = "Frame"; col = Theme.Exposed; }
+                else { var bp = C.Blueprint(item.blueprint); label = $"<b>{bp.name}</b>  <size=15>fabrica {C.Part(bp.part).name}</size>"; icon = SlotIcons.Nucleo; col = Theme.Good; }
+                SlotIcons.Icon(buy.transform, icon, 36, col).Place(x, y + 4, 36, 36);
+                var t = Theme.Label(buy.transform, label, 18, Theme.Ink, TextAnchor.MiddleLeft);
+                t.rectTransform.Place(x + 44, y, 290, 44);
+                t.resizeTextForBestFit = true; t.resizeTextMinSize = 12; t.resizeTextMaxSize = 18;
+                var it = item;
+                var b = Theme.Button(buy.transform, $"{item.price} cr", () => { if (K.Buy(C, it)) Changed(); }, Theme.PanelHi, 18);
+                b.name = "Comprar:" + (item.part ?? item.frame ?? item.blueprint);
+                b.interactable = K.CanBuy(C, item);
+                ((RectTransform)b.transform).Place(x + 340, y + 4, 120, 38);
+            }
+
+            // Sell
+            var sell = Theme.Box(root, "Sell", Theme.Alpha(Theme.Panel, 0.96f));
+            sell.rectTransform.Place(1120, 120, 760, 846);
+            Theme.Label(sell.transform, "VENDER", 24, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(24, 14, 400, 32);
+            Theme.Label(sell.transform, "Peças em uso nos seus 3 robôs não podem ser vendidas.", 16, Theme.TextDim).rectTransform.Place(24, 48, 700, 24);
+            float sy = 80;
+            foreach (var id in K.owned.Distinct().OrderBy(id => C.Part(id).slot))
+            {
+                var pd = C.Part(id);
+                SlotIcons.Icon(sell.transform, pd.slot == "Braco" ? "BracoDir" : pd.slot, 32, Theme.Maker(pd.maker)).Place(24, sy + 3, 32, 32);
+                Theme.Label(sell.transform, $"{pd.name} <size=15><color=#8A8FA3>x{K.owned.Count(o => o == id)}</color></size>", 18, Theme.Ink, TextAnchor.MiddleLeft).rectTransform.Place(66, sy, 420, 38);
+                var pid = id;
+                var b = Theme.Button(sell.transform, $"VENDER {K.SellPrice(C, id)} cr", () => { if (K.Sell(C, pid)) Changed(); }, Theme.PanelHi, 16);
+                b.name = "Vender:" + id;
+                b.interactable = K.CanSell(id);
+                ((RectTransform)b.transform).Place(536, sy + 2, 200, 34);
+                sy += 42;
+                if (sy > 800) break; // shortcut: no scrolling; ~17 distinct parts fit
+            }
         }
 
         // ---- Fosso: ranking ladder up to the champion. Losing costs only the ranking ----
@@ -267,7 +354,7 @@ namespace CardBattler.UI
             Theme.Label(panel.transform, "TRABALHO CONCLUÍDO", 40, Theme.Good, style: FontStyle.Bold).rectTransform.Place(36, 26, 920, 54);
             Theme.Label(panel.transform, $"{K.lastResult}\n\n<b>{job.fixer}:</b> <i>{job.outro}</i>", 24, Theme.Ink).rectTransform.Place(36, 100, 920, 380);
             Track(panel.transform, job.stages, job.stages.Length, 36, 500);
-            var end = Theme.Button(panel.transform, "ENCERRAR", () => { K.EndJob(); K.lastResult = "Trabalho concluído. A Celeste disse que te chama de novo."; app.SaveCareer(); app.ShowMap(); },
+            var end = Theme.Button(panel.transform, "ENCERRAR", () => { K.EndJob(); K.lastResult = $"Trabalho concluído: {job.name}." + (string.IsNullOrEmpty(job.blueprint) ? "" : $" Você ganhou a {C.Blueprint(job.blueprint).name}; fabrique na Oficina."); app.SaveCareer(); app.ShowMap(); },
                 Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 30);
             end.name = "Encerrar";
             ((RectTransform)end.transform).Place(36, 720, 360, 80);

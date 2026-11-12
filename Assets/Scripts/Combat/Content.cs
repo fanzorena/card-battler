@@ -105,7 +105,10 @@ namespace CardBattler.Combat
         public JobDef[] jobs = new JobDef[0];
         public TerrainDef[] terrains = new TerrainDef[0];
         public TerrainDef Terrain(string id) => string.IsNullOrEmpty(id) ? null : terrains.FirstOrDefault(t => t.id == id) ?? throw new ArgumentException("Terreno desconhecido: " + id);
-        public StageDef[] pit = new StageDef[0];          // Fosso ranking ladder, last = champion
+        public StageDef[] pit = new StageDef[0];
+        public ShopItem[] shop = new ShopItem[0];
+        public BlueprintDef[] blueprints = new BlueprintDef[0];
+        public BlueprintDef Blueprint(string id) => blueprints.FirstOrDefault(b => b.id == id) ?? throw new ArgumentException("Planta desconhecida: " + id);          // Fosso ranking ladder, last = champion
         public DialogueDef[] dialogues = new DialogueDef[0];
         public ClueDef[] clues = new ClueDef[0];
         public DialogueDef Dialogue(string id) => dialogues.FirstOrDefault(d => d.id == id) ?? throw new ArgumentException("Diálogo desconhecido: " + id);

@@ -18,6 +18,8 @@ namespace CardBattler.Combat
     public class JobDef
     {
         public string id, name, fixer, intro, outro;
+        public string blueprint;                 // reward for finishing the job (optional)
+        public string[] unlocks = new string[0]; // map places opened by finishing it
         public StageDef[] stages = new StageDef[0];
     }
 
@@ -30,6 +32,13 @@ namespace CardBattler.Combat
         public string id;
         public LineDef[] lines = new LineDef[0];
     }
+
+    // Ferro-velho stock: exactly one of part / frame / blueprint.
+    [Serializable]
+    public class ShopItem { public string part, frame, blueprint; public int price; }
+
+    [Serializable]
+    public class BlueprintDef { public string id, name, part; public int scrap, credits; }
 
     [Serializable]
     public class ClueDef { public string id, title, text, source; }
@@ -62,6 +71,8 @@ namespace CardBattler.Combat
         public string lastPit;                   // short text about the last Fosso fight
         public string[] clues = new string[0];   // clue ids in the Pistas journal
         public string[] seen = new string[0];    // one-time dialogues already heard
+        public string[] blueprints = new string[0]; // known crafting blueprints
+        public const int SellOffPrice = 10;      // parts the shop doesn't stock
 
         public const string ClueRigged = "luta_armada";
         public static readonly string[] PortPlaces = { "oficina", "fosso" }; // opened by the first job win
@@ -157,6 +168,70 @@ namespace CardBattler.Combat
             lastResult = $"Vitória contra {c.Robot(st.enemy).name}: +{st.credits} créditos, +{st.scrap} sucata.";
             stage++;
             foreach (var p in PortPlaces) Unlock(p);
+            if (JobDone(c)) CompleteJob(c);
+        }
+
+        // Rewards for finishing a job: its blueprint and the places it opens.
+        void CompleteJob(Content c)
+        {
+            var j = c.Job(job);
+            foreach (var place in j.unlocks) Unlock(place);
+            if (!string.IsNullOrEmpty(j.blueprint)) LearnBlueprint(c, j.blueprint);
+        }
+
+        // ---- Ferro-velho: shop, selling, crafting ----
+        public void LearnBlueprint(Content c, string id) { c.Blueprint(id); if (!blueprints.Contains(id)) blueprints = blueprints.Append(id).ToArray(); }
+
+        // Arms can be owned twice (one per arm); everything else once. Known blueprints and owned frames aren't sold again.
+        public bool CanBuy(Content c, ShopItem item)
+        {
+            if (credits < item.price) return false;
+            if (item.frame != null) return !frames.Contains(item.frame);
+            if (item.blueprint != null) return !blueprints.Contains(item.blueprint);
+            return owned.Count(o => o == item.part) < (c.Part(item.part).slot == "Braco" ? 2 : 1);
+        }
+
+        public bool Buy(Content c, ShopItem item)
+        {
+            if (!CanBuy(c, item)) return false;
+            credits -= item.price;
+            if (item.frame != null) frames = frames.Append(item.frame).ToArray();
+            else if (item.blueprint != null) LearnBlueprint(c, item.blueprint);
+            else owned = owned.Append(item.part).ToArray();
+            return true;
+        }
+
+        public int SellPrice(Content c, string partId) => c.shop.FirstOrDefault(s => s.part == partId) is ShopItem s ? s.price / 2 : SellOffPrice;
+
+        // A part can be sold only if every saved build still has the copies it uses.
+        public bool CanSell(string partId) =>
+            owned.Count(o => o == partId) - 1 >= garage.slots.Max(b => b.PartIds.Count(id => id == partId));
+
+        public bool Sell(Content c, string partId)
+        {
+            if (!CanSell(partId)) return false;
+            var list = owned.ToList();
+            list.Remove(partId);
+            owned = list.ToArray();
+            damaged = damaged.Where(d => owned.Contains(d.part)).ToArray();
+            credits += SellPrice(c, partId);
+            return true;
+        }
+
+        public bool CanCraft(Content c, string blueprintId)
+        {
+            var bp = c.Blueprint(blueprintId);
+            return blueprints.Contains(blueprintId) && scrap >= bp.scrap && credits >= bp.credits
+                   && owned.Count(o => o == bp.part) < (c.Part(bp.part).slot == "Braco" ? 2 : 1);
+        }
+
+        public bool Craft(Content c, string blueprintId)
+        {
+            if (!CanCraft(c, blueprintId)) return false;
+            var bp = c.Blueprint(blueprintId);
+            scrap -= bp.scrap; credits -= bp.credits;
+            owned = owned.Append(bp.part).ToArray();
+            return true;
         }
 
         // ---- Map / Fosso / Pistas ----
@@ -182,6 +257,7 @@ namespace CardBattler.Combat
                 credits += st.credits;
                 scrap += st.scrap;
                 pitRank = Math.Min(c.pit.Length, pitRank + 1);
+                if (Champion(c)) Unlock("ferro");
                 lastPit = $"Vitória no Fosso contra {name}: +{st.credits} créditos, +{st.scrap} sucata." + (Champion(c) ? " Você é o novo campeão dos Fossos!" : "");
                 return;
             }
@@ -239,7 +315,8 @@ namespace CardBattler.Combat
                 {
                     var s = JsonUtility.FromJson<Career>(File.ReadAllText(path));
                     bool ok = s != null && s.owned.All(id => c.parts.Any(p => p.id == id)) && s.frames.All(id => c.frames.Any(f => f.id == id))
-                              && (!s.InJob || c.jobs.Any(j => j.id == s.job)) && s.clues.All(id => c.clues.Any(k => k.id == id));
+                              && (!s.InJob || c.jobs.Any(j => j.id == s.job)) && s.clues.All(id => c.clues.Any(k => k.id == id))
+                              && s.blueprints.All(id => c.blueprints.Any(b => b.id == id));
                     if (ok)
                     {
                         s.pitRank = Math.Clamp(s.pitRank, 0, c.pit.Length);

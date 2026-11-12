@@ -17,6 +17,7 @@ namespace CardBattler.UI
             "Apostador velho" => "apostador",
             "Mecânica" => "mecanica",
             "Locutor" => "locutor",
+            "Duda" => "duda",
             _ => null,
         };
 
@@ -28,6 +29,7 @@ namespace CardBattler.UI
             "apostador" => Theme.Hex("C8A27A"),
             "mecanica" => Theme.Hex("4AFFB4"),
             "locutor" => Theme.Hex("FF5AD8"),
+            "duda" => Theme.Hex("C8A27A"),
             _ => Theme.Warn,
         };
 
@@ -111,6 +113,15 @@ namespace CardBattler.UI
                     R(0.44f, 0.26f, 0.4f, 0.14f, rot: -8);              // slicked hair
                     S(0.74f, 0.66f, 0.03f, 0.22f, Theme.Hex("8A8FA3"), rot: -20);
                     S(0.7f, 0.55f, 0.1f, 0.1f, c, Theme.Circle);        // mic
+                    break;
+                case "duda": // round glasses, beard, beanie, scrap-yard vest
+                    R(0.5f, 0.92f, 0.9f, 0.4f);
+                    R(0.5f, 0.5f, 0.4f, 0.46f, Theme.Circle);
+                    R(0.5f, 0.66f, 0.34f, 0.22f, Theme.Circle);         // beard
+                    R(0.5f, 0.28f, 0.42f, 0.2f, Theme.Circle);          // beanie
+                    S(0.42f, 0.46f, 0.12f, 0.12f, c, Theme.Ring); S(0.58f, 0.46f, 0.12f, 0.12f, c, Theme.Ring);
+                    S(0.5f, 0.46f, 0.05f, 0.015f, c);
+                    S(0.3f, 0.86f, 0.06f, 0.28f, Theme.Alpha(c, 0.5f)); S(0.7f, 0.86f, 0.06f, 0.28f, Theme.Alpha(c, 0.5f));
                     break;
                 default:
                     Theme.Label(art, string.IsNullOrEmpty(who) ? "?" : who.Substring(0, 1), Mathf.RoundToInt(size * 0.45f), c, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Fill();

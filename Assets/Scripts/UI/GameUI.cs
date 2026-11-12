@@ -107,7 +107,7 @@ namespace CardBattler.UI
             {
                 case "title": Quit(); break;
                 case "about": case "history": case "map": ShowTitle(); break;
-                case "job": case "workshop": case "pit": ShowMap(); break;
+                case "job": case "workshop": case "pit": case "ferro": ShowMap(); break;
                 case "garage": if (careerMode) ShowCareer(careerHub); else ShowTitle(); break;
                 case "opponents": ShowGarage(); break;
             }
