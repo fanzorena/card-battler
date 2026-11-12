@@ -76,6 +76,23 @@ public class CareerTests
     }
 
     [Test]
+    public void FirstWin_GivesTreads_WhichFitTheStarterAndTheBotEquipsOnTheScrapFloor()
+    {
+        var k = Career.New(c);
+        k.StartJob(c, Job);
+        var b = k.StartBattle(c, 1, k.Stage(c).enemy, Career.ArenaFor(k.Stage(c), Career.Arena));
+        b.result = Result.Win;
+        k.FinishJobFight(c, b, new System.Random(1));
+        CollectionAssert.Contains(k.owned, "esteiras");
+        CollectionAssert.DoesNotContain(k.offer, "esteiras");
+        StringAssert.Contains("Esteiras", k.lastResult);
+        Assert.IsFalse(k.AutoEquipLegs(c, b => b.legs == "esteiras" ? 0.4f : 0.6f), "rodas pontuam melhor: fica com elas");
+        Assert.IsTrue(k.AutoEquipLegs(c, b => b.legs == "esteiras" ? 0.6f : 0.4f));
+        Assert.AreEqual("esteiras", k.Build.legs);
+        Assert.IsEmpty(k.Validate(c), "cabe na carga do Vira-lata");
+    }
+
+    [Test]
     public void Loss_EndsTheJobChargesRepairAndKeepsParts()
     {
         var k = Career.New(c);

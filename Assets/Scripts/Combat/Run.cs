@@ -13,6 +13,7 @@ namespace CardBattler.Combat
         public string enemy, text;
         public int credits, scrap;
         public string terrain; // arena override; "none" = neutral (tutorial fights)
+        public string reward;  // part always given for winning this stage (on top of the 1-of-2 choice)
     }
 
     [Serializable]
@@ -170,6 +171,12 @@ namespace CardBattler.Combat
                 .Where(id => !owned.Contains(id) || (c.Part(id).slot == "Braco" && owned.Count(o => o == id) < 2))
                 .Select(id => (id, k: rng.Next())).OrderBy(x => owned.Contains(x.id)).ThenBy(x => x.k).Select(x => x.id).Take(2).ToArray();
             lastResult = $"Vitória contra {c.Robot(st.enemy).name}: +{st.credits} créditos, +{st.scrap} sucata.";
+            if (!string.IsNullOrEmpty(st.reward) && !owned.Contains(st.reward))
+            {
+                owned = owned.Append(st.reward).ToArray();
+                offer = offer.Where(id => id != st.reward).ToArray();
+                lastResult += $" Ganhou também: {c.Part(st.reward).name}.";
+            }
             stage++;
             foreach (var p in PortPlaces) Unlock(p);
             if (JobDone(c)) CompleteJob(c);
@@ -181,6 +188,25 @@ namespace CardBattler.Combat
             var j = c.Job(job);
             foreach (var place in j.unlocks) Unlock(place);
             if (!string.IsNullOrEmpty(j.blueprint)) LearnBlueprint(c, j.blueprint);
+        }
+
+        // Simulator bot: puts on the owned legs that score best against the next enemy on that arena (legal builds only).
+        // score(build) = win rate; the caller caches it. shortcut: legs only, the slot the job rewards change; extend per slot if needed.
+        public bool AutoEquipLegs(Content c, Func<RobotDef, float> score)
+        {
+            var best = Build;
+            float bestScore = score(best);
+            foreach (var legs in owned.Distinct().Where(id => c.Part(id).slot == "Pernas" && id != Build.legs))
+            {
+                var b = Build.Clone();
+                b.legs = legs;
+                if (Validate(c, b).Count > 0) continue;
+                float s = score(b);
+                if (s > bestScore) { best = b; bestScore = s; }
+            }
+            if (best == Build) return false;
+            garage.slots[garage.selected] = best;
+            return true;
         }
 
         // ---- Ferro-velho: shop, selling, crafting ----

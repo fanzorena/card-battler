@@ -123,8 +123,10 @@ namespace CardBattler.Combat
         // Plays a whole job with a fresh career: damage carries over, the bot spends scrap on repairs (most damaged
         // equipped part first, then the chassis), pays a full repair with credits when it can, and takes the first part offered.
         // shortcut: the bot never rebuilds with new parts, so rewards don't help it.
-        public static JobResult RunJob(Content content, string jobId, int runs, int seed)
+        // equipParts: before each fight the bot wears the owned legs that win most vs that enemy on that arena (see Career.AutoEquipLegs).
+        public static JobResult RunJob(Content content, string jobId, int runs, int seed, bool equipParts = true)
         {
+            var scores = new Dictionary<(string, string, string), float>(); // (enemy, arena, legs) -> win rate
             var job = content.Job(jobId);
             var r = new JobResult { job = job.name, runs = runs, lostAt = new int[job.stages.Length] };
             for (int i = 0; i < runs; i++)
@@ -134,6 +136,13 @@ namespace CardBattler.Combat
                 s.StartJob(content, jobId);
                 while (s.InJob && !s.JobDone(content))
                 {
+                    if (equipParts)
+                    {
+                        var st = s.Stage(content);
+                        var arena = Career.ArenaFor(st, Career.Arena) ?? "none";
+                        s.AutoEquipLegs(content, b => scores.TryGetValue((st.enemy, arena, b.legs), out var v) ? v
+                            : scores[(st.enemy, arena, b.legs)] = Run(content, b, st.enemy, "greedy", 100, seed, terrain: arena).WinRate);
+                    }
                     if (!s.RepairAllWithCredits(content))
                         while (s.scrap > 0)
                         {

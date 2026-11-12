@@ -64,6 +64,9 @@ namespace CardBattler.UI
             Theme.Label(root, "GARAGEM", 44, Theme.Ink, style: FontStyle.Bold).rectTransform.Place(60, 30, 400, 60);
             Theme.Label(root, "Monte o robô", Theme.Small, Theme.TextDim).rectTransform.Place(62, 80, 500, 30);
             if (app.careerMode) Theme.Label(root, $"{app.career.credits} créditos · {app.career.scrap} sucata · só peças que você tem", Theme.Small, Theme.Warn).rectTransform.Place(980, 80, 700, 30);
+            // Hint while the robot rolls on wheels but owns non-wheel legs: the Fosso floor halves wheel dodge.
+            if (app.careerMode && C.Part(b.legs).wheels && app.career.owned.Any(id => C.Part(id).slot == "Pernas" && !C.Part(id).wheels))
+                Theme.Label(root, "Dica: no piso de sucata do Fosso as rodas esquivam só metade. Troque as pernas (slot de baixo à direita).", Theme.Small, Theme.Exposed).rectTransform.Place(60, 970, 1000, 30);
             else Theme.Label(root, "TREINO LIVRE · todas as peças liberadas", Theme.Small, Theme.Exposed).rectTransform.Place(980, 80, 700, 30);
             ((RectTransform)Theme.Button(root, app.careerMode ? "←  VOLTAR" : "←  MENU", app.Back, Theme.Panel, 22).transform).Place(1720, 34, 160, 50);
             for (int i = 0; i < GarageSave.SlotCount; i++)
