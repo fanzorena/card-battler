@@ -1190,15 +1190,15 @@
       "lines": [
         {
           "who": "Celeste",
-          "text": "Navarro. Faz tempo que não vejo esse sobrenome no Fim da Linha."
+          "text": "Rafa Navarro. O filho do Tomás, crescido e de macacão sujo de graxa."
         },
         {
           "who": "Celeste",
-          "text": "Esse Vira-lata aí ainda anda? Então talvez sirva pros Fossos."
+          "text": "E esse aí fora é o Vira-lata? Era o chassi velho do seu pai. Reconheço essa solda torta de longe."
         },
         {
           "who": "Celeste",
-          "text": "Eu arrumo luta, você aparece e não morre. A gente divide o que sobrar."
+          "text": "O Tomás foi campeão desses Fossos. Se você quer subir onde ele subiu, eu arrumo as lutas. A gente divide o que sobrar."
         }
       ]
     },
@@ -1233,7 +1233,7 @@
       "lines": [
         {
           "who": "Celeste",
-          "text": "Primeira luta e você saiu andando. O pessoal do porto reparou."
+          "text": "Primeira luta e você saiu andando. Igual seu pai, teimoso que só."
         },
         {
           "who": "Celeste",
@@ -1246,19 +1246,23 @@
       "lines": [
         {
           "who": "Apostador velho",
-          "text": "Campeão novo, hein. Senta aí, Navarro. Eu apostei no Tomás, naquela noite."
+          "text": "Campeão novo, hein. E Navarro ainda por cima. Eu apostei no seu pai, naquela noite."
         },
         {
           "who": "Apostador velho",
-          "text": "Ele tava ganhando. Aí o robô dele travou do nada no terceiro round."
+          "text": "O Tomás tava ganhando. Aí o robô dele travou do nada no terceiro round."
         },
         {
           "who": "Apostador velho",
-          "text": "Ninguém trava assim. Alguém mexeu naquele núcleo antes da luta. A luta foi armada."
+          "text": "Ninguém trava assim. A luta foi comprada. Alguém mexeu no núcleo dele antes de subir no Fosso."
         },
         {
           "who": "Apostador velho",
-          "text": "Eu não sei quem. Mas quem pagou a aposta contra ele ficou rico naquela noite."
+          "text": "Na mesma noite sumiu o núcleo, aquele protótipo que ele chamava de Áurea. E depois sumiu ele."
+        },
+        {
+          "who": "Apostador velho",
+          "text": "Quem montou aquela noite foi um promotor de terno caro. Hoje ele anda em gente muito mais alta. Cuidado com quem você pergunta."
         }
       ]
     },
@@ -1293,9 +1297,9 @@
   "clues": [
     {
       "id": "luta_armada",
-      "title": "A luta do Tomás foi armada",
+      "title": "A luta do Tomás foi comprada",
       "source": "Apostador velho, Bar Fim da Linha",
-      "text": "O robô do Tomás Navarro travou no terceiro round quando estava ganhando. Alguém mexeu no núcleo antes da luta, e quem apostou contra ele ficou rico naquela noite."
+      "text": "O robô do Tomás Navarro, ex-campeão dos Fossos, travou no terceiro round quando estava ganhando: alguém mexeu no núcleo antes da luta. Na mesma noite o núcleo Áurea, protótipo dele, desapareceu, e depois o próprio Tomás. O promotor que armou a luta hoje subiu na vida."
     }
   ]
 }
