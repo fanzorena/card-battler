@@ -89,7 +89,8 @@ namespace CardBattler.UI
             var talk = Theme.Box(root, "Fixer", Theme.Alpha(Theme.Panel, 0.96f));
             talk.rectTransform.Place(60, 316, 1000, 190);
             var text = (string.IsNullOrEmpty(K.lastResult) ? "" : $"<color=#{Theme.HexOf(Theme.Warn)}>{K.lastResult}</color>\n") + $"<b>{job.fixer}:</b> <i>{st.text}</i>";
-            Theme.Label(talk.transform, text, 22, Theme.Ink).rectTransform.Place(24, 18, 952, 160);
+            Portraits.Create(talk.transform, job.fixer, 150).Place(20, 20, 150, 150);
+            Theme.Label(talk.transform, text, 22, Theme.Ink).rectTransform.Place(190, 18, 786, 160);
 
             Status(60, 524);
 
@@ -177,7 +178,8 @@ namespace CardBattler.UI
             var talk = Theme.Box(root, "Mechanic", Theme.Alpha(Theme.Panel, 0.96f));
             talk.rectTransform.Place(60, 120, 1000, 120);
             var line = C.Dialogue("oficina").lines[0];
-            Theme.Label(talk.transform, $"<b>{line.who}:</b> <i>{line.text}</i>", 22, Theme.Ink).rectTransform.Place(24, 18, 952, 90);
+            Portraits.Create(talk.transform, line.who, 96).Place(14, 12, 96, 96);
+            Theme.Label(talk.transform, $"<b>{line.who}:</b> <i>{line.text}</i>", 22, Theme.Ink).rectTransform.Place(126, 18, 850, 90);
             Status(60, 260);
 
             var side = Theme.Box(root, "Bench", Theme.Alpha(Theme.Panel, 0.96f));
@@ -207,7 +209,8 @@ namespace CardBattler.UI
             talk.rectTransform.Place(60, 316, 1000, 190);
             var text = (string.IsNullOrEmpty(K.lastPit) ? "" : $"<color=#{Theme.HexOf(Theme.Warn)}>{K.lastPit}</color>\n")
                        + (champ ? "<b>Locutor:</b> <i>O campeão está na casa! Quem sobe pra tirar o cinturão?</i>" : $"<b>Locutor:</b> <i>{st.text}</i>");
-            Theme.Label(talk.transform, text, 22, Theme.Ink).rectTransform.Place(24, 18, 952, 160);
+            Portraits.Create(talk.transform, "Locutor", 150).Place(20, 20, 150, 150);
+            Theme.Label(talk.transform, text, 22, Theme.Ink).rectTransform.Place(190, 18, 786, 160);
             Status(60, 524);
 
             var dossier = Theme.Node(root, "Dossier").Place(1120, 110, 760, 760);

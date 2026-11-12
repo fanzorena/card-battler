@@ -111,11 +111,38 @@ namespace CardBattler.UI
             pv.glow.rectTransform.Fill(-10);
             pv.glow.gameObject.AddComponent<Clicker>().onClick = () => onClick?.Invoke(slot);
             draw(pv, def, w, h);
+            if (pv.body.Count > 0) Detail(pv.rt, pv.body.OrderByDescending(x => x.g.rectTransform.sizeDelta.x * x.g.rectTransform.sizeDelta.y).First().g);
             pv.crackA = Shape(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);
             pv.crackB = Shape(pv.rt, w * 0.6f, h * 0.6f, w * 0.45f, 3, Theme.Alpha(Color.black, 0), rot: -35);
             pv.brokenA = Shape(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: 45);
             pv.brokenB = Shape(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: -45);
             parts[slot] = pv;
+        }
+
+        // Shading for the biggest shape of a part: dark outline, top highlight, bottom shadow, corner rivets.
+        static void Detail(RectTransform parent, Graphic main)
+        {
+            var r = main.rectTransform;
+            var sprite = (main as Image)?.sprite;
+            var size = r.sizeDelta;
+            var pos = r.anchoredPosition;
+            float cx = pos.x + size.x * (0.5f - r.pivot.x), cy = -(pos.y + size.y * (0.5f - r.pivot.y));
+            if (sprite == Theme.Rounded)
+            {
+                var edge = Theme.Box(parent, "Edge", Theme.Alpha(Color.black, 0.45f), Theme.Frame);
+                edge.rectTransform.Center(cx, cy, size.x + 4, size.y + 4);
+                edge.rectTransform.localRotation = r.localRotation;
+                Shape(parent, cx, cy - size.y / 2 + 7, size.x * 0.78f, 4, Theme.Alpha(Color.white, 0.16f), rot: r.localEulerAngles.z);
+                Shape(parent, cx, cy + size.y / 2 - 7, size.x * 0.84f, 6, Theme.Alpha(Color.black, 0.25f), rot: r.localEulerAngles.z);
+                if (size.x > 60 && size.y > 44)
+                    foreach (var sx in new[] { -1, 1 }) Shape(parent, cx + sx * (size.x / 2 - 9), cy - size.y / 2 + 9, 6, 6, Theme.Alpha(Color.black, 0.45f), Theme.Circle);
+            }
+            else if (sprite == Theme.Circle)
+            {
+                Shape(parent, cx - size.x * 0.18f, cy - size.y * 0.18f, size.x * 0.3f, size.y * 0.3f, Theme.Alpha(Color.white, 0.12f), Theme.Circle);
+                var ring = Theme.Box(parent, "Edge", Theme.Alpha(Color.black, 0.4f), Theme.Ring);
+                ring.rectTransform.Center(cx, cy, size.x + 3, size.y + 3);
+            }
         }
 
         // Adds a body shape (tinted by state later). Coordinates are centers inside the part box.

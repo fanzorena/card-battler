@@ -119,7 +119,10 @@ namespace CardBattler.UI
                 foreach (var t in d.avoid) sb.AppendLine("• " + Theme.Highlight(t));
             }
             var body = Theme.Label(paper.transform, sb.ToString(), 21, Theme.Hex("E8E1D0"));
-            body.rectTransform.Place(28, 84, 704, 660);
+            bool face = Portraits.Has(op.name);
+            body.rectTransform.Place(28, 84, face ? 560 : 704, 660);
+            body.resizeTextForBestFit = true; body.resizeTextMinSize = 15; body.resizeTextMaxSize = 21; body.verticalOverflow = VerticalWrapMode.Truncate;
+            if (face) Portraits.Create(paper.transform, op.name, 140).Place(600, 84, 140, 140);
             body.lineSpacing = 1.05f;
         }
     }
