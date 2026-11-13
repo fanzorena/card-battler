@@ -578,12 +578,12 @@
       "maker": "Bastion",
       "element": "Cinético",
       "integrity": 14,
-      "weight": 5,
+      "weight": 3,
       "cards": [
         "firmar",
-        "firmar",
-        "esmagar",
-        "esmagar"
+        "arrancada",
+        "esquivar",
+        "esquivar"
       ],
       "resist": "Cinético",
       "weakTo": "Elétrico"
@@ -773,7 +773,7 @@
         ],
         "goodBuilds": [
           "kagemori",
-          "duelista_misto"
+          "inicial"
         ],
         "badBuilds": [
           "bastion",
@@ -942,7 +942,7 @@
           "text": "Fase final: tudo ou nada! (Mordida do Campeão)"
         }
       ],
-      "bonusChassis": -1,
+      "bonusChassis": 2,
       "dossier": {
         "rumors": [
           "\"Quando o Mandíbula sangra, ele morde. E a mordida escolhe onde dói e atravessa qualquer blindagem.\" — ex-campeão dos fossos",
@@ -1292,13 +1292,14 @@
           "credits": 20,
           "scrap": 2,
           "text": "Aquecimento no Fosso do porto. Ninguém aposta nesse aí.",
-          "terrain": "none"
+          "terrain": "none",
+          "reward": "esteiras"
         },
         {
           "enemy": "enemy",
           "credits": 30,
           "scrap": 3,
-          "text": "Um segurança de carga da Bastion faz bico nas lutas. Couraça grossa, reator quente."
+          "text": "Troca as rodas pelas esteiras que você ganhou: no piso de sucata do Fosso roda derrapa e esteira não. Agora, um segurança de carga da Bastion faz bico nas lutas. Couraça grossa, reator quente."
         },
         {
           "enemy": "enemy_kiro",

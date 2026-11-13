@@ -34,8 +34,8 @@ public class GarageTests
         Assert.IsEmpty(content.Validate(starter));
 
         var heavy = Build("vira_lata", "elmo_bastion", "placa_m2", "canhao_30mm", "escudo_braco", "esteiras", "reator_k");
-        Assert.AreEqual(23, content.Weight(heavy));
-        StringAssert.Contains("Peso 23", content.Validate(heavy).Single());
+        Assert.AreEqual(21, content.Weight(heavy)); // treads weigh 3 since they're the first job reward
+        StringAssert.Contains("Peso 21", content.Validate(heavy).Single());
         Assert.Throws<ArgumentException>(() => new Battle(content, 1, heavy));
     }
 
