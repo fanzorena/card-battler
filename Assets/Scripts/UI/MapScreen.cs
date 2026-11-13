@@ -47,12 +47,12 @@ namespace CardBattler.UI
             if (InNeon) DrawNeon(); else DrawPort();
             Theme.Title(root, InNeon ? "DISTRITO NEON" : "O PORTO", 44).At(60, 26);
             Theme.Label(root, "Escolha aonde ir", Theme.Small, Theme.TextDim).Place(62, 80, 500, 30);
-            Wallet(root, K, 900);
+            Wallet(root, K, 780);
             var clues = Theme.Button(root, $"PISTAS ({K.clues.Length})", Journal, null, 22);
             clues.EnableInClassList("btn-highlight", K.clues.Length > 0);
             clues.name = "Pistas";
-            clues.Place(1540, 30, 170, 54);
-            Theme.Button(root, "←  MENU", () => app.ShowTitle(), null, 22).Place(1720, 30, 160, 54);
+            clues.Place(1420, 30, 236, 54);
+            Theme.Button(root, "←  MENU", () => app.ShowTitle(), null, 22).Place(1670, 30, 210, 54);
 
             foreach (var p in Places) Poi(p);
 

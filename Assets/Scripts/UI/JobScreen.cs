@@ -25,10 +25,10 @@ namespace CardBattler.UI
         public void Build()
         {
             Theme.Title(root, page == "workshop" ? "OFICINA" : page == "pit" ? "FOSSO" : page == "circuit" ? "CIRCUITO REGIONAL" : page == "ferro" ? "FERRO-VELHO" : "TRABALHO", 44).At(60, 26);
-            MapScreen.Wallet(root, K, 1080);
+            MapScreen.Wallet(root, K, 1030);
             var back = Theme.Button(root, "←  MAPA", app.ShowMap, null, 22);
             back.name = "Mapa";
-            back.Place(1720, 30, 160, 54);
+            back.Place(1670, 30, 210, 54);
 
             if (page == "workshop") Workshop();
             else if (page == "ferro") Ferro();

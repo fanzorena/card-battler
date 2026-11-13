@@ -72,12 +72,12 @@ namespace CardBattler.UI
                 btn.Size(176, 54);
                 Theme.Hover(btn, $"Robô {i + 1} de {GarageSave.SlotCount}: você guarda até {GarageSave.SlotCount} montagens.");
             }
-            Theme.Button(root, app.careerMode ? "←  VOLTAR" : "←  MENU", app.Back, null, 22).Place(1720, 30, 160, 54);
+            Theme.Button(root, app.careerMode ? "←  VOLTAR" : "←  MENU", app.Back, null, 22).Place(1670, 30, 210, 54);
 
             // Robot area
             Theme.Plate(root, "Area", "panel-glass").Place(40, 110, 1040, 880);
             Theme.El(root, "Pedestal", "pedestal").Center(560, 836, 520, 90);
-            RobotView.Create(root, false, true).At(560, 600, 0.98f).Build(C, b);
+            RobotView.Create(root, false, true).At(560, 600, 0.9f).Build(C, b);
 
             var frames = C.frames.Where(f => Car == null || Car.OwnsFrame(f)).Select(f => f.id).ToArray();
             SlotWidget(60, 124, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}", frame.passiveText,
