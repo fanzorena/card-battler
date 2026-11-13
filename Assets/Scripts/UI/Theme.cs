@@ -3,20 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
-    // Single source for the look: palette, manufacturer/element colors, fonts, procedural sprites and UI builders.
+    public enum Shape { Rect, Rounded, Circle, Ring, Frame }
+
+    // Single source for the look: palette, manufacturer/element colors, glossary and UI Toolkit builders.
+    // Static look (fonts, Kenney panels/buttons, hover/press states) lives in Resources/UI/Theme.uss;
+    // the builders only set what depends on data (colors, sizes, positions).
     public static class Theme
     {
         public static readonly Vector2 Reference = new Vector2(1920, 1080);
 
         public static readonly Color Bg = Hex("0B0D14"), Bg2 = Hex("141826"), Panel = Hex("181D2C"), PanelHi = Hex("222943"),
-            Line = Hex("2E3756"), Ink = Hex("E6E9F2"), TextDim = Hex("8B93AD"), Good = Hex("5BE38A"), Bad = Hex("FF5A6A"),
+            Line = Hex("2E3756"), Ink = Hex("E6E9F2"), TextDim = Hex("9AA2BC"), Good = Hex("5BE38A"), Bad = Hex("FF5A6A"),
             Warn = Hex("FFC24A"), Armor = Hex("5AA8FF"), Exposed = Hex("FF8A3D"), Energy = Hex("FFE066"), Paper = Hex("1D1A16");
 
-        public const int Small = 18, Body = 22, Title = 30, Huge = 64;
+        // Minimum readable sizes at 1080p: nothing below Small.
+        public const int Small = 18, Body = 22, Heading = 30, Huge = 64;
 
         static readonly Dictionary<string, Color> Makers = new Dictionary<string, Color>
         {
@@ -70,15 +75,31 @@ namespace CardBattler.UI
             string.IsNullOrEmpty(text) ? Enumerable.Empty<string>() : Keywords.Where(k => Regex.IsMatch(text, k.pattern)).Select(k => Explain(k.glossaryId));
 
         // Small "?" that explains a glossary entry on hover.
-        public static RectTransform HelpIcon(Transform parent, string glossaryId, float size = 26)
+        public static VisualElement HelpIcon(VisualElement parent, string glossaryId, float size = 26)
         {
-            var img = Box(parent, "Help:" + glossaryId, Mix(Panel, Warn, 0.25f), Circle, raycast: true);
-            img.rectTransform.sizeDelta = new Vector2(size, size);
-            var q = Label(img.transform, "?", Mathf.RoundToInt(size * 0.7f), Warn, TextAnchor.MiddleCenter, FontStyle.Bold);
-            q.rectTransform.Fill();
-            img.gameObject.AddComponent<CardBattler.UI.HoverHelp>().text = Explain(glossaryId);
-            return img.rectTransform;
+            var e = Box(parent, "Help:" + glossaryId, Mix(Panel, Warn, 0.25f), Shape.Circle).Size(size, size);
+            e.AddToClassList("help");
+            Label(e, "?", Mathf.RoundToInt(size * 0.7f), Warn, TextAnchor.MiddleCenter, FontStyle.Bold).Fill();
+            Hover(e, Explain(glossaryId));
+            return e;
         }
+
+        // Tooltip with fixed lines while the pointer is over e.
+        public static T Hover<T>(T e, params string[] lines) where T : VisualElement => Hover(e, () => lines);
+
+        public static T Hover<T>(T e, Func<IEnumerable<string>> lines) where T : VisualElement
+        {
+            e.pickingMode = PickingMode.Position;
+            e.RegisterCallback<PointerEnterEvent>(_ => Tooltip.Show(e, lines()));
+            e.RegisterCallback<PointerLeaveEvent>(_ => Tooltip.Hide());
+            return e;
+        }
+
+        // ---- Assets ----
+        static Font font, display;
+        public static Font Font => font ? font : font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        static StyleSheet sheet;
+        public static StyleSheet Sheet => sheet ? sheet : sheet = Resources.Load<StyleSheet>("UI/Theme");
 
         // Destroy that also works in EditMode (tests build screens outside Play mode).
         public static void Kill(UnityEngine.Object o)
@@ -87,164 +108,333 @@ namespace CardBattler.UI
             if (Application.isPlaying) UnityEngine.Object.Destroy(o); else UnityEngine.Object.DestroyImmediate(o);
         }
 
-        public static void ClearChildren(Transform t)
+        public static void ClearChildren(VisualElement e) => e?.Clear();
+
+        // ---- Layout helpers (reference pixels, origin top-left of the parent) ----
+        public static VisualElement El(VisualElement parent, string name = null, params string[] classes)
         {
-            foreach (var child in t.Cast<Transform>().ToList()) Kill(child.gameObject);
+            var e = new VisualElement { name = name, pickingMode = PickingMode.Ignore };
+            foreach (var c in classes) e.AddToClassList(c);
+            parent?.Add(e);
+            return e;
         }
 
-        // ---- Font & sprites ----
-        static Font font;
-        public static Font Font => font ? font : font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        public static VisualElement Node(VisualElement parent, string name) => El(parent, name);
 
-        static Sprite rounded, circle, ring, frame;
-        public static Sprite Rounded => rounded ? rounded : rounded = MakeRounded(64, 14);
-        public static Sprite Frame => frame ? frame : frame = MakeRounded(64, 14, 4); // hollow rounded border
-        public static Sprite Circle => circle ? circle : circle = MakeCircle(64, 0);
-        public static Sprite Ring => ring ? ring : ring = MakeCircle(128, 10);
-
-        static Sprite MakeRounded(int size, int radius, int border = 0)
+        public static T Place<T>(this T e, float x, float y, float w, float h) where T : VisualElement
         {
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
+            var s = e.style;
+            s.position = Position.Absolute;
+            s.left = x; s.top = y; s.width = w; s.height = h;
+            return e;
+        }
+
+        // Absolute position only; size comes from content.
+        public static T At<T>(this T e, float x, float y) where T : VisualElement
+        {
+            e.style.position = Position.Absolute;
+            e.style.left = x; e.style.top = y;
+            return e;
+        }
+
+        public static T Center<T>(this T e, float x, float y, float w, float h) where T : VisualElement => e.Place(x - w / 2, y - h / 2, w, h);
+
+        public static T Size<T>(this T e, float w, float h) where T : VisualElement
+        {
+            e.style.width = w; e.style.height = h; e.style.flexShrink = 0;
+            return e;
+        }
+
+        public static T Fill<T>(this T e, float pad = 0) where T : VisualElement
+        {
+            var s = e.style;
+            s.position = Position.Absolute;
+            s.left = pad; s.top = pad; s.right = pad; s.bottom = pad;
+            return e;
+        }
+
+        public static T Rotate<T>(this T e, float degrees) where T : VisualElement
+        {
+            if (degrees != 0) e.style.rotate = new Rotate(degrees);
+            return e;
+        }
+
+        public static T Classes<T>(this T e, params string[] classes) where T : VisualElement
+        {
+            foreach (var c in classes) e.AddToClassList(c);
+            return e;
+        }
+
+        public static T Show<T>(this T e, bool visible) where T : VisualElement
+        {
+            e.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            return e;
+        }
+
+        public static VisualElement Row(VisualElement parent, string name = null, float gap = 0)
+        {
+            var e = El(parent, name, "row");
+            if (gap > 0) e.Gap(gap);
+            return e;
+        }
+
+        public static VisualElement Column(VisualElement parent, string name = null, float gap = 0)
+        {
+            var e = El(parent, name, "col");
+            if (gap > 0) e.Gap(gap);
+            return e;
+        }
+
+        // Spacing between flex children (margin on all but the first, recomputed on layout changes).
+        public static T Gap<T>(this T e, float gap) where T : VisualElement
+        {
+            bool row = e.ClassListContains("row");
+            void Apply()
+            {
+                for (int i = 0; i < e.childCount; i++)
                 {
-                    float dx = Mathf.Max(0, Mathf.Max(radius - x - 0.5f, x + 0.5f - (size - radius)));
-                    float dy = Mathf.Max(0, Mathf.Max(radius - y - 0.5f, y + 0.5f - (size - radius)));
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    float a = Mathf.Clamp01(radius - d + 0.5f);
-                    if (border > 0)
-                    {
-                        // distance to the inner edge: keep only a band `border` pixels wide
-                        float ix = Mathf.Min(x + 0.5f, size - x - 0.5f), iy = Mathf.Min(y + 0.5f, size - y - 0.5f);
-                        float inner = dx > 0 || dy > 0 ? radius - d : Mathf.Min(ix, iy);
-                        a *= Mathf.Clamp01(border - inner + 0.5f);
-                    }
-                    tex.SetPixel(x, y, new Color(1, 1, 1, a));
+                    if (row) e[i].style.marginLeft = i == 0 ? 0 : gap;
+                    else e[i].style.marginTop = i == 0 ? 0 : gap;
                 }
-            tex.Apply();
-            var s = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius));
-            s.hideFlags = HideFlags.HideAndDontSave;
+            }
+            e.RegisterCallback<GeometryChangedEvent>(_ => Apply());
+            e.schedule.Execute(Apply);
+            return e;
+        }
+
+        // Vertical scroll area that fills its parent (content goes in .contentContainer via Add).
+        public static ScrollView Scroll(VisualElement parent, string name = "Scroll")
+        {
+            var s = new ScrollView(ScrollViewMode.Vertical) { name = name, horizontalScrollerVisibility = ScrollerVisibility.Hidden };
+            s.AddToClassList("scroll");
+            s.mouseWheelScrollSize = 60;
+            parent.Add(s);
             return s;
         }
 
-        static Sprite MakeCircle(int size, int thickness)
+        // ---- Visual builders ----
+        public static VisualElement Box(VisualElement parent, string name, Color color, Shape shape = Shape.Rounded, bool raycast = false)
         {
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
-            float r = size / 2f;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(r, r));
-                    float a = Mathf.Clamp01(r - d);
-                    if (thickness > 0) a *= Mathf.Clamp01(d - (r - thickness));
-                    tex.SetPixel(x, y, new Color(1, 1, 1, a));
-                }
-            tex.Apply();
-            var s = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100);
-            s.hideFlags = HideFlags.HideAndDontSave;
-            return s;
+            var e = El(parent, name);
+            e.pickingMode = raycast ? PickingMode.Position : PickingMode.Ignore;
+            Paint(e, color, shape);
+            return e;
         }
 
-        // ---- Builders (positions in reference pixels, origin top-left of the parent) ----
-        public static RectTransform Node(Transform parent, string name)
+        public static void Paint(VisualElement e, Color color, Shape shape)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            var rt = (RectTransform)go.transform;
-            rt.SetParent(parent, false);
-            return rt;
+            var s = e.style;
+            float r = shape == Shape.Circle || shape == Shape.Ring ? 9999 : shape == Shape.Rect ? 0 : 10;
+            s.borderTopLeftRadius = s.borderTopRightRadius = s.borderBottomLeftRadius = s.borderBottomRightRadius = new Length(r == 9999 ? 50 : r, r == 9999 ? LengthUnit.Percent : LengthUnit.Pixel);
+            if (shape == Shape.Ring || shape == Shape.Frame)
+            {
+                s.backgroundColor = Color.clear;
+                Border(e, color, shape == Shape.Ring ? 3 : 2);
+            }
+            else s.backgroundColor = color;
         }
 
-        // Places rt at (x, y) from the parent's top-left, with size (w, h).
-        public static RectTransform Place(this RectTransform rt, float x, float y, float w, float h)
+        public static void Border(VisualElement e, Color color, float width)
         {
-            rt.anchorMin = rt.anchorMax = new Vector2(0, 1);
-            rt.pivot = new Vector2(0, 1);
-            rt.anchoredPosition = new Vector2(x, -y);
-            rt.sizeDelta = new Vector2(w, h);
-            return rt;
+            var s = e.style;
+            s.borderTopWidth = s.borderBottomWidth = s.borderLeftWidth = s.borderRightWidth = width;
+            s.borderTopColor = s.borderBottomColor = s.borderLeftColor = s.borderRightColor = color;
         }
 
-        // Centers rt at (x, y) from the parent's top-left.
-        public static RectTransform Center(this RectTransform rt, float x, float y, float w, float h)
+        public static void Tint(VisualElement e, Color color)
         {
-            rt.anchorMin = rt.anchorMax = new Vector2(0, 1);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(x, -y);
-            rt.sizeDelta = new Vector2(w, h);
-            return rt;
+            if (e.style.backgroundColor.value.a > 0 || e.resolvedStyle.borderTopWidth <= 0) e.style.backgroundColor = color;
+            else Border(e, color, e.resolvedStyle.borderTopWidth);
         }
 
-        public static RectTransform Fill(this RectTransform rt, float pad = 0)
+        // Plain rectangle: backgrounds, lines, bars.
+        public static VisualElement Solid(VisualElement parent, string name, Color color) => Box(parent, name, color, Shape.Rect);
+
+        // Kenney sci-fi panel (USS .panel, .panel-glass, .paper...), optionally tinted.
+        public static VisualElement Plate(VisualElement parent, string name, string kind = "panel", Color? tint = null)
         {
-            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(pad, pad); rt.offsetMax = new Vector2(-pad, -pad);
-            return rt;
+            var e = El(parent, name, kind);
+            if (tint.HasValue) e.style.unityBackgroundImageTintColor = tint.Value;
+            return e;
         }
 
-        public static Image Box(Transform parent, string name, Color color, Sprite sprite = null, bool raycast = false)
+        public static Label Label(VisualElement parent, string text, int size = Body, Color? color = null, TextAnchor align = TextAnchor.UpperLeft, FontStyle style = FontStyle.Normal)
         {
-            var img = Node(parent, name).gameObject.AddComponent<Image>();
-            img.sprite = sprite ?? Rounded;
-            img.type = img.sprite == Rounded || img.sprite == Frame ? Image.Type.Sliced : Image.Type.Simple;
-            img.color = color;
-            img.raycastTarget = raycast;
-            return img;
-        }
-
-        // Plain rectangle (no sprite): backgrounds, lines, bars.
-        public static Image Solid(Transform parent, string name, Color color)
-        {
-            var img = Node(parent, name).gameObject.AddComponent<Image>();
-            img.color = color;
-            img.raycastTarget = false;
-            return img;
-        }
-
-        public static Text Label(Transform parent, string text, int size = Body, Color? color = null, TextAnchor align = TextAnchor.UpperLeft, FontStyle style = FontStyle.Normal)
-        {
-            var t = Node(parent, "Text").gameObject.AddComponent<Text>();
-            t.font = Font; t.fontSize = size; t.color = color ?? Ink; t.alignment = align; t.fontStyle = style;
-            t.supportRichText = true; t.raycastTarget = false;
-            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
-            t.text = text;
+            var t = new Label(text) { pickingMode = PickingMode.Ignore, enableRichText = true };
+            t.AddToClassList("text");
+            var s = t.style;
+            s.fontSize = size;
+            s.color = color ?? Ink;
+            s.unityTextAlign = align;
+            s.unityFontStyleAndWeight = style;
+            s.whiteSpace = WhiteSpace.Normal;
+            parent?.Add(t);
             return t;
         }
 
-        public static Button Button(Transform parent, string label, Action onClick, Color? color = null, int size = Body)
+        // Display font (Kenney Future) for titles, numbers and buttons.
+        public static Label Title(VisualElement parent, string text, int size = 44, Color? color = null, TextAnchor align = TextAnchor.UpperLeft)
         {
-            var img = Box(parent, "Button:" + label, color ?? PanelHi, raycast: true);
-            var b = img.gameObject.AddComponent<UnityEngine.UI.Button>();
-            var colors = b.colors;
-            colors.normalColor = Color.white; colors.highlightedColor = new Color(1.25f, 1.25f, 1.35f); colors.pressedColor = new Color(0.8f, 0.8f, 0.85f);
-            colors.disabledColor = new Color(0.45f, 0.45f, 0.5f, 0.7f); colors.colorMultiplier = 1.2f;
-            b.colors = colors;
-            var t = Label(img.transform, label, size, Ink, TextAnchor.MiddleCenter, FontStyle.Bold);
-            t.rectTransform.Fill(6);
-            b.onClick.AddListener(() => onClick?.Invoke());
+            var t = Label(parent, text, size, color, align, FontStyle.Normal);
+            t.AddToClassList("display");
+            return t;
+        }
+
+        // One line that never overflows its box: ellipsis plus the full text as a tooltip.
+        public static Label OneLine(this Label t)
+        {
+            t.AddToClassList("one-line");
+            t.style.whiteSpace = WhiteSpace.NoWrap;
+            t.style.overflow = Overflow.Hidden;
+            t.style.textOverflow = TextOverflow.Ellipsis;
+            return t;
+        }
+
+        // Shrinks the font (down to min) until the text fits its box in one or more lines; needs a fixed-size box.
+        public static Label Fit(this Label t, int min)
+        {
+            int max = (int)t.style.fontSize.value.value;
+            // One step per frame: the measurement uses the resolved size, which updates between frames.
+            bool Step()
+            {
+                var box = t.contentRect.size;
+                int cur = (int)t.resolvedStyle.fontSize;
+                if (box.x <= 0 || box.y <= 0 || cur <= min) return true;
+                var need = t.MeasureTextSize(t.text, box.x, VisualElement.MeasureMode.Exactly, 0, VisualElement.MeasureMode.Undefined);
+                if (need.y <= box.y + 1) return true;
+                t.style.fontSize = Mathf.Max(min, Mathf.Min(cur - 1, Mathf.FloorToInt(cur * Mathf.Sqrt(box.y / need.y))));
+                return false;
+            }
+            t.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                if (e.oldRect.size == e.newRect.size) return;
+                t.style.fontSize = max;
+                bool done = false;
+                t.schedule.Execute(() => done = Step()).Every(16).Until(() => done);
+            });
+            return t;
+        }
+
+        // One line, shrinking the font (down to min) until it fits the box width; ellipsis below that.
+        public static Label FitLine(this Label t, int min)
+        {
+            t.OneLine();
+            int max = (int)t.style.fontSize.value.value;
+            // text width scales linearly with the font size: measure at the resolved size, scale down, re-check next frame
+            bool Step()
+            {
+                float w = t.contentRect.width;
+                int cur = (int)t.resolvedStyle.fontSize;
+                if (w <= 0 || cur <= min) return true;
+                float need = t.MeasureTextSize(t.text, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+                if (need <= w + 1) return true;
+                t.style.fontSize = Mathf.Max(min, Mathf.Min(cur - 1, Mathf.FloorToInt(cur * w / need)));
+                return false;
+            }
+            t.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                if (e.oldRect.size == e.newRect.size) return;
+                t.style.fontSize = max;
+                bool done = false;
+                t.schedule.Execute(() => done = Step()).Every(16).Until(() => done);
+            });
+            return t;
+        }
+
+        public static Button Button(VisualElement parent, string label, Action onClick, Color? color = null, int size = Body, string variant = null)
+        {
+            var b = new Button { name = "Button:" + label };
+            b.AddToClassList("btn");
+            if (variant != null) b.AddToClassList(variant);
+            b.style.fontSize = size;
+            // The label is a child so arrows can be Kenney icons (Kenney Future has no arrow glyphs).
+            b.Add(new Label { name = "Text", pickingMode = PickingMode.Ignore, enableRichText = true }.Classes("btn-text"));
+            SetLabel(b, label);
+            if (color.HasValue) b.style.unityBackgroundImageTintColor = color.Value;
+            b.userData = onClick;
+            b.clicked += () => { if (b.enabledSelf) { Sfx.Click(); onClick?.Invoke(); } };
+            b.RegisterCallback<PointerEnterEvent>(_ => { if (b.enabledSelf) Sfx.Hover(); });
+            parent?.Add(b);
             return b;
         }
 
-        // Horizontal bar: returns the fill image (set fillAmount) and the label.
-        public static (Image fill, Text label) Bar(Transform parent, Color fillColor, int size = Small)
+        public static string LabelOf(Button b) => b.Q<Label>("Text")?.text;
+
+        // Sets a button's text; "← X", "X →", "X ▸", "◀" and "▶" become Kenney arrow icons around the text.
+        public static void SetLabel(Button b, string label)
         {
-            var bg = Box(parent, "Bar", Hex("0E1220"));
-            var fill = Box(bg.transform, "Fill", fillColor, Rounded);
-            fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.sprite = null;
-            fill.rectTransform.Fill(2);
-            var label = Label(bg.transform, "", size, Ink, TextAnchor.MiddleLeft, FontStyle.Bold);
-            label.rectTransform.Fill(8);
-            label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.6f);
+            b.Query(className: "btn-icon").ForEach(e => e.RemoveFromHierarchy());
+            var text = b.Q<Label>("Text");
+            label = label ?? "";
+            string left = null, right = null;
+            if (label == "◀") { left = "arrowLeft"; label = ""; }
+            else if (label == "▶") { right = "arrowRight"; label = ""; }
+            if (label.StartsWith("←")) { left = "arrowLeft"; label = label.Substring(1).Trim(); }
+            if (label.EndsWith("→") || label.EndsWith("▸")) { right = "arrowRight"; label = label.Substring(0, label.Length - 1).Trim(); }
+            text.text = label;
+            text.Show(label.Length > 0);
+            float s = Mathf.Max(16, b.style.fontSize.value.value * 0.9f);
+            if (left != null) b.Insert(0, Icon(null, left, s, Color.white).Classes("btn-icon"));
+            if (right != null) b.Add(Icon(null, right, s, Color.white).Classes("btn-icon"));
+        }
+
+        // Primary call-to-action (orange Kenney button).
+        public static Button Primary(VisualElement parent, string label, Action onClick, int size = 30) =>
+            Button(parent, label, onClick, null, size, "btn-primary");
+
+        // Runs a button's action as a click would (tests and keyboard shortcuts).
+        public static void Press(Button b) { if (b != null && b.enabledSelf) (b.userData as Action)?.Invoke(); }
+
+        // Pointer click on any element (cards, map places, opponents).
+        public static T OnClick<T>(this T e, Action action) where T : VisualElement
+        {
+            e.pickingMode = PickingMode.Position;
+            e.AddToClassList("clickable");
+            e.userData = action;
+            e.RegisterCallback<ClickEvent>(_ => { Sfx.Click(); action(); });
+            e.RegisterCallback<PointerEnterEvent>(_ => Sfx.Hover());
+            return e;
+        }
+
+        public static void Click(VisualElement e)
+        {
+            if (e is Button b) Press(b);
+            else (e?.userData as Action)?.Invoke();
+        }
+
+        // Horizontal bar: returns the fill (set with SetFill) and the label.
+        public static (VisualElement fill, Label label) Bar(VisualElement parent, Color fillColor, int size = Small)
+        {
+            var bg = El(parent, "Bar", "bar");
+            var fill = El(bg, "Fill", "bar-fill");
+            fill.style.backgroundColor = fillColor;
+            var label = Label(bg, "", size, Ink, TextAnchor.MiddleLeft, FontStyle.Bold);
+            label.AddToClassList("bar-label");
+            label.Fill();
+            label.style.paddingLeft = 10;
             return (fill, label);
         }
 
-        // Rounded "chip" with text, sized by the caller.
-        public static Text Chip(Transform parent, string text, Color color, int size = Small)
+        public static void SetFill(VisualElement fill, float amount) => fill.style.width = Length.Percent(Mathf.Clamp01(amount) * 100);
+
+        // Rounded "chip" with text, sized by its content unless placed.
+        public static Label Chip(VisualElement parent, string text, Color color, int size = Small)
         {
-            var bg = Box(parent, "Chip", Alpha(Mix(Bg, color, 0.25f), 0.95f));
-            var outline = bg.gameObject.AddComponent<Outline>(); outline.effectColor = Alpha(color, 0.8f); outline.effectDistance = new Vector2(1.5f, -1.5f);
-            var t = Label(bg.transform, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold);
-            t.rectTransform.Fill(4);
+            var bg = El(parent, "Chip", "chip");
+            bg.style.backgroundColor = Alpha(Mix(Bg, color, 0.25f), 0.95f);
+            Border(bg, Alpha(color, 0.85f), 2);
+            var t = Label(bg, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold);
+            t.style.whiteSpace = WhiteSpace.NoWrap;
             return t;
+        }
+
+        // Kenney pictogram (GameIcons, mapped in Theme.uss as .icon-<name>) tinted.
+        public static VisualElement Icon(VisualElement parent, string name, float size, Color color)
+        {
+            var e = El(parent, "Icon:" + name, "icon", "icon-" + name);
+            e.style.unityBackgroundImageTintColor = color;
+            e.Size(size, size);
+            return e;
         }
     }
 }

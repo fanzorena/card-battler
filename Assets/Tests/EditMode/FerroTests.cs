@@ -152,14 +152,14 @@ public class FerroTests
             ui.ShowMap();
             ui.map.Open("ferro");
             Assert.AreEqual("ferro", ui.screen);
-            ui.GetComponentsInChildren<UnityEngine.UI.Button>().First(b => b.name == "TrabalhoDuda").onClick.Invoke();
+            Theme.Press(ui.ButtonNamed("TrabalhoDuda"));
             Assert.AreEqual("job", ui.screen);
             Assert.AreEqual("duda_patio", ui.career.job);
             ui.ShowCareer("workshop");
-            Assert.IsFalse(ui.GetComponentsInChildren<UnityEngine.UI.Button>().Any(b => b.name.StartsWith("Fabricar:")), "sem plantas ainda");
+            Assert.IsFalse(ui.Buttons.Any(b => b.name.StartsWith("Fabricar:")), "sem plantas ainda");
             ui.career.LearnBlueprint(ui.content, "bp_hover");
             ui.ShowCareer("workshop");
-            Assert.IsTrue(ui.GetComponentsInChildren<UnityEngine.UI.Button>().Any(b => b.name == "Fabricar:bp_hover"));
+            Assert.IsTrue(ui.Buttons.Any(b => b.name == "Fabricar:bp_hover"));
             ui.Back();
             Assert.AreEqual("map", ui.screen);
         }

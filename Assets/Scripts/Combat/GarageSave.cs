@@ -24,7 +24,7 @@ namespace CardBattler.Combat
             return Fix(save, content);
         }
 
-        // Always 3 named slots; unknown builds go back to the starter.
+        // Always 3 named slots. A new save has only the first robot equipped; unknown builds go back to that default.
         public static GarageSave Fix(GarageSave save, Content content)
         {
             save ??= new GarageSave();
@@ -32,8 +32,9 @@ namespace CardBattler.Combat
             for (int i = 0; i < SlotCount; i++)
             {
                 var b = save.slots != null && i < save.slots.Length ? save.slots[i] : null;
-                bool known = b != null && content.frames.Any(f => f.id == b.frame) && b.PartIds.All(id => content.parts.Any(p => p.id == id));
-                slots[i] = known ? b : content.Robot("player").Clone();
+                bool known = b != null && content.frames.Any(f => f.id == b.frame) && b.Equipped.All(id => content.parts.Any(p => p.id == id));
+                var starter = content.Robot("player");
+                slots[i] = known ? b : i == 0 ? starter.Clone() : RobotDef.Empty(starter.frame);
                 slots[i].id = "slot" + (i + 1);
                 slots[i].name = "Robô " + (i + 1);
             }

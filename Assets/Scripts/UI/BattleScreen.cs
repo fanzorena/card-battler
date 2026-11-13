@@ -4,24 +4,23 @@ using System.Collections.Generic;
 using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
-    // Battle HUD: enemy top-right with intent icons, player bottom-left, info panels, text box, hand, energy.
+    // Battle HUD: enemy top-right with intent icons, player bottom-left, info panels, combat log, hand, energy.
     // Visuals replay the battle log events so every hit, block and break gets feedback.
     public class BattleScreen
     {
         readonly GameUI app;
-        readonly RectTransform root;
+        readonly VisualElement root;
         readonly Battle b;
         RobotView playerBot, enemyBot;
-        RectTransform hand, intents, playerPanel, enemyPanel, overlayLayer, textRows, scrapZone;
-        Text energyText, deckText, discardText, hint, scrapInfo;
-        Image scrapGlow;
+        VisualElement hand, intents, playerPanel, enemyPanel, overlayLayer, scrapZone, logRows;
+        ScrollView log;
+        Label energyText, deckText, discardText, hint, scrapInfo;
         Button endTurn, cancel, quit;
         readonly Dictionary<Card, CardView> views = new Dictionary<Card, CardView>();
-        readonly List<(string line, string icon)> lines = new List<(string, string)>();
         Card pending;
         bool busy, quitArmed;
         int seen; // history events already shown
@@ -30,22 +29,23 @@ namespace CardBattler.UI
         static readonly Vector2 EnemyPos = new Vector2(1450, 330), PlayerPos = new Vector2(430, 565);
         static readonly Vector2 DeckPos = new Vector2(1370, 1010), DiscardPos = new Vector2(1520, 1010), EnergyPos = new Vector2(120, 780);
         static readonly Vector2 ScrapPos = new Vector2(130, 962), ScrapSize = new Vector2(220, 170);
-        const float PlayLine = 730; // dropping a card above this line (overlay y) plays it
+        const float HandTop = 760;
+        const float PlayLine = 730; // dropping a card above this line (stage y) plays it
 
         public enum DropKind { Cancel, Scrap, Play, PlayAt, ChooseTarget }
 
         // What releasing a dragged card means (pure: used by the screen and tests).
         // enemySlot/ownSlot: valid part under the pointer, if any.
-        public static (DropKind kind, Slot? slot) Decide(Target needs, bool overScrap, Slot? enemySlot, Slot? ownSlot, float overlayY)
+        public static (DropKind kind, Slot? slot) Decide(Target needs, bool overScrap, Slot? enemySlot, Slot? ownSlot, float stageY)
         {
             if (overScrap) return (DropKind.Scrap, null);
             if (needs == Target.EnemyPart && enemySlot.HasValue) return (DropKind.PlayAt, enemySlot);
             if (needs == Target.OwnPart && ownSlot.HasValue) return (DropKind.PlayAt, ownSlot);
-            if (overlayY < PlayLine) return needs == Target.None ? (DropKind.Play, null) : (DropKind.ChooseTarget, null);
+            if (stageY < PlayLine) return needs == Target.None ? (DropKind.Play, null) : (DropKind.ChooseTarget, null);
             return (DropKind.Cancel, null);
         }
 
-        public BattleScreen(GameUI app, RectTransform root, Battle battle) { this.app = app; this.root = root; b = battle; }
+        public BattleScreen(GameUI app, VisualElement root, Battle battle) { this.app = app; this.root = root; b = battle; }
 
         public static Slot? SlotFrom(string name) =>
             Enum.GetValues(typeof(Slot)).Cast<Slot>().Where(s => Battle.SlotName(s) == name).Select(s => (Slot?)s).FirstOrDefault();
@@ -74,85 +74,85 @@ namespace CardBattler.UI
 
         public void Build()
         {
-            enemyPanel = Theme.Node(root, "EnemyPanel").Place(40, 30, 640, 330);
-            playerPanel = Theme.Node(root, "PlayerPanel").Place(1240, 545, 640, 330);
+            root.AddToClassList("battle");
+            if (b.terrain != null) root.AddToClassList("terrain-" + b.terrain.id);
+            Theme.El(root, "Floor", "battle-floor").Place(0, 640, 1920, 440);
 
-            enemyBot = RobotView.Create(root, false, true); // not mirrored: left arm is always on the left, like its icon
-            enemyBot.Rect.Center(EnemyPos.x, EnemyPos.y, RobotView.W, RobotView.H);
-            enemyBot.transform.localScale = new Vector3(RobotScale, RobotScale, 1);
+            enemyPanel = Theme.El(root, "EnemyPanel").Place(40, 30, 640, 330);
+            playerPanel = Theme.El(root, "PlayerPanel").Place(1266, 545, 624, 330);
+
+            // not mirrored: the left arm is always on the left, like its icon
+            enemyBot = RobotView.Create(root, false, true).At(EnemyPos.x, EnemyPos.y, RobotScale);
             enemyBot.Build(b.content, Def(b.enemy));
-            playerBot = RobotView.Create(root, false, true);
-            playerBot.Rect.Center(PlayerPos.x, PlayerPos.y, RobotView.W, RobotView.H);
-            playerBot.transform.localScale = new Vector3(RobotScale, RobotScale, 1);
+            playerBot = RobotView.Create(root, false, true).At(PlayerPos.x, PlayerPos.y, RobotScale);
             playerBot.Build(b.content, Def(b.player));
 
-            intents = Theme.Node(root, "Intents").Place(1040, 26, 820, 50);
-            var hl = intents.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hl.spacing = 10; hl.childAlignment = TextAnchor.MiddleCenter; hl.childControlWidth = false; hl.childControlHeight = false; hl.childForceExpandWidth = false;
+            Theme.Label(root, "INTENÇÃO DO INIMIGO", 15, Theme.TextDim, TextAnchor.MiddleRight, FontStyle.Bold).Place(1040, 4, 820, 22);
+            intents = Theme.Row(root, "Intents", 10).Place(1040, 26, 840, 50);
+            intents.style.justifyContent = Justify.FlexEnd;
 
-            var tb = Theme.Box(root, "TextBox", Theme.Alpha(Theme.Bg, 0.88f));
-            tb.rectTransform.Place(700, 480, 520, 250);
-            tb.gameObject.AddComponent<Outline>().effectColor = Theme.Alpha(Theme.Line, 1);
-            textRows = Theme.Node(tb.transform, "Rows").Fill(12); // last lines, each with the icon of the part involved
+            // Combat log: newest line at the bottom, scrolls back through the whole fight.
+            var tb = Theme.Plate(root, "TextBox", "panel-glass").Place(700, 470, 520, 260);
+            Theme.Label(tb, "REGISTRO", 14, Theme.TextDim, style: FontStyle.Bold).At(16, 8);
+            log = Theme.Scroll(tb, "Log").Place(10, 30, 500, 222);
+            logRows = log.contentContainer;
 
-            hand = Theme.Node(root, "Hand").Place(0, 760, 1920, 320);
+            hand = Theme.El(root, "Hand").Place(0, HandTop, 1920, 320);
 
-            var deckChip = Theme.Chip(root, "", Theme.TextDim, Theme.Body);
-            ((RectTransform)deckChip.transform.parent).Center(DeckPos.x, DeckPos.y, 140, 70);
-            deckText = deckChip;
-            var discardChip = Theme.Chip(root, "", Theme.TextDim, Theme.Body);
-            ((RectTransform)discardChip.transform.parent).Center(DiscardPos.x, DiscardPos.y, 140, 70);
-            discardText = discardChip;
+            deckText = Pile(DeckPos, "DECK", "Cartas que você ainda vai comprar. Acabou? O descarte é embaralhado de volta.");
+            discardText = Pile(DiscardPos, "DESCARTE", "Cartas jogadas, sucateadas e as que sobraram na mão no fim do turno.");
 
-            var orb = Theme.Box(root, "Energy", Theme.Mix(Theme.Bg, Theme.Energy, 0.15f), Theme.Circle);
-            orb.rectTransform.Center(EnergyPos.x, EnergyPos.y, 110, 110);
-            Theme.Box(orb.transform, "Ring", Theme.Energy, Theme.Ring).rectTransform.Fill();
-            energyText = Theme.Label(orb.transform, "", 52, Theme.Energy, TextAnchor.MiddleCenter, FontStyle.Bold);
-            energyText.rectTransform.Fill();
-            Theme.Label(root, "ENERGIA", Theme.Small, Theme.Energy, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(EnergyPos.x, EnergyPos.y - 70, 160, 26);
+            var orb = Theme.Box(root, "Energy", Theme.Mix(Theme.Bg, Theme.Energy, 0.15f), Shape.Circle).Center(EnergyPos.x, EnergyPos.y, 116, 116);
+            orb.AddToClassList("energy-orb");
+            Theme.Border(orb, Theme.Energy, 4);
+            energyText = Theme.Title(orb, "", 50, Theme.Energy, TextAnchor.MiddleCenter);
+            energyText.Fill();
+            Theme.Hover(orb, Theme.Explain("energia"));
+            Theme.Title(root, "ENERGIA", Theme.Small, Theme.Energy, TextAnchor.MiddleCenter).Center(EnergyPos.x, EnergyPos.y - 76, 180, 26);
 
             // Scrap zone: drop a card here to scrap it.
-            var zone = Theme.Box(root, "ScrapZone", Theme.Alpha(Theme.Mix(Theme.Bg, Theme.Hex("C8A27A"), 0.18f), 0.95f), raycast: true);
-            zone.rectTransform.Center(ScrapPos.x, ScrapPos.y, ScrapSize.x, ScrapSize.y);
-            scrapZone = zone.rectTransform;
-            scrapGlow = Theme.Box(zone.transform, "Glow", Theme.Alpha(Theme.Hex("C8A27A"), 0.5f), Theme.Frame);
-            scrapGlow.rectTransform.Fill(-4);
-            var bin = Theme.Node(zone.transform, "Bin").Place(16, 18, 54, 60);
-            Theme.Box(bin, "Can", Theme.Hex("C8A27A")).rectTransform.Place(6, 14, 42, 46);
-            Theme.Box(bin, "Lid", Theme.Hex("E2C49E")).rectTransform.Place(0, 4, 54, 10);
-            for (int k = 0; k < 3; k++) Theme.Solid(bin, "Rib", Theme.Alpha(Theme.Bg, 0.6f)).rectTransform.Place(14 + k * 10, 22, 4, 30);
-            Theme.Label(zone.transform, "SUCATA", 26, Theme.Hex("E2C49E"), style: FontStyle.Bold).rectTransform.Place(80, 20, 140, 34);
-            Theme.Label(zone.transform, "arraste uma carta", 15, Theme.TextDim).rectTransform.Place(80, 54, 140, 22);
-            scrapInfo = Theme.Label(zone.transform, "", 18, Theme.Energy, TextAnchor.UpperLeft, FontStyle.Bold);
-            scrapInfo.rectTransform.Place(14, 92, 200, 74);
+            scrapZone = Theme.El(root, "ScrapZone", "scrap-zone").Center(ScrapPos.x, ScrapPos.y, ScrapSize.x, ScrapSize.y);
+            scrapZone.pickingMode = PickingMode.Position;
+            Theme.Icon(scrapZone, "trashcan", 52, Theme.Hex("E2C49E")).At(14, 16);
+            Theme.Title(scrapZone, "SUCATA", 24, Theme.Hex("E2C49E")).At(76, 18);
+            Theme.Label(scrapZone, "arraste uma carta", 15, Theme.TextDim).At(78, 50);
+            scrapInfo = Theme.Label(scrapZone, "", Theme.Small, Theme.Energy, TextAnchor.UpperLeft, FontStyle.Bold).Place(14, 90, 196, 74);
+            Theme.Hover(scrapZone, Theme.Explain("sucata"));
 
-            endTurn = Theme.Button(root, "ENCERRAR TURNO", EndTurn, Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.5f), 26);
-            ((RectTransform)endTurn.transform).Place(1600, 950, 290, 80);
-            quit = Theme.Button(root, "Desistir", Quit, Theme.Panel, Theme.Small);
-            ((RectTransform)quit.transform).Place(1760, 1036, 130, 38);
+            endTurn = Theme.Primary(root, "ENCERRAR TURNO", EndTurn, 26);
+            endTurn.name = "EncerrarTurno";
+            endTurn.Place(1600, 944, 300, 86);
+            Theme.Hover(endTurn, "O inimigo faz o que mostrou na intenção; as cartas que sobraram vão para o descarte.");
+            quit = Theme.Button(root, "Desistir", Quit, null, Theme.Small, "btn-small");
+            quit.Place(1760, 1036, 140, 40);
 
-            hint = Theme.Label(root, "", 26, Theme.Warn, TextAnchor.MiddleCenter, FontStyle.Bold);
-            hint.rectTransform.Center(960, 420, 900, 40);
-            hint.gameObject.AddComponent<Outline>().effectColor = Color.black;
-            cancel = Theme.Button(root, "Cancelar", CancelTarget, Theme.Panel, Theme.Small);
-            ((RectTransform)cancel.transform).Center(960, 462, 160, 40);
-            cancel.gameObject.SetActive(false);
+            hint = Theme.Title(root, "", 24, Theme.Warn, TextAnchor.MiddleCenter).Classes("outlined").Center(960, 420, 1000, 40);
+            cancel = Theme.Button(root, "Cancelar", CancelTarget, null, Theme.Small, "btn-small").Center(960, 466, 170, 44);
+            cancel.Show(false);
 
-            overlayLayer = Theme.Node(root, "Overlay").Fill();
+            overlayLayer = Theme.El(root, "Overlay").Fill();
 
             seen = b.history.Count;
             if (b.terrain != null)
             {
                 var chip = Theme.Chip(root, "ARENA: " + b.terrain.name.ToUpperInvariant(), Theme.Exposed, 16);
-                ((RectTransform)chip.transform.parent).Center(960, 455, 360, 30);
-                chip.transform.parent.name = "Terrain";
-                var help = chip.transform.parent.gameObject.AddComponent<HoverHelp>();
-                help.text = $"{b.terrain.name} ({b.terrain.place}): {b.terrain.text} Pernas Hover ignoram o terreno.";
-                chip.transform.parent.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+                chip.parent.name = "Terrain";
+                chip.parent.Center(960, 440, 380, 34);
+                Theme.Hover(chip.parent, $"{b.terrain.name} ({b.terrain.place}): {b.terrain.text} Pernas Hover ignoram o terreno.");
             }
             Say($"Luta contra {b.enemy.name} ({b.enemy.tier}){(b.terrain == null ? "" : $" · arena: {b.terrain.name}, {b.terrain.text}")}.");
             Refresh(animateDraw: true);
             Banner("SEU TURNO", Theme.Good);
+        }
+
+        Label Pile(Vector2 pos, string title, string help)
+        {
+            var box = Theme.El(root, "Pile:" + title, "pile").Center(pos.x, pos.y, 140, 76);
+            Theme.Icon(box, "cards", 30, Theme.TextDim).At(10, 8);
+            Theme.Label(box, title, 14, Theme.TextDim, style: FontStyle.Bold).At(46, 10);
+            var n = Theme.Title(box, "", 30, Theme.Ink).At(46, 30);
+            Theme.Hover(box, help);
+            return n;
         }
 
         static RobotDef Def(Robot r) => new RobotDef
@@ -162,58 +162,53 @@ namespace CardBattler.UI
         };
 
         // ---- Panels ----
-        void Panel(RectTransform parent, Robot r, bool enemy)
+        void Panel(VisualElement parent, Robot r, bool enemy)
         {
-            Theme.ClearChildren(parent);
-            var bg = Theme.Box(parent, "Bg", Theme.Alpha(Theme.Panel, 0.92f));
-            bg.rectTransform.Fill();
-            bg.gameObject.AddComponent<Outline>().effectColor = Theme.Alpha(Theme.Line, 1);
+            parent.Clear();
+            var bg = Theme.Plate(parent, "Bg").Fill();
             string tier = enemy ? $"  <color=#{Theme.HexOf(GarageScreen.TierColor(r.tier))}>{r.tier?.ToUpperInvariant()}</color>" : "";
-            Theme.Label(parent, $"<b>{r.name}</b>{tier}", 26).rectTransform.Place(18, 10, 604, 34);
+            Theme.Label(bg, $"<b>{r.name}</b>{tier}", 26).Place(18, 8, 588, 34).OneLine();
             var makers = r.makers.Length == 0 ? "" : " · bônus " + Content.MakerNames(r.makers);
-            Theme.Label(parent, $"{r.frame.name}{makers}", 17, Theme.TextDim).rectTransform.Place(18, 44, 604, 24);
+            Theme.Label(bg, $"{r.frame.name}{makers}", 17, Theme.TextDim).Place(18, 42, 588, 24).OneLine();
 
-            var (cf, cl) = Theme.Bar(parent, r.ChassisOpen ? Theme.Exposed : Theme.Hex("7C86A6"), Theme.Body);
-            var chassisBar = (RectTransform)cf.transform.parent;
-            chassisBar.Place(18, 74, 604, 38);
-            cf.fillAmount = (float)r.chassis / Mathf.Max(1, r.chassisMax);
+            var (cf, cl) = Theme.Bar(bg, r.ChassisOpen ? Theme.Exposed : Theme.Hex("7C86A6"), Theme.Body);
+            cf.parent.Place(18, 72, 588, 40);
+            cf.parent.EnableInClassList("exposed", r.ChassisOpen);
+            Theme.SetFill(cf, (float)r.chassis / Mathf.Max(1, r.chassisMax));
             cl.text = $"{r.chassis}/{r.chassisMax} · {(r.ChassisOpen ? "EXPOSTO" : "PROTEGIDO")}";
-            cl.rectTransform.offsetMin = new Vector2(46, cl.rectTransform.offsetMin.y);
-            SlotIcons.Icon(chassisBar, "Chassi", 34, Theme.Ink).Place(3, 2, 34, 34);
+            cl.style.paddingLeft = 48;
+            SlotIcons.Icon(cf.parent, "Chassi", 34, Theme.Ink).Place(3, 3, 34, 34);
+            Theme.Hover(cf.parent, Theme.Explain("chassi"));
 
-            float y = 120;
+            float y = 118;
             foreach (var p in r.parts.Values)
             {
                 var color = p.Broken ? Theme.Hex("4A4E5C") : Theme.Maker(p.def.maker);
-                var (f, l) = Theme.Bar(parent, Theme.Mix(Theme.Panel, color, p.Broken ? 1 : 0.5f), 17);
-                var bar = (RectTransform)f.transform.parent;
-                bar.Place(18, y, 604, 34);
-                f.fillAmount = (float)Mathf.Max(0, p.hp) / p.Max;
+                var (f, l) = Theme.Bar(bg, Theme.Mix(Theme.Panel, color, p.Broken ? 1 : 0.55f), 17);
+                f.parent.Place(18, y, 588, 34);
+                f.parent.EnableInClassList("broken", p.Broken);
+                Theme.SetFill(f, (float)Mathf.Max(0, p.hp) / p.Max);
                 l.text = $"{p.def.name}  {(p.Broken ? "— AVARIADA" : $"{p.hp}/{p.Max}")}";
-                l.rectTransform.offsetMin = new Vector2(44, l.rectTransform.offsetMin.y);
-                SlotIcons.Icon(bar, p.slot, 32, p.Broken ? Theme.Bad : Theme.Maker(p.def.maker)).Place(3, 1, 32, 32);
+                l.style.paddingLeft = 46;
+                SlotIcons.Icon(f.parent, p.slot, 30, p.Broken ? Theme.Bad : Theme.Maker(p.def.maker)).Place(3, 2, 30, 30);
                 y += 40;
             }
         }
 
         void Intents()
         {
-            Theme.ClearChildren(intents);
+            intents.Clear();
             foreach (var (kind, text, target) in IntentChips(b))
             {
                 var color = Kinds.ColorOf(kind);
-                var chip = Theme.Box(intents, "Intent", Theme.Alpha(Theme.Mix(Theme.Bg, color, 0.22f), 0.95f));
-                var o = chip.gameObject.AddComponent<Outline>(); o.effectColor = Theme.Alpha(color, 0.9f); o.effectDistance = new Vector2(2, -2);
-                Kinds.Icon(chip.transform, kind, 30).Place(8, 8, 30, 30);
-                var t = Theme.Label(chip.transform, text, 20, color, TextAnchor.MiddleLeft, FontStyle.Bold);
-                t.rectTransform.Place(44, 0, 260, 46);
-                float w = Mathf.Min(300, t.preferredWidth + 60);
-                if (target.HasValue)
-                {
-                    SlotIcons.Icon(chip.transform, target.Value == Slot.Chassi ? "Chassi" : SlotIcons.Key(target.Value), 38, color).Place(w - 8, 4, 38, 38);
-                    w += 40;
-                }
-                chip.rectTransform.sizeDelta = new Vector2(w, 46);
+                var chip = Theme.Row(intents, "Intent", 6);
+                chip.AddToClassList("intent");
+                chip.style.backgroundColor = Theme.Alpha(Theme.Mix(Theme.Bg, color, 0.22f), 0.95f);
+                Theme.Border(chip, Theme.Alpha(color, 0.9f), 2);
+                Kinds.Icon(chip, kind, 30);
+                Theme.Title(chip, text, 20, color, TextAnchor.MiddleLeft).style.whiteSpace = WhiteSpace.NoWrap;
+                if (target.HasValue) SlotIcons.Icon(chip, target.Value == Slot.Chassi ? "Chassi" : SlotIcons.Key(target.Value), 38, color);
+                Theme.Hover(chip, kind == CardKind.Attack ? (target.HasValue ? "Ataque mirado na parte mostrada." : "Ataque numa parte aleatória (?).") : "Ação planejada pelo inimigo para o próximo turno.");
             }
         }
 
@@ -226,13 +221,15 @@ namespace CardBattler.UI
             playerBot.Show(b.player);
             Intents();
             energyText.text = b.player.energy.ToString();
-            deckText.text = $"DECK\n{b.player.deck.Count}";
-            discardText.text = $"DESCARTE\n{b.player.discard.Count}";
-            endTurn.interactable = !busy && b.result == Result.None && pending == null;
+            deckText.text = b.player.deck.Count.ToString();
+            discardText.text = b.player.discard.Count.ToString();
+            endTurn.SetEnabled(!busy && b.result == Result.None && pending == null);
+            // nudge the end-turn button when nothing in hand can be played
+            endTurn.EnableInClassList("nudge", !busy && pending == null && b.result == Result.None && !b.player.hand.Any(c => b.CanPlay(b.player, c)));
             var p = b.player;
             bool swap = p.frame.passive == "scrapDraw" && !p.scrappedThisTurn;
             int scrapArmor = p.BonusValue("scrapArmor");
-            scrapInfo.text = (swap ? "COMPRA 1 CARTA\n<size=14>(1ª sucata do Vira-lata)</size>" : "+1 ENERGIA") + (scrapArmor > 0 ? $"\n<color=#{Theme.HexOf(Theme.Armor)}>+{scrapArmor} BLINDAGEM</color>" : "");
+            scrapInfo.text = (swap ? "COMPRA 1 CARTA\n<size=15>(1ª sucata do Vira-lata)</size>" : "+1 ENERGIA") + (scrapArmor > 0 ? $"\n<color=#{Theme.HexOf(Theme.Armor)}>+{scrapArmor} BLINDAGEM</color>" : "");
             Hand(animateDraw);
             if (b.result != Result.None) ShowResult();
         }
@@ -241,13 +238,13 @@ namespace CardBattler.UI
         {
             foreach (var gone in views.Keys.Where(c => !b.player.hand.Contains(c)).ToList())
             {
-                if (views[gone]) Theme.Kill(views[gone].gameObject);
+                views[gone].Root.RemoveFromHierarchy();
                 views.Remove(gone);
             }
             var p = b.player;
             int n = p.hand.Count;
-            float spacing = Mathf.Min(CardView.W + 16, 1000f / Mathf.Max(1, n));
-            float start = 790 - spacing * (n - 1) / 2;
+            float spacing = Mathf.Min(CardView.W + 8, 980f / Mathf.Max(1, n));
+            float start = 752 - spacing * (n - 1) / 2;
             int i = 0;
             foreach (var c in p.hand)
             {
@@ -256,23 +253,29 @@ namespace CardBattler.UI
                 {
                     var part = c.source == Slot.Frame ? null : p.parts[c.source].def;
                     v = CardView.Create(hand, c.def, part?.maker, SlotIcons.Key(c.source), c, part?.element);
-                    v.Rect.anchorMin = v.Rect.anchorMax = new Vector2(0, 1);
-                    v.Rect.pivot = new Vector2(0.5f, 0.5f);
                     v.onClick = Clicked;
                     v.onDragStart = DragStart;
                     v.onDragMove = DragMove;
                     v.onDrop = Drop;
                     views[c] = v;
                 }
-                var home = new Vector2(start + i * spacing, -140);
-                if (isNew && animateDraw)
+                // slight fan: cards at the edges sit lower and tilt outwards
+                float k = n <= 1 ? 0 : (i - (n - 1) / 2f) / ((n - 1) / 2f);
+                var home = new Vector2(start + i * spacing, 160 + Mathf.Abs(k) * 14);
+                v.Root.style.rotate = new Rotate(k * 4);
+                if (isNew && animateDraw && Application.isPlaying && !Fx.Reduced)
                 {
-                    v.Rect.anchoredPosition = new Vector2(DeckPos.x, -(DeckPos.y - 760));
-                    v.SetHome(v.Rect.anchoredPosition);
+                    v.SetHome(new Vector2(DeckPos.x, DeckPos.y - HandTop));
                     var target = home;
                     var view = v;
                     view.animating = true;
-                    Fx.Delay(0.06f * i, () => { if (view) Fx.Move(view.Rect, target, 0.3f, () => { if (view) { view.SetHome(target); view.animating = false; } }); });
+                    view.Root.style.opacity = 0;
+                    Fx.Delay(0.06f * i, () =>
+                    {
+                        view.Root.style.opacity = 1;
+                        Sfx.Play(s => s.card, 0.35f, UnityEngine.Random.Range(0.95f, 1.1f));
+                        Fx.Move(view.Root, target - new Vector2(CardView.W / 2, CardView.H / 2), 0.3f, () => { view.SetHome(target); view.animating = false; });
+                    });
                 }
                 else if (!v.animating) v.SetHome(home);
                 bool chains = p.lastPlayed is Slot last && last != c.source && IsLimb(last) && IsLimb(c.source)
@@ -292,14 +295,10 @@ namespace CardBattler.UI
             if (t == Target.None) { Play(v.card, null); return; }
             pending = v.card;
             var robot = t == Target.OwnPart ? playerBot : enemyBot;
-            var target = t == Target.OwnPart ? b.player : b.enemy;
-            Func<Slot, bool> valid = t == Target.OwnPart ? (s => s != Slot.Chassi)
-                : v.card.def.weakPoint > 0 ? (Func<Slot, bool>)(s => s != Slot.Chassi && Battle.ValidTarget(target, s))
-                : s => Battle.ValidTarget(target, s);
-            robot.SetTargets(valid, s => { robot.SetTargets(null, null); var c = pending; pending = null; Play(c, s); });
+            robot.SetTargets(ValidFor(v.card, t), s => { robot.SetTargets(null, null); var c = pending; pending = null; Play(c, s); });
             hint.text = t == Target.OwnPart ? "Escolha uma parte sua para reparar" : b.enemy.ChassisOpen && v.card.def.weakPoint == 0
                 ? "Escolha uma parte do inimigo — ou o CHASSI EXPOSTO" : "Escolha uma parte do inimigo";
-            cancel.gameObject.SetActive(true);
+            cancel.Show(true);
             Refresh();
         }
 
@@ -312,33 +311,30 @@ namespace CardBattler.UI
         void DragStart(CardView v)
         {
             if (busy || pending != null) return;
-            scrapGlow.color = Theme.Alpha(Theme.Hex("FFD9A0"), 0.9f);
+            scrapZone.AddToClassList("armed");
             var t = b.NeedsTarget(b.player, v.card);
             if (t == Target.EnemyPart) enemyBot.SetTargets(ValidFor(v.card, t), null);
             if (t == Target.OwnPart) playerBot.SetTargets(ValidFor(v.card, t), null);
             hint.text = t == Target.None ? "Solte acima da mão para jogar · na SUCATA para sucatear" : "Solte numa parte para jogar · na SUCATA para sucatear";
         }
 
-        void DragMove(CardView v, Vector2 overlayPos, Vector2 screen)
-        {
-            bool over = RectTransformUtility.RectangleContainsScreenPoint(scrapZone, screen, null);
-            scrapZone.localScale = over ? new Vector3(1.06f, 1.06f, 1) : Vector3.one;
-        }
+        void DragMove(CardView v, Vector2 stagePos, Vector2 panelPos) =>
+            scrapZone.EnableInClassList("hot", scrapZone.worldBound.Contains(panelPos));
 
-        void Drop(CardView v, Vector2 overlayPos, Vector2 screen)
+        void Drop(CardView v, Vector2 stagePos, Vector2 panelPos)
         {
-            scrapGlow.color = Theme.Alpha(Theme.Hex("C8A27A"), 0.5f);
-            scrapZone.localScale = Vector3.one;
+            scrapZone.RemoveFromClassList("armed");
+            scrapZone.RemoveFromClassList("hot");
             enemyBot.SetTargets(null, null); playerBot.SetTargets(null, null);
             hint.text = "";
             if (busy || pending != null || b.result != Result.None) { v.ReturnToHand(); return; }
             var t = b.NeedsTarget(b.player, v.card);
-            bool overScrap = RectTransformUtility.RectangleContainsScreenPoint(scrapZone, screen, null);
+            bool overScrap = scrapZone.worldBound.Contains(panelPos);
             var valid = ValidFor(v.card, t);
-            Slot? enemySlot = enemyBot.SlotAt(screen), ownSlot = playerBot.SlotAt(screen);
+            Slot? enemySlot = enemyBot.SlotAt(panelPos), ownSlot = playerBot.SlotAt(panelPos);
             if (enemySlot.HasValue && !valid(enemySlot.Value)) enemySlot = null;
             if (ownSlot.HasValue && !valid(ownSlot.Value)) ownSlot = null;
-            var (kind, slot) = Decide(t, overScrap, enemySlot, ownSlot, overlayPos.y);
+            var (kind, slot) = Decide(t, overScrap, enemySlot, ownSlot, stagePos.y);
             bool canPlay = b.CanPlay(b.player, v.card);
             switch (kind)
             {
@@ -346,7 +342,10 @@ namespace CardBattler.UI
                 case DropKind.PlayAt when canPlay: Play(v.card, slot); break;
                 case DropKind.Play when canPlay: Play(v.card, null); break;
                 case DropKind.ChooseTarget when canPlay: v.ReturnToHand(); Clicked(v); break;
-                default: v.ReturnToHand(); if (kind != DropKind.Cancel) Fx.Shake(v.Rect, 6, 0.15f); break;
+                default:
+                    v.ReturnToHand();
+                    if (kind != DropKind.Cancel) { Fx.Shake(v.Root, 6, 0.15f); Sfx.Play(s => s.error, 0.5f); }
+                    break;
             }
         }
 
@@ -354,18 +353,19 @@ namespace CardBattler.UI
         {
             pending = null;
             enemyBot.SetTargets(null, null); playerBot.SetTargets(null, null);
-            hint.text = ""; cancel.gameObject.SetActive(false);
+            hint.text = ""; cancel.Show(false);
             Refresh();
         }
 
         void Play(Card c, Slot? target)
         {
-            hint.text = ""; cancel.gameObject.SetActive(false);
+            hint.text = ""; cancel.Show(false);
             var v = views.TryGetValue(c, out var view) ? view : null;
             views.Remove(c);
-            if (!b.Play(b.player, c, target)) { if (v) Theme.Kill(v.gameObject); Refresh(); return; }
-            var aimAt = c.def.TargetsPart ? enemyBot.PosOf(target ?? Slot.Torso) : c.def.repair > 0 ? playerBot.PosOf(target ?? Slot.Torso) : Fx.PosOf(playerBot.Rect);
-            if (v) v.FlyAway(aimAt, 0.4f);
+            if (!b.Play(b.player, c, target)) { v?.Root.RemoveFromHierarchy(); Refresh(); return; }
+            Sfx.Play(s => s.card, 0.6f);
+            var aimAt = c.def.TargetsPart ? enemyBot.PosOf(target ?? Slot.Torso) : c.def.repair > 0 ? playerBot.PosOf(target ?? Slot.Torso) : Fx.PosOf(playerBot.Root);
+            v?.FlyAway(aimAt, 0.4f);
             busy = true;
             Fx.Run(ReplayEvents(fast: true, () => { busy = false; Refresh(); }));
         }
@@ -376,7 +376,8 @@ namespace CardBattler.UI
             var v = views.TryGetValue(c, out var view) ? view : null;
             views.Remove(c);
             if (!b.Scrap(b.player, c)) return;
-            if (v) v.FlyAway(ScrapPos, 0.2f);
+            Sfx.Play(s => s.scrap, 0.7f);
+            v?.FlyAway(ScrapPos, 0.2f);
             Fx.Float(EnergyPos + new Vector2(0, -60), b.player.frame.passive == "scrapDraw" && b.history.Last(e => e.evt == "scrap").value == 0 ? "+1 CARTA" : "+1", Theme.Energy, 34);
             busy = true;
             Fx.Run(ReplayEvents(fast: true, () => { busy = false; Refresh(animateDraw: true); }));
@@ -386,7 +387,7 @@ namespace CardBattler.UI
         {
             if (busy || pending != null || b.result != Result.None) return;
             busy = true;
-            foreach (var v in views.Values.Where(x => x)) v.FlyAway(DiscardPos, 0.3f);
+            foreach (var v in views.Values) v.FlyAway(DiscardPos, 0.3f);
             views.Clear();
             Banner("TURNO DO INIMIGO", Theme.Bad);
             b.EndPlayerTurn();
@@ -400,7 +401,15 @@ namespace CardBattler.UI
 
         void Quit()
         {
-            if (!quitArmed) { quitArmed = true; Say("<color=#FFC24A>Clique em Desistir de novo para sair da luta.</color>"); Fx.Delay(3, () => quitArmed = false); return; }
+            if (!quitArmed)
+            {
+                quitArmed = true;
+                Theme.SetLabel(quit, "Confirmar?");
+                quit.AddToClassList("btn-danger");
+                Say("<color=#FFC24A>Clique em Desistir de novo para sair da luta.</color>");
+                Fx.Delay(3, () => { quitArmed = false; Theme.SetLabel(quit, "Desistir"); quit.RemoveFromClassList("btn-danger"); });
+                return;
+            }
             if (app.afterBattle != null) app.afterBattle(b); // a job fight given up counts as a loss
             else app.ShowOpponents();
         }
@@ -422,19 +431,20 @@ namespace CardBattler.UI
                         if (e.actor == "enemy") { Say($"<color=#FF8A8A>{e.msg}</color>", e.source); wait = 0.35f; }
                         else Say(e.msg, e.source);
                         break;
-                    case "scrap": if (e.actor == "enemy") { Fx.Float(Fx.PosOf(bot.Rect), "SUCATA", Theme.Hex("C8A27A")); Say(e.msg); wait = 0.2f; } break;
+                    case "scrap": if (e.actor == "enemy") { Fx.Float(Fx.PosOf(bot.Root), "SUCATA", Theme.Hex("C8A27A")); Say(e.msg); wait = 0.2f; } break;
                     case "attack":
                     {
                         lastElement = e.element;
                         var from = bot.PosOf(SlotFrom(e.source) ?? Slot.Torso);
                         var to = other.PosOf(SlotFrom(e.target) ?? Slot.Chassi);
-                        Fx.Lunge(bot.Rect, Mathf.Sign(to.x - from.x) * 46);
+                        Fx.Lunge(bot.Root, Mathf.Sign(to.x - from.x) * 46);
                         Fx.Projectile(from, to, HitColor(e.element));
+                        Sfx.Play(s => s.hit, 0.6f, UnityEngine.Random.Range(0.9f, 1.1f));
                         if (!Fx.Reduced) yield return new WaitForSeconds(fast ? 0.1f : 0.18f);
                     }
-                        if (e.absorbed > 0) Fx.Float(Fx.PosOf(other.Rect) + new Vector2(0, -120), $"-{e.absorbed} BLINDAGEM", Theme.Armor, 26);
-                        if (e.dodged > 0) Fx.Float(Fx.PosOf(other.Rect) + new Vector2(0, -160), "ESQUIVOU", Theme.Hex("9EF0FF"), 26);
-                        if (e.chained) Fx.Float(Fx.PosOf(bot.Rect) + new Vector2(0, -200), "ENCADEAR!", Theme.Hex("FFD34D"), 28);
+                        if (e.absorbed > 0) { Fx.Float(Fx.PosOf(other.Root) + new Vector2(0, -120), $"-{e.absorbed} BLINDAGEM", Theme.Armor, 26); Sfx.Play(s => s.armor, 0.5f); }
+                        if (e.dodged > 0) Fx.Float(Fx.PosOf(other.Root) + new Vector2(0, -160), "ESQUIVOU", Theme.Hex("9EF0FF"), 26);
+                        if (e.chained) Fx.Float(Fx.PosOf(bot.Root) + new Vector2(0, -200), "ENCADEAR!", Theme.Hex("FFD34D"), 28);
                         Say(e.msg, e.target);
                         break;
                     case "damage":
@@ -442,6 +452,7 @@ namespace CardBattler.UI
                         var slot = SlotFrom(e.target) ?? Slot.Chassi;
                         bot.Show(e.actor == "player" ? e.player : e.enemy, e.actor == "player" ? b.player : b.enemy);
                         bot.Hit(slot);
+                        Sfx.Play(s => slot == Slot.Chassi ? s.heavyHit : s.hit, 0.7f);
                         if (lastElement != null) Fx.Burst(bot.PosOf(slot), HitColor(lastElement), 8, 180);
                         Fx.Float(bot.PosOf(slot), "-" + e.value, slot == Slot.Chassi ? Theme.Exposed : Theme.Bad, 40, slot == Slot.Chassi ? "Chassi" : SlotIcons.Key(slot));
                         wait = fast ? 0.08f : 0.18f;
@@ -452,15 +463,16 @@ namespace CardBattler.UI
                         var slot = SlotFrom(e.target) ?? Slot.Torso;
                         Fx.Burst(bot.PosOf(slot), Theme.Warn, 18);
                         Fx.Float(bot.PosOf(slot) + new Vector2(0, -40), "AVARIADA!", Theme.Warn, 30);
+                        Sfx.Play(s => s.broken, 0.8f);
                         Say($"<color=#FFC24A>{e.msg}</color>", e.target);
                         wait = 0.25f;
                         break;
                     }
                     case "chassis_open": Fx.Float(bot.PosOf(Slot.Chassi) + new Vector2(0, 50), "CHASSI EXPOSTO", Theme.Exposed, 30); Say($"<color=#FF8A3D>{e.msg}</color>", "Chassi"); break;
                     case "armor": case "bonus":
-                        if (e.value > 0 && (e.evt == "armor" || e.target == "Ferrovelho" || e.target == "Bastion")) Fx.Float(Fx.PosOf(bot.Rect) + new Vector2(0, -170), $"+{e.value} BLINDAGEM", Theme.Armor, 26);
+                        if (e.value > 0 && (e.evt == "armor" || e.target == "Ferrovelho" || e.target == "Bastion")) { Fx.Float(Fx.PosOf(bot.Root) + new Vector2(0, -170), $"+{e.value} BLINDAGEM", Theme.Armor, 26); Sfx.Play(s => s.armor, 0.5f); }
                         break;
-                    case "repair": Fx.Float(bot.PosOf(SlotFrom(e.target) ?? Slot.Torso), "+" + e.value, Theme.Good, 36); Say(e.msg, e.target); break;
+                    case "repair": Fx.Float(bot.PosOf(SlotFrom(e.target) ?? Slot.Torso), "+" + e.value, Theme.Good, 36); Sfx.Play(s => s.repair, 0.6f); Say(e.msg, e.target); break;
                     case "heat_applied": Status(bot, Slot.Torso, $"+{e.value} CALOR", "FF6A3D"); Say(e.msg, e.target); break;
                     case "overload_applied": Status(bot, Slot.Cabeca, "SOBRECARGA", "FFE14D"); Say(e.msg, e.target); break;
                     case "corrosion_applied": Status(bot, SlotFrom(e.target) ?? Slot.Torso, $"+{e.value} CORROSÃO", "7CFF6B"); Say(e.msg, e.target); break;
@@ -488,22 +500,18 @@ namespace CardBattler.UI
         static void Status(RobotView bot, Slot slot, string text, string hex, int size = 26) =>
             Fx.Float(bot.PosOf(slot) + new Vector2(0, -60), text, Theme.Hex(hex), size);
 
-        // Text box line: the part's name is replaced by its icon at the start of the line.
+        // Log line: the part's name is replaced by its icon at the start of the line.
         void Say(string line, string slotName = null)
         {
             var slot = string.IsNullOrEmpty(slotName) ? null : SlotFrom(slotName);
-            lines.Add((StripSlotNames(line), slot.HasValue ? (slot == Slot.Chassi ? "Chassi" : SlotIcons.Key(slot.Value)) : null));
-            while (lines.Count > 5) lines.RemoveAt(0);
-            Theme.ClearChildren(textRows);
-            float y = 0;
-            foreach (var (text, icon) in lines)
-            {
-                var row = Theme.Label(textRows, text, 18, Theme.Ink);
-                row.rectTransform.Place(icon != null ? 38 : 0, y, 456, 44);
-                row.verticalOverflow = VerticalWrapMode.Truncate;
-                if (icon != null) SlotIcons.Icon(textRows, icon, 30, Theme.Ink).Place(0, y + 2, 30, 30);
-                y += Mathf.Min(44, row.preferredHeight + 4);
-            }
+            var row = Theme.Row(logRows, "Line", 8);
+            row.AddToClassList("log-line");
+            if (slot.HasValue) SlotIcons.Icon(row, slot == Slot.Chassi ? "Chassi" : SlotIcons.Key(slot.Value), 28, Theme.Ink);
+            var t = Theme.Label(row, StripSlotNames(line), Theme.Small, Theme.Ink);
+            t.style.flexShrink = 1;
+            foreach (var old in logRows.Children().Where(r => r != row)) old.AddToClassList("old");
+            Fx.Enter(row, 0, 10);
+            log.schedule.Execute(() => log.scrollOffset = new Vector2(0, float.MaxValue)).StartingIn(10);
         }
 
         // "sofre 6 em Braço Dir" -> "sofre 6"; "(Braço Dir, custo 1)" -> "(custo 1)"; "Braço Dir avariada" -> "avariada".
@@ -520,14 +528,12 @@ namespace CardBattler.UI
 
         void Banner(string text, Color color)
         {
-            var bar = Theme.Solid(overlayLayer, "Banner", Theme.Alpha(Theme.Bg, 0.85f));
-            bar.rectTransform.Center(960, 420, 1920, 110);
-            var t = Theme.Label(bar.transform, text, 56, color, TextAnchor.MiddleCenter, FontStyle.Bold);
-            t.rectTransform.Fill();
-            var g = bar.gameObject.AddComponent<CanvasGroup>();
-            g.blocksRaycasts = false;
-            g.alpha = 0;
-            Fx.Fade(g, 1, 0.15f, () => Fx.Delay(0.6f, () => { if (g) Fx.Fade(g, 0, 0.3f, () => UnityEngine.Object.Destroy(bar.gameObject)); }));
+            if (!Application.isPlaying) return;
+            Sfx.Play(s => s.turn, 0.5f);
+            var bar = Theme.El(overlayLayer, "Banner", "banner").Center(960, 420, 1920, 120);
+            Theme.Title(bar, text, 56, color, TextAnchor.MiddleCenter).Classes("outlined").Fill();
+            bar.style.opacity = 0;
+            Fx.Fade(bar, 1, 0.15f, () => Fx.Delay(0.6f, () => Fx.Fade(bar, 0, 0.3f, () => bar.RemoveFromHierarchy())));
         }
 
         bool ending;
@@ -535,39 +541,42 @@ namespace CardBattler.UI
         // Victory/defeat: the loser collapses with sparks, then the result screen fades in.
         void ShowResult()
         {
-            if (ending || overlayLayer.Find("Result")) return;
+            if (ending || overlayLayer.Q("Result") != null) return;
             ending = true;
             if (Fx.Reduced || !Application.isPlaying) { ResultOverlay(); return; }
             var loser = b.result == Result.Win ? enemyBot : playerBot;
             loser.idle = false;
             Fx.Burst(loser.PosOf(Slot.Chassi), Theme.Warn, 26, 340);
-            Fx.Collapse(loser.Rect, loser == enemyBot ? -1 : 1);
+            Fx.Collapse(loser.Root, loser == enemyBot ? -1 : 1);
+            Sfx.Play(s => b.result == Result.Win ? s.win : s.lose, 0.8f);
             Banner(b.result == Result.Win ? "VITÓRIA" : "DERROTA", b.result == Result.Win ? Theme.Good : Theme.Bad);
             Fx.Delay(1.2f, ResultOverlay);
         }
 
         void ResultOverlay()
         {
-            if (!overlayLayer || overlayLayer.Find("Result")) return; // the screen may have changed during the sequence
+            if (overlayLayer.panel == null && Application.isPlaying || overlayLayer.Q("Result") != null) return; // the screen may have changed during the sequence
             bool win = b.result == Result.Win;
-            var shade = Theme.Solid(overlayLayer, "Result", Theme.Alpha(Color.black, 0.78f));
-            shade.rectTransform.Fill();
-            shade.raycastTarget = true;
-            Theme.Label(shade.transform, win ? "VITÓRIA" : "DERROTA", 110, win ? Theme.Good : Theme.Bad, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform.Center(960, 400, 1200, 140);
-            Theme.Label(shade.transform, $"{b.enemy.name} · turno {b.turn}", Theme.Title, Theme.TextDim, TextAnchor.MiddleCenter).rectTransform.Center(960, 490, 1200, 50);
+            var shade = Theme.El(overlayLayer, "Result", "shade").Fill();
+            shade.pickingMode = PickingMode.Position;
+            Theme.Title(shade, win ? "VITÓRIA" : "DERROTA", 110, win ? Theme.Good : Theme.Bad, TextAnchor.MiddleCenter).Classes("outlined").Center(960, 380, 1400, 150);
+            Theme.Label(shade, $"{b.enemy.name} · turno {b.turn}", Theme.Heading, Theme.TextDim, TextAnchor.MiddleCenter).Center(960, 480, 1200, 50);
+            Fx.Enter(shade, 0, 0);
             if (app.afterBattle != null)
             {
                 var after = app.afterBattle;
-                var cont = Theme.Button(shade.transform, "CONTINUAR  →", () => after(b), Theme.Mix(Theme.PanelHi, Theme.Exposed, 0.6f), 30);
+                var cont = Theme.Primary(shade, "CONTINUAR  →", () => after(b), 30);
                 cont.name = "Continuar";
-                ((RectTransform)cont.transform).Center(960, 600, 360, 80);
+                cont.Center(960, 600, 380, 86);
                 return;
             }
             var build = app.Garage.Current;
             var enemyId = app.lastEnemy;
-            ((RectTransform)Theme.Button(shade.transform, "REVANCHE", () => app.StartBattle(build, enemyId), Theme.PanelHi, 26).transform).Center(640, 600, 320, 76);
-            ((RectTransform)Theme.Button(shade.transform, "OUTRO ADVERSÁRIO", app.ShowOpponents, Theme.PanelHi, 26).transform).Center(960, 600, 320, 76);
-            ((RectTransform)Theme.Button(shade.transform, "VOLTAR À GARAGEM", app.ShowGarage, Theme.PanelHi, 26).transform).Center(1280, 600, 320, 76);
+            var row = Theme.Row(shade, "Actions", 24).Center(960, 600, 1060, 80);
+            row.style.justifyContent = Justify.Center;
+            Theme.Primary(row, "REVANCHE", () => app.StartBattle(build, enemyId), 26).Size(320, 80);
+            Theme.Button(row, "OUTRO ADVERSÁRIO", app.ShowOpponents, null, 24).Size(320, 80);
+            Theme.Button(row, "VOLTAR À GARAGEM", app.ShowGarage, null, 24).Size(320, 80);
         }
     }
 }

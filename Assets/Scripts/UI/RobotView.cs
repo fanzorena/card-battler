@@ -4,164 +4,159 @@ using System.Collections.Generic;
 using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
-    // Procedural 2D robot built from the equipped parts: silhouette per part, color per manufacturer,
-    // visual states for damage, destroyed parts, exposed chassis, armor, heat and statuses.
-    public class RobotView : MonoBehaviour
+    // 2D robot built from the equipped parts: art per part (Resources/RobotParts/<id>, procedural shapes as fallback),
+    // color per manufacturer, visual states for damage, destroyed parts, exposed chassis, armor, heat and statuses.
+    public class RobotView
     {
         public const float W = 360, H = 440;
 
         public class PartView
         {
             public Slot slot;
-            public RectTransform rt;
-            public readonly List<(Graphic g, Color c)> body = new List<(Graphic, Color)>();
-            public Image crackA, crackB, brokenA, brokenB, glow;
-            public Text badge;
+            public VisualElement rt;
+            public readonly List<(VisualElement g, Color c, bool image)> body = new List<(VisualElement, Color, bool)>();
+            public VisualElement crackA, crackB, brokenA, brokenB, glow;
+            public Label badge;
             public bool broken;
         }
 
         public readonly Dictionary<Slot, PartView> parts = new Dictionary<Slot, PartView>();
-        public RectTransform figure;   // flipped for robots facing left
-        public RectTransform Rect => (RectTransform)transform;
-        Image shield, shieldFrame, heatGlow, coreRing, coreGlow, chassisHit;
-        Text armorChip, chassisLabel;
-        RectTransform badges;
+        public VisualElement Root { get; private set; }
+        public VisualElement figure;   // flipped for robots facing left
+        VisualElement shield, heatGlow, coreRing, coreGlow, badges;
+        Label armorChip;
         bool facingLeft, animated;
         Action<Slot> onClick;
-        readonly Dictionary<Slot, Coroutine> sparks = new Dictionary<Slot, Coroutine>();
+        public bool idle = true;
 
-        public static RobotView Create(Transform parent, bool facingLeft, bool animated)
+        public static RobotView Create(VisualElement parent, bool facingLeft, bool animated)
         {
-            var rt = Theme.Node(parent, "Robot");
-            var v = rt.gameObject.AddComponent<RobotView>();
-            v.facingLeft = facingLeft;
-            v.animated = animated;
+            var v = new RobotView { facingLeft = facingLeft, animated = animated };
+            v.Root = Theme.El(parent, "Robot", "robot").Size(W, H);
+            if (animated)
+                v.Root.schedule.Execute(v.Idle).Every(16);
             return v;
+        }
+
+        // Places the robot centered at (x, y) of its parent, scaled.
+        public RobotView At(float x, float y, float scale = 1)
+        {
+            Root.Center(x, y, W, H);
+            Root.style.scale = new Scale(new Vector3(scale, scale, 1));
+            return this;
         }
 
         // ---- Build ----
         public void Build(Content c, RobotDef def)
         {
-            Theme.ClearChildren(transform);
+            Root.Clear();
             parts.Clear();
-            foreach (var s in sparks.Values) if (s != null && Fx.I) Fx.I.StopCoroutine(s);
-            sparks.Clear();
 
-            heatGlow = Theme.Box(transform, "HeatGlow", Theme.Alpha(Theme.Hex("FF4A1F"), 0), Theme.Circle);
-            heatGlow.rectTransform.Center(W / 2, H / 2, W * 1.15f, H * 1.05f);
+            heatGlow = Theme.Box(Root, "HeatGlow", Theme.Alpha(Theme.Hex("FF4A1F"), 0), Shape.Circle).Center(W / 2, H / 2, W * 1.15f, H * 1.05f);
+            Theme.Box(Root, "Shadow", Theme.Alpha(Color.black, 0.35f), Shape.Circle).Center(W / 2, H - 6, W * 0.75f, 34);
 
-            figure = Theme.Node(transform, "Figure").Place(0, 0, W, H);
-            if (facingLeft) { figure.pivot = new Vector2(0.5f, 0.5f); figure.anchoredPosition = new Vector2(W / 2, -H / 2); figure.localScale = new Vector3(-1, 1, 1); }
+            figure = Theme.El(Root, "Figure").Place(0, 0, W, H);
+            if (facingLeft) figure.style.scale = new Scale(new Vector3(-1, 1, 1));
 
-            var legs = c.Part(def.legs); var torso = c.Part(def.torso); var head = c.Part(def.head);
-            Part(c, Slot.Pernas, legs, 80, 280, 200, 140, DrawLegs);
-            Part(c, Slot.BracoEsq, c.Part(def.armL), 0, 110, 90, 210, DrawArm);
-            Part(c, Slot.Torso, torso, 90, 110, 180, 165, DrawTorso);
-            Part(c, Slot.BracoDir, c.Part(def.armR), 270, 110, 90, 210, DrawArm, mirror: true);
-            Part(c, Slot.Cabeca, head, 120, 10, 120, 100, DrawHead);
+            // empty garage slots (null) are drawn as a dashed ghost of the part box
+            PartDef P(string id) => string.IsNullOrEmpty(id) ? null : c.Part(id);
+            Part(Slot.Pernas, P(def.legs), 80, 280, 200, 140, DrawLegs);
+            Part(Slot.BracoEsq, P(def.armL), 0, 110, 90, 210, DrawArm);
+            Part(Slot.Torso, P(def.torso), 90, 110, 180, 165, DrawTorso);
+            Part(Slot.BracoDir, P(def.armR), 270, 110, 90, 210, DrawArm, mirror: true);
+            Part(Slot.Cabeca, P(def.head), 120, 10, 120, 100, DrawHead);
 
             // Slot icon next to each part: the same icon the cards and panels use.
             foreach (var (slot, x, y) in new[] { (Slot.Cabeca, 262f, 30f), (Slot.BracoEsq, -18f, 190f), (Slot.BracoDir, 378f, 190f), (Slot.Torso, 112f, 252f), (Slot.Pernas, 300f, 410f) })
             {
-                var icon = SlotIcons.Icon(figure, slot, 48, Theme.Maker(c.Part(slot == Slot.Cabeca ? def.head : slot == Slot.Torso ? def.torso : slot == Slot.BracoEsq ? def.armL : slot == Slot.BracoDir ? def.armR : def.legs).maker));
-                icon.Center(x, y, 48, 48);
-                Unflip(icon);
+                var id = slot == Slot.Cabeca ? def.head : slot == Slot.Torso ? def.torso : slot == Slot.BracoEsq ? def.armL : slot == Slot.BracoDir ? def.armR : def.legs;
+                SlotIcons.Icon(figure, slot, 48, string.IsNullOrEmpty(id) ? Theme.Bad : Theme.Maker(c.Part(id).maker)).Center(x, y, 48, 48);
             }
 
             // Core + chassis ring (protected/exposed).
-            var core = c.Part(def.core);
-            var coreColor = core.heatPerTurn > 0 ? Theme.Hex("FF5A3D") : Theme.Energy;
-            coreGlow = Theme.Box(figure, "CoreGlow", Theme.Alpha(coreColor, 0.35f), Theme.Circle);
-            coreGlow.rectTransform.Center(180, 195, 80, 80);
-            Theme.Box(figure, "Core", coreColor, Theme.Circle).rectTransform.Center(180, 195, 42, 42);
-            coreRing = Theme.Box(figure, "ChassisRing", Theme.Alpha(Theme.TextDim, 0.6f), Theme.Ring, raycast: true);
-            coreRing.rectTransform.Center(180, 195, 92, 92);
-            chassisHit = coreRing;
-            chassisHit.gameObject.AddComponent<Clicker>().onClick = () => onClick?.Invoke(Slot.Chassi);
+            var core = P(def.core);
+            var coreColor = core == null ? Theme.Alpha(Theme.TextDim, 0.4f) : core.heatPerTurn > 0 ? Theme.Hex("FF5A3D") : Theme.Energy;
+            coreGlow = Theme.Box(figure, "CoreGlow", Theme.Alpha(coreColor, 0.35f), Shape.Circle).Center(180, 195, 80, 80);
+            Theme.Box(figure, "Core", coreColor, Shape.Circle).Center(180, 195, 42, 42);
+            coreRing = Theme.Box(figure, "ChassisRing", Theme.Alpha(Theme.TextDim, 0.6f), Shape.Ring).Center(180, 195, 92, 92);
+            Theme.Border(coreRing, Theme.Alpha(Theme.TextDim, 0.6f), 5);
+            coreRing.RegisterCallback<ClickEvent>(_ => onClick?.Invoke(Slot.Chassi));
 
-            shield = Theme.Box(transform, "Shield", Theme.Alpha(Theme.Armor, 0), Theme.Rounded);
-            shield.rectTransform.Center(W / 2, H / 2 + 10, W + 30, H + 10);
-            shieldFrame = Theme.Box(transform, "ShieldFrame", Theme.Alpha(Theme.Armor, 0), Theme.Frame);
-            shieldFrame.rectTransform.Center(W / 2, H / 2 + 10, W + 30, H + 10);
+            shield = Theme.Box(Root, "Shield", Theme.Alpha(Theme.Armor, 0)).Center(W / 2, H / 2 + 10, W + 30, H + 10);
+            shield.AddToClassList("shield");
 
-            badges = Theme.Node(transform, "Badges").Place(-40, H + 6, W + 80, 40);
-            var hl = badges.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hl.spacing = 8; hl.childAlignment = TextAnchor.UpperCenter; hl.childControlWidth = false; hl.childControlHeight = false; hl.childForceExpandWidth = false;
+            badges = Theme.Row(Root, "Badges", 8).Place(-60, H + 6, W + 120, 40);
+            badges.style.justifyContent = Justify.Center;
 
-            var armor = Theme.Chip(transform, "", Theme.Armor, Theme.Small);
-            armorChip = armor;
-            armor.transform.parent.GetComponent<RectTransform>().Center(W / 2, -18, 190, 34);
-            chassisLabel = Theme.Label(transform, "", Theme.Small, Theme.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold);
-            chassisLabel.rectTransform.Center(W / 2, 250, 200, 26);
-            chassisLabel.gameObject.SetActive(false); // the info panel and the ring already show it
+            armorChip = Theme.Chip(Root, "", Theme.Armor, Theme.Small);
+            armorChip.parent.Center(W / 2, -18, 200, 36);
             SetArmor(0); SetHeat(0); SetChassis(false, 1, 1);
         }
 
-        void Part(Content c, Slot slot, PartDef def, float x, float y, float w, float h, Action<PartView, PartDef, float, float> draw, bool mirror = false)
+        void Part(Slot slot, PartDef def, float x, float y, float w, float h, Action<PartView, PartDef, float, float> draw, bool mirror = false)
         {
             var pv = new PartView { slot = slot };
-            pv.rt = Theme.Node(figure, slot.ToString()).Place(x, y, w, h);
-            if (mirror) { pv.rt.pivot = new Vector2(0.5f, 0.5f); pv.rt.anchoredPosition = new Vector2(x + w / 2, -(y + h / 2)); pv.rt.localScale = new Vector3(-1, 1, 1); }
-            pv.glow = Theme.Box(pv.rt, "TargetGlow", Theme.Alpha(Theme.Warn, 0), Theme.Rounded, raycast: true);
-            pv.glow.rectTransform.Fill(-10);
-            pv.glow.gameObject.AddComponent<Clicker>().onClick = () => onClick?.Invoke(slot);
+            pv.rt = Theme.El(figure, slot.ToString()).Place(x, y, w, h);
+            if (mirror) pv.rt.style.scale = new Scale(new Vector3(-1, 1, 1));
+            pv.glow = Theme.Box(pv.rt, "TargetGlow", Theme.Alpha(Theme.Warn, 0)).Fill(-10);
+            pv.glow.AddToClassList("target-glow");
+            pv.glow.RegisterCallback<ClickEvent>(_ => onClick?.Invoke(slot));
             // Art from Resources/RobotParts/<id>.svg (viewBox = part box); procedural shapes for parts without art.
-            var art = Resources.Load<Sprite>("RobotParts/" + def.id);
-            if (art) Body(pv, w / 2, h / 2, w, h, Color.white, art);
+            var art = def == null ? null : Resources.Load<Sprite>("RobotParts/" + def.id);
+            if (def == null) Theme.El(pv.rt, "Ghost", "part-ghost").Fill(4);
+            else if (art) ArtBody(pv, art, w, h);
             else draw(pv, def, w, h);
-            if (pv.body.Count > 0) Detail(pv.rt, pv.body.OrderByDescending(x => x.g.rectTransform.sizeDelta.x * x.g.rectTransform.sizeDelta.y).First().g);
-            pv.crackA = Shape(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);
-            pv.crackB = Shape(pv.rt, w * 0.6f, h * 0.6f, w * 0.45f, 3, Theme.Alpha(Color.black, 0), rot: -35);
-            pv.brokenA = Shape(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: 45);
-            pv.brokenB = Shape(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: -45);
+            if (pv.body.Count > 0 && !pv.body[0].image) Detail(pv.body.OrderByDescending(b => b.g.style.width.value.value * b.g.style.height.value.value).First().g);
+            pv.crackA = Piece(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);
+            pv.crackB = Piece(pv.rt, w * 0.6f, h * 0.6f, w * 0.45f, 3, Theme.Alpha(Color.black, 0), rot: -35);
+            pv.brokenA = Piece(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: 45);
+            pv.brokenB = Piece(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: -45);
             parts[slot] = pv;
         }
 
-        // Shading for the biggest shape of a part: dark outline, top highlight, bottom shadow, corner rivets.
-        static void Detail(RectTransform parent, Graphic main)
+        static void ArtBody(PartView pv, Sprite art, float w, float h)
         {
-            var r = main.rectTransform;
-            var sprite = (main as Image)?.sprite;
-            var size = r.sizeDelta;
-            var pos = r.anchoredPosition;
-            float cx = pos.x + size.x * (0.5f - r.pivot.x), cy = -(pos.y + size.y * (0.5f - r.pivot.y));
-            if (sprite == Theme.Rounded)
+            var e = Theme.El(pv.rt, "Art").Place(0, 0, w, h);
+            e.style.backgroundImage = new StyleBackground(art);
+            e.style.unityBackgroundImageTintColor = Color.white;
+            pv.body.Add((e, Color.white, true));
+        }
+
+        // Shading for the biggest shape of a part (children inherit its rotation): dark edge, top highlight, bottom shadow, rivets.
+        static void Detail(VisualElement main)
+        {
+            float w = main.style.width.value.value, h = main.style.height.value.value;
+            bool round = main.style.borderTopLeftRadius.value.unit == LengthUnit.Percent;
+            Theme.Border(main, Theme.Alpha(Color.black, 0.45f), 2);
+            if (round)
             {
-                var edge = Theme.Box(parent, "Edge", Theme.Alpha(Color.black, 0.45f), Theme.Frame);
-                edge.rectTransform.Center(cx, cy, size.x + 4, size.y + 4);
-                edge.rectTransform.localRotation = r.localRotation;
-                Shape(parent, cx, cy - size.y / 2 + 7, size.x * 0.78f, 4, Theme.Alpha(Color.white, 0.16f), rot: r.localEulerAngles.z);
-                Shape(parent, cx, cy + size.y / 2 - 7, size.x * 0.84f, 6, Theme.Alpha(Color.black, 0.25f), rot: r.localEulerAngles.z);
-                if (size.x > 60 && size.y > 44)
-                    foreach (var sx in new[] { -1, 1 }) Shape(parent, cx + sx * (size.x / 2 - 9), cy - size.y / 2 + 9, 6, 6, Theme.Alpha(Color.black, 0.45f), Theme.Circle);
+                Theme.Box(main, "Shine", Theme.Alpha(Color.white, 0.12f), global::CardBattler.UI.Shape.Circle).Center(w * 0.32f, h * 0.32f, w * 0.3f, h * 0.3f);
+                return;
             }
-            else if (sprite == Theme.Circle)
-            {
-                Shape(parent, cx - size.x * 0.18f, cy - size.y * 0.18f, size.x * 0.3f, size.y * 0.3f, Theme.Alpha(Color.white, 0.12f), Theme.Circle);
-                var ring = Theme.Box(parent, "Edge", Theme.Alpha(Color.black, 0.4f), Theme.Ring);
-                ring.rectTransform.Center(cx, cy, size.x + 3, size.y + 3);
-            }
+            Theme.Solid(main, "Shine", Theme.Alpha(Color.white, 0.16f)).Center(w / 2, 6, w * 0.78f, 4);
+            Theme.Solid(main, "Shade", Theme.Alpha(Color.black, 0.25f)).Center(w / 2, h - 7, w * 0.84f, 6);
+            if (w > 60 && h > 44)
+                foreach (var sx in new[] { -1, 1 }) Theme.Box(main, "Rivet", Theme.Alpha(Color.black, 0.45f), global::CardBattler.UI.Shape.Circle).Center(w / 2 + sx * (w / 2 - 9), 9, 6, 6);
         }
 
         // Adds a body shape (tinted by state later). Coordinates are centers inside the part box.
-        Image Body(PartView pv, float x, float y, float w, float h, Color color, Sprite sprite = null, float rot = 0)
+        VisualElement Body(PartView pv, float x, float y, float w, float h, Color color, Shape shape = global::CardBattler.UI.Shape.Rounded, float rot = 0)
         {
-            var img = Shape(pv.rt, x, y, w, h, color, sprite, rot);
-            pv.body.Add((img, color));
-            return img;
+            var e = Piece(pv.rt, x, y, w, h, color, shape, rot);
+            pv.body.Add((e, color, false));
+            return e;
         }
 
-        static Image Shape(RectTransform parent, float x, float y, float w, float h, Color color, Sprite sprite = null, float rot = 0)
+        static VisualElement Piece(VisualElement parent, float x, float y, float w, float h, Color color, Shape shape = global::CardBattler.UI.Shape.Rounded, float rot = 0)
         {
-            var img = Theme.Box(parent, "Shape", color, sprite ?? Theme.Rounded);
-            img.rectTransform.Center(x, y, w, h);
-            img.rectTransform.localRotation = Quaternion.Euler(0, 0, rot);
-            return img;
+            var e = Theme.Box(parent, "Shape", color, shape).Center(x, y, w, h).Rotate(rot);
+            if (shape == global::CardBattler.UI.Shape.Rounded) { var s = e.style; s.borderTopLeftRadius = s.borderTopRightRadius = s.borderBottomLeftRadius = s.borderBottomRightRadius = Mathf.Min(10, Mathf.Min(w, h) / 3); }
+            if (shape == global::CardBattler.UI.Shape.Ring) { e.AddToClassList("ring"); Theme.Border(e, color, Mathf.Max(3, Mathf.Min(w, h) * 0.12f)); }
+            return e;
         }
 
         static Color BodyColor(PartDef d) => Theme.Mix(Theme.Hex("3A4258"), Theme.Maker(d.maker), 0.35f);
@@ -169,14 +164,16 @@ namespace CardBattler.UI
         static Color Accent(PartDef d) => Theme.Maker(d.maker);
         static Color Elem(PartDef d) => string.IsNullOrEmpty(d.element) ? Theme.Maker(d.maker) : Theme.Element(d.element);
 
+        const Shape Circle = global::CardBattler.UI.Shape.Circle, Ring = global::CardBattler.UI.Shape.Ring, Rounded = global::CardBattler.UI.Shape.Rounded;
+
         void DrawHead(PartView pv, PartDef d, float w, float h)
         {
             Color b = BodyColor(d), a = Accent(d), k = Dark(d);
             switch (d.id)
             {
                 case "otica_sucata":
-                    Body(pv, 26, 18, 4, 34, k); Body(pv, 26, 4, 12, 12, a, Theme.Circle);
-                    Body(pv, 60, 58, 92, 70, b); Body(pv, 70, 56, 46, 46, a, Theme.Circle); Body(pv, 70, 56, 20, 20, k, Theme.Circle);
+                    Body(pv, 26, 18, 4, 34, k); Body(pv, 26, 4, 12, 12, a, Circle);
+                    Body(pv, 60, 58, 92, 70, b); Body(pv, 70, 56, 46, 46, a, Circle); Body(pv, 70, 56, 20, 20, k, Circle);
                     break;
                 case "sensor_k7":
                     Body(pv, 12, 46, 12, 36, k, rot: 12); Body(pv, 108, 46, 12, 36, k, rot: -12);
@@ -187,7 +184,7 @@ namespace CardBattler.UI
                     break;
                 case "coroa_nyx":
                     Body(pv, 32, 26, 10, 34, a, rot: 22); Body(pv, 60, 18, 10, 38, a); Body(pv, 88, 26, 10, 34, a, rot: -22);
-                    Body(pv, 60, 62, 92, 76, b, Theme.Circle); Body(pv, 60, 62, 18, 18, Elem(d), Theme.Circle);
+                    Body(pv, 60, 62, 92, 76, b, Circle); Body(pv, 60, 62, 18, 18, Elem(d), Circle);
                     break;
                 default:
                     Body(pv, 60, 56, 96, 76, b); Body(pv, 60, 52, 60, 12, a);
@@ -202,7 +199,7 @@ namespace CardBattler.UI
             {
                 case "carcaca_remendada":
                     Body(pv, 90, 84, 164, 146, b); Body(pv, 46, 40, 44, 32, k, rot: -6); Body(pv, 134, 128, 40, 28, k, rot: 8);
-                    foreach (var (x, y) in new[] { (20f, 20f), (160f, 20f), (20f, 148f), (160f, 148f) }) Body(pv, x, y, 10, 10, a, Theme.Circle);
+                    foreach (var (x, y) in new[] { (20f, 20f), (160f, 20f), (20f, 148f), (160f, 148f) }) Body(pv, x, y, 10, 10, a, Circle);
                     break;
                 case "placa_m2":
                     Body(pv, 90, 84, 180, 158, b); Body(pv, 90, 30, 130, 12, a); Body(pv, 90, 140, 130, 12, a); Body(pv, 18, 84, 10, 120, k); Body(pv, 162, 84, 10, 120, k);
@@ -223,18 +220,18 @@ namespace CardBattler.UI
         void DrawArm(PartView pv, PartDef d, float w, float h)
         {
             Color b = BodyColor(d), a = Accent(d), k = Dark(d), e = Elem(d);
-            Body(pv, 45, 24, 46, 46, b, Theme.Circle);
+            Body(pv, 45, 24, 46, 46, b, Circle);
             Body(pv, 45, 82, 30, 84, b);
             switch (d.id)
             {
                 case "punho_hidraulico": Body(pv, 45, 152, 64, 58, Theme.Mix(b, a, 0.4f)); Body(pv, 45, 128, 40, 8, a); break;
-                case "serra_circular": Body(pv, 45, 160, 86, 86, a, Theme.Ring); Body(pv, 45, 160, 64, 64, Theme.Mix(b, a, 0.3f), Theme.Circle); Body(pv, 45, 160, 20, 20, k, Theme.Circle); break;
+                case "serra_circular": Body(pv, 45, 160, 86, 86, a, Ring); Body(pv, 45, 160, 64, 64, Theme.Mix(b, a, 0.3f), Circle); Body(pv, 45, 160, 20, 20, k, Circle); break;
                 case "canhao_30mm": Body(pv, 45, 150, 40, 40, b); Body(pv, 45, 182, 24, 70, k); Body(pv, 45, 204, 34, 12, a); break;
                 case "escudo_braco": Body(pv, 45, 150, 84, 118, Theme.Mix(b, a, 0.35f)); Body(pv, 45, 150, 10, 90, a); break;
                 case "lamina_plasma": Body(pv, 45, 132, 46, 10, k); Body(pv, 45, 180, 14, 96, e); Body(pv, 45, 180, 6, 90, Color.white); break;
-                case "pulso_tesla": for (int i = 0; i < 3; i++) Body(pv, 45, 138 + i * 22, 46, 46, e, Theme.Ring); Body(pv, 45, 196, 14, 14, Color.white, Theme.Circle); break;
+                case "pulso_tesla": for (int i = 0; i < 3; i++) Body(pv, 45, 138 + i * 22, 46, 46, e, Ring); Body(pv, 45, 196, 14, 14, Color.white, Circle); break;
                 case "injetor": Body(pv, 45, 150, 26, 74, Theme.Mix(b, e, 0.5f)); Body(pv, 45, 150, 14, 56, e); Body(pv, 45, 200, 4, 32, Theme.Ink); break;
-                case "lanca_chamas": Body(pv, 20, 120, 26, 40, a); Body(pv, 45, 150, 30, 60, k); Body(pv, 45, 192, 40, 40, e, Theme.Circle); break;
+                case "lanca_chamas": Body(pv, 20, 120, 26, 40, a); Body(pv, 45, 150, 30, 60, k); Body(pv, 45, 192, 40, 40, e, Circle); break;
                 default: Body(pv, 45, 150, 50, 50, a); break;
             }
         }
@@ -245,12 +242,12 @@ namespace CardBattler.UI
             switch (d.id)
             {
                 case "rodas_entrega":
-                    Body(pv, 100, 36, 160, 52, b); Body(pv, 52, 96, 58, 58, k, Theme.Circle); Body(pv, 148, 96, 58, 58, k, Theme.Circle);
-                    Body(pv, 52, 96, 18, 18, a, Theme.Circle); Body(pv, 148, 96, 18, 18, a, Theme.Circle);
+                    Body(pv, 100, 36, 160, 52, b); Body(pv, 52, 96, 58, 58, k, Circle); Body(pv, 148, 96, 58, 58, k, Circle);
+                    Body(pv, 52, 96, 18, 18, a, Circle); Body(pv, 148, 96, 18, 18, a, Circle);
                     break;
                 case "esteiras":
                     Body(pv, 100, 30, 140, 44, b); Body(pv, 100, 92, 196, 72, k);
-                    for (int i = 0; i < 4; i++) Body(pv, 40 + i * 40, 92, 30, 30, b, Theme.Circle);
+                    for (int i = 0; i < 4; i++) Body(pv, 40 + i * 40, 92, 30, 30, b, Circle);
                     Body(pv, 100, 60, 150, 6, a);
                     break;
                 case "pernas_digitigradas":
@@ -260,7 +257,7 @@ namespace CardBattler.UI
                     Body(pv, 50, 134, 44, 12, a); Body(pv, 150, 134, 44, 12, a);
                     break;
                 case "hover":
-                    Body(pv, 100, 118, 190, 44, Theme.Alpha(a, 0.35f), Theme.Circle); Body(pv, 100, 40, 150, 46, b); Body(pv, 100, 80, 172, 26, a);
+                    Body(pv, 100, 118, 190, 44, Theme.Alpha(a, 0.35f), Circle); Body(pv, 100, 40, 150, 46, b); Body(pv, 100, 80, 172, 26, a);
                     break;
                 default:
                     Body(pv, 100, 60, 150, 90, b);
@@ -274,72 +271,68 @@ namespace CardBattler.UI
             if (!parts.TryGetValue(slot, out var pv)) return;
             bool broken = hp <= 0;
             float dmg = max <= 0 ? 0 : 1 - Mathf.Clamp01((float)hp / max);
-            foreach (var (g, c) in pv.body)
+            foreach (var (g, c, image) in pv.body)
             {
-                if (!g) continue;
                 var grey = new Color(0.32f, 0.33f, 0.36f, c.a);
                 var dim = new Color(c.r * 0.55f, c.g * 0.55f, c.b * 0.55f, c.a);
-                g.color = broken ? grey : Color.Lerp(c, dim, dmg * 0.8f);
+                var col = broken ? grey : Color.Lerp(c, dim, dmg * 0.8f);
+                if (image) g.style.unityBackgroundImageTintColor = col;
+                else if (g.ClassListContains("ring")) Theme.Border(g, col, g.style.borderTopWidth.value);
+                else g.style.backgroundColor = col;
             }
-            pv.crackA.color = Theme.Alpha(Color.black, dmg > 0.15f && !broken ? 0.75f : 0);
-            pv.crackB.color = Theme.Alpha(Color.black, dmg > 0.5f && !broken ? 0.75f : 0);
-            pv.brokenA.color = pv.brokenB.color = Theme.Alpha(Theme.Bad, broken ? 0.9f : 0);
-            if (broken && !pv.broken && animated && Fx.I) sparks[slot] = Fx.Run(Sparks(pv));
+            pv.crackA.style.backgroundColor = Theme.Alpha(Color.black, dmg > 0.15f && !broken ? 0.75f : 0);
+            pv.crackB.style.backgroundColor = Theme.Alpha(Color.black, dmg > 0.5f && !broken ? 0.75f : 0);
+            pv.brokenA.style.backgroundColor = pv.brokenB.style.backgroundColor = Theme.Alpha(Theme.Bad, broken ? 0.9f : 0);
+            if (broken && !pv.broken && animated) Fx.Run(Sparks(pv));
             pv.broken = broken;
 
             string text = (corrosion > 0 ? $"COR {corrosion}" : "") + (weak > 0 ? (corrosion > 0 ? " · " : "") + $"+{weak}" : "");
             if (text.Length > 0)
             {
-                if (!pv.badge)
+                if (pv.badge == null)
                 {
-                    pv.badge = Theme.Chip(pv.rt, "", Theme.Hex("7CFF6B"), 16);
-                    ((RectTransform)pv.badge.transform.parent).Center(pv.rt.rect.width / 2, 0, 110, 26);
+                    // badges sit on the figure (not inside a mirrored part) so their text never reads backwards
+                    pv.badge = Theme.Chip(figure, "", Theme.Hex("7CFF6B"), 16);
+                    var p = pv.rt;
+                    pv.badge.parent.Center(p.style.left.value.value + p.style.width.value.value / 2, p.style.top.value.value, 120, 28);
                 }
                 pv.badge.text = text;
-                pv.badge.color = corrosion > 0 ? Theme.Hex("7CFF6B") : Theme.Warn;
-                pv.badge.transform.parent.gameObject.SetActive(true);
-                Unflip(pv.badge.transform.parent);
+                pv.badge.style.color = corrosion > 0 ? Theme.Hex("7CFF6B") : Theme.Warn;
+                pv.badge.parent.Show(true);
             }
-            else if (pv.badge) pv.badge.transform.parent.gameObject.SetActive(false);
+            else pv.badge?.parent.Show(false);
         }
 
         IEnumerator Sparks(PartView pv)
         {
-            while (pv.rt && pv.broken)
+            while (pv.rt.panel != null && pv.broken)
             {
                 yield return new WaitForSeconds(UnityEngine.Random.Range(0.9f, 1.8f));
-                if (pv.rt && pv.broken) Fx.Burst(Fx.PosOf(pv.rt), Theme.Warn, 4, 90);
+                if (pv.rt.panel != null && pv.broken) Fx.Burst(Fx.PosOf(pv.rt), Theme.Warn, 4, 90);
             }
         }
 
         public void SetChassis(bool exposed, int chassis, int max)
         {
-            coreRing.color = exposed ? Theme.Alpha(Theme.Exposed, 0.95f) : Theme.Alpha(Theme.TextDim, 0.45f);
-            coreGlow.enabled = true;
-            chassisLabel.text = exposed ? $"CHASSI EXPOSTO {chassis}/{max}" : "";
-            chassisLabel.color = Theme.Exposed;
+            Theme.Border(coreRing, exposed ? Theme.Alpha(Theme.Exposed, 0.95f) : Theme.Alpha(Theme.TextDim, 0.45f), 5);
+            coreRing.EnableInClassList("exposed", exposed);
         }
 
         public void SetArmor(int armor)
         {
-            shield.color = Theme.Alpha(Theme.Armor, armor > 0 ? 0.06f : 0);
-            shieldFrame.color = Theme.Alpha(Theme.Armor, armor > 0 ? 0.85f : 0);
+            shield.EnableInClassList("on", armor > 0);
             armorChip.text = armor > 0 ? $"BLINDAGEM {armor}" : "";
-            armorChip.transform.parent.gameObject.SetActive(armor > 0);
+            armorChip.parent.Show(armor > 0);
         }
 
         // Glow from Calor 3 up, strongest at the 10+ penalty.
-        public void SetHeat(int heat) => heatGlow.color = Theme.Alpha(Theme.Hex("FF4A1F"), heat < 3 ? 0 : Mathf.Clamp01(heat / 10f) * 0.4f);
+        public void SetHeat(int heat) => heatGlow.style.backgroundColor = Theme.Alpha(Theme.Hex("FF4A1F"), heat < 3 ? 0 : Mathf.Clamp01(heat / 10f) * 0.4f);
 
         public void SetBadges(IEnumerable<(string text, Color color)> items)
         {
-            Theme.ClearChildren(badges);
-            foreach (var (text, color) in items)
-            {
-                var t = Theme.Chip(badges, text, color, 16);
-                var rt = (RectTransform)t.transform.parent;
-                rt.sizeDelta = new Vector2(t.preferredWidth + 24, 30);
-            }
+            badges.Clear();
+            foreach (var (text, color) in items) Theme.Chip(badges, text, color, 16);
+            badges.Gap(8);
         }
 
         // Shows the live robot state (battle).
@@ -368,62 +361,49 @@ namespace CardBattler.UI
             SetHeat(s.heat);
         }
 
-        // Valid targets glow and can be clicked; everything else is dimmed. Pass null to clear.
+        // Valid targets glow (pulsing, via USS) and can be clicked; pass null to clear.
         public void SetTargets(Func<Slot, bool> valid, Action<Slot> click)
         {
             onClick = click;
             foreach (var pv in parts.Values)
             {
                 bool ok = valid != null && valid(pv.slot);
-                pv.glow.color = Theme.Alpha(Theme.Warn, ok ? 0.28f : 0);
-                pv.glow.raycastTarget = ok;
-                var outline = pv.glow.GetComponent<Outline>() ?? pv.glow.gameObject.AddComponent<Outline>();
-                outline.effectColor = Theme.Alpha(Theme.Warn, ok ? 0.9f : 0); outline.effectDistance = new Vector2(3, -3);
+                pv.glow.EnableInClassList("on", ok);
+                pv.glow.pickingMode = ok && click != null ? PickingMode.Position : PickingMode.Ignore;
             }
             bool chassis = valid != null && valid(Slot.Chassi);
-            chassisHit.raycastTarget = chassis;
-            if (chassis) coreRing.color = Theme.Warn;
+            coreRing.pickingMode = chassis && click != null ? PickingMode.Position : PickingMode.Ignore;
+            coreRing.EnableInClassList("target", chassis);
         }
 
-        // Keeps text readable inside flipped robots.
-        static void Unflip(Transform t)
+        // Part (or exposed chassis) under a panel point, for drag & drop.
+        public Slot? SlotAt(Vector2 panelPos)
         {
-            if (t.lossyScale.x < 0) t.localScale = new Vector3(-t.localScale.x, t.localScale.y, 1);
-        }
-
-        // Part (or exposed chassis) under a screen point, for drag & drop.
-        public Slot? SlotAt(Vector2 screen)
-        {
-            if (RectTransformUtility.RectangleContainsScreenPoint(coreRing.rectTransform, screen, null)) return Slot.Chassi;
+            if (coreRing.worldBound.Contains(panelPos)) return Slot.Chassi;
             foreach (var s in new[] { Slot.Cabeca, Slot.BracoEsq, Slot.BracoDir, Slot.Pernas, Slot.Torso })
-                if (parts.TryGetValue(s, out var pv) && RectTransformUtility.RectangleContainsScreenPoint(pv.rt, screen, null)) return s;
+                if (parts.TryGetValue(s, out var pv) && pv.rt.worldBound.Contains(panelPos)) return s;
             return null;
         }
 
-        // Idle: a slow sway so the robots feel alive. Stops when defeated (Collapse takes over) or with reduced motion.
-        public bool idle = true;
-        void Update()
+        // Idle: a slow sway and bob so the robots feel alive. Stops when defeated (Collapse takes over) or with reduced motion.
+        void Idle()
         {
-            if (!animated || !idle || Fx.Reduced) return;
+            if (!idle || Fx.Reduced || !Application.isPlaying || Root.panel == null) return;
             float t = Time.unscaledTime * 1.7f + (facingLeft ? 1.3f : 0);
-            transform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t) * 1.1f);
+            figure.style.rotate = new Rotate(Mathf.Sin(t) * 1.1f);
+            figure.style.translate = new Translate(0, Mathf.Sin(t * 2) * 2.5f);
         }
 
-        public Vector2 PosOf(Slot slot) => slot == Slot.Chassi || !parts.ContainsKey(slot) ? Fx.PosOf(coreRing.rectTransform) : Fx.PosOf(parts[slot].rt);
+        public Vector2 PosOf(Slot slot) => slot == Slot.Chassi || !parts.ContainsKey(slot) ? Fx.PosOf(coreRing) : Fx.PosOf(parts[slot].rt);
 
         public void Hit(Slot slot)
         {
-            Fx.Shake(Rect, 10, 0.22f);
+            Fx.Shake(Root, 10, 0.22f);
             if (slot != Slot.Chassi && parts.TryGetValue(slot, out var pv))
-                foreach (var (g, _) in pv.body.Take(3)) Fx.Flash(g, Color.white, 0.12f);
-            else Fx.Flash(coreRing, Color.white, 0.12f);
+            {
+                foreach (var (g, _, image) in pv.body.Take(3)) if (!image) Fx.Flash(g, Color.white, 0.12f);
+            }
+            else Fx.Flash(coreGlow, Color.white, 0.12f);
         }
-    }
-
-    // Minimal click handler for raycastable graphics.
-    public class Clicker : MonoBehaviour, IPointerClickHandler
-    {
-        public Action onClick;
-        public void OnPointerClick(PointerEventData e) => onClick?.Invoke();
     }
 }

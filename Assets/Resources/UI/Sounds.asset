@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0998717bda0d50b4a9b58645f17e634b, type: 3}
+  m_Name: Sounds
+  m_EditorClassIdentifier: CardBattler.UI::CardBattler.UI.SoundBank
+  click: {fileID: 8300000, guid: c01f31b1182e44246946c1241afdc499, type: 3}
+  hover: {fileID: 8300000, guid: 886f2a3caa3f3744db1dbb93d6bd44d1, type: 3}
+  back: {fileID: 8300000, guid: a8d4e578101890348932d2949e2709fe, type: 3}
+  open: {fileID: 8300000, guid: e109989b5fee04e409a8b42209a15b3f, type: 3}
+  error: {fileID: 8300000, guid: 890048a42f738014ab7804e0e969e754, type: 3}
+  card: {fileID: 8300000, guid: cfb8f6b8dd77bf04dae8685f6ff12cc1, type: 3}
+  scrap: {fileID: 8300000, guid: c9617cffee201314ba4fa24e49ac25b0, type: 3}
+  hit: {fileID: 8300000, guid: 087abd7875c53ad48842f3b80ec14b8c, type: 3}
+  heavyHit: {fileID: 8300000, guid: b5a57824fdf2a6f42b7149b659a16df7, type: 3}
+  broken: {fileID: 8300000, guid: a3ccbf318a83ff94f84629460d534da9, type: 3}
+  armor: {fileID: 8300000, guid: 269b2632d66d7c747adf940ee2cc3d47, type: 3}
+  repair: {fileID: 8300000, guid: 0ae2a119695d8dc488bf30bd0f63d9ab, type: 3}
+  win: {fileID: 8300000, guid: 8eee3abbc8744aa4993224b0b8c1d1cd, type: 3}
+  lose: {fileID: 8300000, guid: 2ba182c39c81f71459d012698901e89d, type: 3}
+  turn: {fileID: 8300000, guid: a1440b13ddae2234d9215e4442c04ceb, type: 3}

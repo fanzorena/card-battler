@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CardBattler.Combat;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace CardBattler.UI
 {
@@ -44,27 +43,27 @@ namespace CardBattler.UI
             _ => Theme.TextDim,
         };
 
+
         // Simple original pictogram for each kind.
-        public static RectTransform Icon(Transform parent, CardKind k, float size)
+        public static VisualElement Icon(VisualElement parent, CardKind k, float size)
         {
-            var root = Theme.Node(parent, "Icon");
+            var root = Theme.El(parent, "KindIcon").Size(size, size);
             var c = ColorOf(k);
-            Image S(float x, float y, float w, float h, Color col, Sprite sp = null, float rot = 0)
+            void S(float x, float y, float w, float h, Color col, Shape sp = Shape.Rounded, float rot = 0)
             {
-                var i = Theme.Box(root, "s", col, sp ?? Theme.Rounded);
-                i.rectTransform.Center(size * x, size * y, size * w, size * h);
-                i.rectTransform.localRotation = Quaternion.Euler(0, 0, rot);
-                return i;
+                var e = Theme.Box(root, "s", col, sp).Center(size * x, size * y, size * w, size * h).Rotate(rot);
+                if (sp == Shape.Rounded) { var st = e.style; st.borderTopLeftRadius = st.borderTopRightRadius = st.borderBottomLeftRadius = st.borderBottomRightRadius = size * 0.06f; }
+                if (sp == Shape.Ring) Theme.Border(e, col, size * 0.1f);
             }
             switch (k)
             {
                 case CardKind.Attack: S(0.5f, 0.5f, 0.95f, 0.16f, c, rot: 45); S(0.5f, 0.5f, 0.95f, 0.16f, c, rot: -45); break;
-                case CardKind.Armor: S(0.5f, 0.45f, 0.7f, 0.65f, c); S(0.5f, 0.78f, 0.36f, 0.3f, c, rot: 45); break;
+                case CardKind.Armor: S(0.5f, 0.45f, 0.7f, 0.65f, c); S(0.5f, 0.72f, 0.36f, 0.36f, c, rot: 45); break;
                 case CardKind.Repair: S(0.5f, 0.5f, 0.8f, 0.22f, c); S(0.5f, 0.5f, 0.22f, 0.8f, c); break;
                 case CardKind.Draw: S(0.42f, 0.55f, 0.5f, 0.68f, Theme.Mix(c, Theme.Bg, 0.4f), rot: 10); S(0.58f, 0.45f, 0.5f, 0.68f, c, rot: -8); break;
-                case CardKind.Aim: S(0.5f, 0.5f, 0.9f, 0.9f, c, Theme.Ring); S(0.5f, 0.5f, 0.2f, 0.2f, c, Theme.Circle); break;
-                case CardKind.Status: S(0.5f, 0.5f, 0.75f, 0.75f, c, Theme.Circle); S(0.5f, 0.5f, 0.35f, 0.35f, Theme.Bg, Theme.Circle); break;
-                default: S(0.5f, 0.5f, 0.6f, 0.6f, c, Theme.Circle); break;
+                case CardKind.Aim: S(0.5f, 0.5f, 0.9f, 0.9f, c, Shape.Ring); S(0.5f, 0.5f, 0.2f, 0.2f, c, Shape.Circle); break;
+                case CardKind.Status: S(0.5f, 0.5f, 0.75f, 0.75f, c, Shape.Circle); S(0.5f, 0.5f, 0.35f, 0.35f, Theme.Bg, Shape.Circle); break;
+                default: S(0.5f, 0.5f, 0.6f, 0.6f, c, Shape.Circle); break;
             }
             return root;
         }
@@ -72,208 +71,164 @@ namespace CardBattler.UI
         public static string TargetBadge(CardDef d, bool chooses) => !d.TargetsPart ? "" : chooses ? "ESCOLHE A PARTE" : "PARTE ALEATÓRIA";
     }
 
-    // Floating keyword help. One per canvas.
-    public static class Tooltip
-    {
-        static RectTransform box;
-        static Text text;
-
-        public static void Init(RectTransform overlay)
-        {
-            var img = Theme.Box(overlay, "Tooltip", Theme.Alpha(Theme.Bg, 0.96f));
-            img.gameObject.AddComponent<Outline>().effectColor = Theme.Alpha(Theme.Line, 1);
-            box = img.rectTransform;
-            text = Theme.Label(box, "", Theme.Small, Theme.Ink);
-            text.rectTransform.Fill(12);
-            box.gameObject.SetActive(false);
-        }
-
-        // anchor: top-center of the hovered element (overlay coords). The box sits above it, or below if there is no room.
-        public static void Show(Vector2 anchor, IEnumerable<string> lines, float elementHeight = 0)
-        {
-            var all = lines.ToList();
-            if (!box || all.Count == 0) { Hide(); return; }
-            text.text = string.Join("\n", all.Select(Theme.Highlight));
-            float x = Mathf.Clamp(anchor.x - 240, 10, Theme.Reference.x - 490);
-            box.Place(x, 0, 480, 100);
-            float h = text.preferredHeight + 28;
-            float y = anchor.y - h - 12;
-            if (y < 10) y = anchor.y + elementHeight + 12;
-            box.Place(x, Mathf.Min(y, Theme.Reference.y - h - 10), 480, h);
-            box.gameObject.SetActive(true);
-            box.SetAsLastSibling();
-        }
-
-        public static void Hide() { if (box) box.gameObject.SetActive(false); }
-    }
-
-    public class CardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    // A card. In the hand it lifts on hover, can be clicked or dragged; the screen decides what a drop means.
+    public class CardView
     {
         public const float W = 200, H = 280;
         public Card card;
         public CardDef def;
         public Action<CardView> onClick, onDragStart;
-        public Action<CardView, Vector2, Vector2> onDragMove, onDrop; // overlay position, screen position
+        public Action<CardView, Vector2, Vector2> onDragMove, onDrop; // stage position, panel position
         public string sourceKey;
-        bool dragging;
-        Transform handParent;
         public bool interactive = true;
         public bool animating; // sliding in from the deck: hover must not fight the animation
-        public RectTransform Rect => (RectTransform)transform;
+        public VisualElement Root { get; private set; }
 
-        Image frame, chainGlow;
-        Text costText, targetText;
-        CanvasGroup group;
+        VisualElement chainGlow, handParent;
+        Label costText, targetText;
         Vector2 home;
-        bool playable = true;
+        bool playable = true, dragging, pressed;
+        Vector2 pressPos;
         string element;
 
         // sourceKey: slot key of the part the card comes from (SlotIcons), e.g. "BracoEsq" or "Frame".
-        public static CardView Create(Transform parent, CardDef def, string maker, string sourceKey, Card card = null, string element = null)
+        public static CardView Create(VisualElement parent, CardDef def, string maker, string sourceKey, Card card = null, string element = null)
         {
-            var rt = Theme.Node(parent, "Card:" + def.name);
-            rt.sizeDelta = new Vector2(W, H);
-            var v = rt.gameObject.AddComponent<CardView>();
-            v.card = card; v.def = def; v.sourceKey = sourceKey; v.element = def.TargetsPart ? element : null;
-            v.group = rt.gameObject.AddComponent<CanvasGroup>();
+            var v = new CardView { card = card, def = def, sourceKey = sourceKey, element = def.TargetsPart ? element : null };
             var accent = Theme.Maker(maker);
+            var rt = v.Root = Theme.El(parent, "Card:" + def.name, "card").Size(W, H);
+            rt.pickingMode = PickingMode.Position;
 
-            v.chainGlow = Theme.Box(rt, "ChainGlow", Theme.Alpha(Theme.Hex("FFD34D"), 0));
-            v.chainGlow.rectTransform.Fill(-8);
+            v.chainGlow = Theme.El(rt, "ChainGlow", "chain-glow").Fill(-8);
+            var face = Theme.El(rt, "Face", "card-face").Fill();
+            Theme.Border(face, Theme.Alpha(accent, 0.9f), 3);
 
-            v.frame = Theme.Box(rt, "Frame", Theme.Panel, raycast: true);
-            v.frame.rectTransform.Fill();
-            Theme.Box(rt, "Border", Theme.Alpha(accent, 0.9f), Theme.Frame).rectTransform.Fill(-2); // border sprite: Outline copies would show through when dimmed
+            var band = Theme.Box(face, "Band", Theme.Mix(Theme.Panel, accent, 0.35f)).Place(4, 4, W - 14, 46);
+            Theme.Label(band, def.name, 21, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(52, 0, W - 106, 46).FitLine(13);
+            SlotIcons.Icon(face, sourceKey, 40, accent).Place(W - 52, 7, 40, 40);
 
-            var band = Theme.Box(rt, "Band", Theme.Mix(Theme.Panel, accent, 0.35f));
-            band.rectTransform.Place(6, 6, W - 12, 46);
-            var name = Theme.Label(rt, def.name, 21, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold);
-            name.rectTransform.Place(62, 6, W - 112, 46);
-            SlotIcons.Icon(rt, sourceKey, 40, accent).Place(W - 48, 9, 40, 40);
-            name.resizeTextForBestFit = true; name.verticalOverflow = VerticalWrapMode.Truncate; name.resizeTextMinSize = 14; name.resizeTextMaxSize = 21;
-
-            var costBg = Theme.Box(rt, "Cost", Theme.Bg, Theme.Circle);
-            costBg.rectTransform.Center(30, 30, 60, 60);
-            Theme.Box(costBg.transform, "Ring", Theme.Energy, Theme.Ring).rectTransform.Fill();
-            v.costText = Theme.Label(costBg.transform, def.cost.ToString(), 34, Theme.Energy, TextAnchor.MiddleCenter, FontStyle.Bold);
-            v.costText.rectTransform.Fill();
-
+            var costBg = Theme.Box(rt, "Cost", Theme.Bg, Shape.Circle).Center(26, 26, 58, 58);
+            costBg.AddToClassList("cost");
+            v.costText = Theme.Title(costBg, def.cost.ToString(), 30, Theme.Energy, TextAnchor.MiddleCenter);
+            v.costText.Fill();
 
             var kind = Kinds.Of(def);
-            var art = Theme.Box(rt, "Art", Theme.Mix(Theme.Bg, Kinds.ColorOf(kind), 0.12f));
-            art.rectTransform.Place(14, 76, W - 28, 92);
-            Kinds.Icon(art.transform, kind, 72).Place(14, 10, 72, 72);
-            var value = Theme.Label(art.transform, Kinds.Value(def), 40, Kinds.ColorOf(kind), TextAnchor.MiddleRight, FontStyle.Bold);
-            value.rectTransform.Place(80, 0, W - 28 - 90, 92);
-            value.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
-
-            v.targetText = Theme.Label(rt, "", 14, Theme.Warn, TextAnchor.MiddleCenter, FontStyle.Bold);
-            v.targetText.rectTransform.Place(6, 170, W - 12, 20);
-
+            var art = Theme.Box(face, "Art", Theme.Mix(Theme.Bg, Kinds.ColorOf(kind), 0.14f)).Place(10, 60, W - 26, 92);
+            art.AddToClassList("card-art");
+            Kinds.Icon(art, kind, 66).Place(12, 13, 66, 66);
+            Theme.Title(art, Kinds.Value(def), 38, Kinds.ColorOf(kind), TextAnchor.MiddleRight).Classes("outlined").Place(80, 0, W - 26 - 90, 92).FitLine(22);
             if (!string.IsNullOrEmpty(v.element))
-                ((RectTransform)Theme.Chip(art.transform, v.element.ToUpperInvariant(), Theme.Element(v.element), 13).transform.parent).Place(6, 66, 96, 22);
-            var body = Theme.Label(rt, Theme.Highlight(def.text), 19, Theme.Ink, TextAnchor.UpperCenter);
-            body.rectTransform.Place(12, 192, W - 24, H - 198);
+                Theme.Chip(art, v.element.ToUpperInvariant(), Theme.Element(v.element), 13).parent.At(6, 64);
+
+            v.targetText = Theme.Label(face, "", 14, Theme.Warn, TextAnchor.MiddleCenter, FontStyle.Bold).Place(4, 154, W - 14, 20);
+            Theme.Label(face, Theme.Highlight(def.text), 18, Theme.Ink, TextAnchor.UpperCenter).Place(8, 176, W - 22, H - 186).Fit(13);
+
+            Theme.Hover(rt, v.Help);
+            rt.RegisterCallback<PointerEnterEvent>(_ => v.Lift(true));
+            rt.RegisterCallback<PointerLeaveEvent>(_ => v.Lift(false));
+            rt.RegisterCallback<PointerDownEvent>(v.Down);
+            rt.RegisterCallback<PointerMoveEvent>(v.Move);
+            rt.RegisterCallback<PointerUpEvent>(v.Up);
             return v;
         }
+
+        IEnumerable<string> Help() =>
+            new[] { "Origem: " + SlotIcons.Name(sourceKey) }
+                .Concat(string.IsNullOrEmpty(element) ? new string[0] : new[] { $"{element}: {Battle.ElementEffect(element)}" })
+                .Concat(Theme.HelpFor(def.text))
+                .Concat(def.TargetsPart ? new[] { "Custo 1: parte aleatória. Custo 2 ou mais (ou Mirar): você escolhe a parte." } : new string[0]);
 
         // Live state in the hand.
         public void SetState(bool canPlay, int cost, string targetBadge, bool chains, bool brokenSource)
         {
             playable = canPlay;
             costText.text = cost.ToString();
-            costText.color = brokenSource ? Theme.Bad : Theme.Energy;
+            costText.style.color = brokenSource ? Theme.Bad : Theme.Energy;
             targetText.text = targetBadge;
-            targetText.color = targetBadge.StartsWith("ESCOLHE") ? Theme.Warn : Theme.TextDim;
-            group.alpha = canPlay ? 1 : 0.55f;
-            chainGlow.color = Theme.Alpha(Theme.Hex("FFD34D"), chains && canPlay ? 0.55f : 0);
+            targetText.style.color = targetBadge.StartsWith("ESCOLHE") ? Theme.Warn : Theme.TextDim;
+            Root.EnableInClassList("unplayable", !canPlay);
+            chainGlow.EnableInClassList("on", chains && canPlay);
         }
 
-        public void SetHome(Vector2 pos) { home = pos; Rect.anchoredPosition = pos; }
+        // Home = center of the card in its hand container.
+        public void SetHome(Vector2 center) { home = center; Root.Center(center.x, center.y, W, H); }
 
-        public void OnPointerEnter(PointerEventData e)
+        void Lift(bool on)
         {
-            if (dragging) return;
-            Tooltip.Show(Fx.PosOf(Rect) - new Vector2(0, H * transform.lossyScale.y / transform.root.lossyScale.y / 2), new[] { "Origem: " + SlotIcons.Name(sourceKey) }
-                .Concat(string.IsNullOrEmpty(element) ? new string[0] : new[] { $"{element}: {Battle.ElementEffect(element)}" })
-                .Concat(Theme.HelpFor(def.text))
-                .Concat(def.TargetsPart ? new[] { "Custo 1: parte aleatória. Custo 2 ou mais (ou Mirar): você escolhe a parte." } : new string[0]));
-            if (!interactive || animating) return;
-            transform.SetAsLastSibling();
-            Fx.Move(Rect, home + new Vector2(0, 40), 0.12f);
-            Fx.Scale(transform, 1.1f, 0.12f);
-        }
-
-        public void OnPointerExit(PointerEventData e)
-        {
-            Tooltip.Hide();
             if (!interactive || animating || dragging) return;
-            Fx.Move(Rect, home, 0.12f);
-            Fx.Scale(transform, 1f, 0.12f);
+            Root.EnableInClassList("lifted", on);
+            if (on) Root.BringToFront();
         }
 
-        // ---- Drag: the card follows the pointer on the overlay; the screen decides what a drop means. ----
-        public void OnBeginDrag(PointerEventData e)
+        // ---- Pointer: click or drag (drag starts after a few pixels) ----
+        void Down(PointerDownEvent e)
         {
-            if (!interactive || animating || !Fx.I) return;
-            dragging = true;
-            Tooltip.Hide();
-            handParent = transform.parent;
-            var from = Fx.PosOf(Rect);
-            transform.SetParent(Fx.I.overlay, false);
-            Rect.Center(from.x, from.y, W, H);
-            transform.localScale = new Vector3(0.85f, 0.85f, 1);
-            group.blocksRaycasts = false; // let the drop see what is under the pointer
-            onDragStart?.Invoke(this);
+            if (e.button != 0) return;
+            pressed = true;
+            pressPos = e.position;
+            Root.CapturePointer(e.pointerId);
         }
 
-        public void OnDrag(PointerEventData e)
+        void Move(PointerMoveEvent e)
         {
+            if (!pressed || !Root.HasPointerCapture(e.pointerId)) return;
+            if (!dragging && interactive && !animating && Fx.I && ((Vector2)e.position - pressPos).sqrMagnitude > 64) BeginDrag();
             if (!dragging) return;
-            var p = Fx.ScreenToOverlay(e.position);
-            Rect.anchoredPosition = new Vector2(p.x, -p.y);
+            var p = Fx.ToStage(e.position);
+            Root.Center(p.x, p.y, W, H);
             onDragMove?.Invoke(this, p, e.position);
         }
 
-        public void OnEndDrag(PointerEventData e)
+        void Up(PointerUpEvent e)
         {
-            if (!dragging) return;
+            if (!pressed) return;
+            pressed = false;
+            if (Root.HasPointerCapture(e.pointerId)) Root.ReleasePointer(e.pointerId);
+            if (dragging) { EndDrag(Fx.ToStage(e.position), e.position); return; }
+            if (interactive && playable) onClick?.Invoke(this);
+            else if (interactive) { Fx.Shake(Root, 6, 0.15f); Sfx.Play(b => b.error, 0.5f); }
+        }
+
+        void BeginDrag()
+        {
+            dragging = true;
+            Tooltip.Hide();
+            Root.RemoveFromClassList("lifted");
+            handParent = Root.parent;
+            Fx.I.overlay.Add(Root);
+            Root.AddToClassList("dragging");
+            Sfx.Play(b => b.card, 0.5f, 1.1f);
+            onDragStart?.Invoke(this);
+        }
+
+        void EndDrag(Vector2 stage, Vector2 panel)
+        {
             dragging = false;
-            group.blocksRaycasts = true;
-            onDrop?.Invoke(this, Fx.ScreenToOverlay(e.position), e.position);
+            Root.RemoveFromClassList("dragging");
+            onDrop?.Invoke(this, stage, panel);
         }
 
         // Puts a dragged card back in the hand at its home position.
         public void ReturnToHand()
         {
-            if (!handParent) return;
-            transform.SetParent(handParent, false);
-            Rect.anchorMin = Rect.anchorMax = new Vector2(0, 1);
-            Rect.pivot = new Vector2(0.5f, 0.5f);
-            Rect.sizeDelta = new Vector2(W, H);
-            transform.localScale = Vector3.one;
-            Rect.anchoredPosition = home;
+            if (handParent == null) return;
+            handParent.Add(Root);
+            SetHome(home);
         }
 
-        public void OnPointerClick(PointerEventData e)
-        {
-            if (e.dragging) return;
-            if (interactive && playable) onClick?.Invoke(this);
-            else if (interactive) Fx.Shake(Rect, 6, 0.15f);
-        }
-
-        // Card flies to an overlay point (reference pixels from top-left) and fades: played or scrapped.
-        public void FlyAway(Vector2 overlayTarget, float scale = 0.6f)
+        // Card flies to a stage point and fades: played or scrapped.
+        public void FlyAway(Vector2 target, float scale = 0.6f)
         {
             interactive = false;
             Tooltip.Hide();
-            if (!Fx.I || !Fx.I.overlay) { Destroy(gameObject); return; }
-            var from = Fx.PosOf(Rect);
-            transform.SetParent(Fx.I.overlay, false);
-            Rect.Center(from.x, from.y, W, H);
-            Fx.Move(Rect, new Vector2(overlayTarget.x, -overlayTarget.y), 0.3f);
-            Fx.Scale(transform, scale, 0.3f);
-            Fx.Fade(group, 0, 0.35f, () => Destroy(gameObject));
+            if (!Fx.I || Fx.I.overlay == null || !Application.isPlaying) { Root.RemoveFromHierarchy(); return; }
+            var from = Fx.PosOf(Root);
+            Fx.I.overlay.Add(Root);
+            Root.RemoveFromClassList("lifted");
+            Root.Center(from.x, from.y, W, H);
+            Fx.Move(Root, target - new Vector2(W / 2, H / 2), 0.3f);
+            Fx.Scale(Root, scale, 0.3f);
+            Fx.Fade(Root, 0, 0.35f, () => Root.RemoveFromHierarchy());
         }
     }
 }

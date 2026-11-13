@@ -229,5 +229,73 @@ public class CareerTests
     }
 
     static void Click(GameUI ui, string name) =>
-        ui.GetComponentsInChildren<UnityEngine.UI.Button>().First(b => b.name == name).onClick.Invoke();
+        Theme.Press(ui.ButtonNamed(name));
+}
+
+public class EquipTests
+{
+    Content c;
+
+    [SetUp]
+    public void SetUp() => c = Content.Load();
+
+    [Test]
+    public void NewCareer_OnlyTheFirstRobotIsEquipped_EmptyRobotsCantFight()
+    {
+        var k = Career.New(c);
+        Assert.IsTrue(k.garage.slots[0].Complete);
+        Assert.IsTrue(k.garage.slots.Skip(1).All(r => !r.Equipped.Any()), "robôs 2 e 3 vazios");
+        Assert.IsEmpty(k.Validate(c));
+        k.garage.selected = 1;
+        StringAssert.Contains("Equipe", string.Join(" ", k.Validate(c)));
+        Assert.IsNotNull(GarageScreen.ContinueBlocker(c, k.Build, k));
+        Assert.AreEqual(0, c.Weight(k.Build));
+        Assert.AreEqual(1, c.Deck(k.Build).Count, "só a carta assinatura do frame");
+    }
+
+    [Test]
+    public void ACopy_SitsOnOneRobotOnly_AndUnequippedCopiesCanBeSold()
+    {
+        var k = Career.New(c);
+        var head = k.garage.slots[0].head;
+        Assert.AreEqual(0, k.Free(head));
+        k.garage.slots[1].head = head; // the same single copy on robot 2
+        k.garage.selected = 1;
+        StringAssert.Contains("outro robô", string.Join(" ", k.Validate(c)));
+        k.garage.slots[1].head = null;
+        k.garage.slots[0].head = null; // unequipped: back to stock, sellable
+        Assert.AreEqual(1, k.Free(head));
+        Assert.IsTrue(k.CanSell(head));
+    }
+
+    [Test]
+    public void Garage_EquipTakesFromAnotherRobot_AndUnequipEmptiesTheSlot()
+    {
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cb_equip_" + System.Guid.NewGuid().ToString("N") + ".json");
+        var go = new GameObject("UITest");
+        try
+        {
+            var ui = go.AddComponent<GameUI>();
+            ui.logBattles = false;
+            ui.careerPath = path;
+            ui.Init();
+            ui.NewCareer();
+            var head = ui.career.garage.slots[0].head;
+            ui.career.garage.selected = 1;
+            ui.ShowGarage();
+            Assert.IsFalse(ui.ButtonNamed("Continuar").enabledSelf, "robô vazio não luta");
+            Theme.Click(ui.Named("Slot:Cabeca"));
+            Theme.Press(ui.ButtonNamed("Equipar:" + head));
+            Assert.AreEqual(head, ui.career.garage.slots[1].head);
+            Assert.IsNull(ui.career.garage.slots[0].head, "a peça saiu do robô 1");
+            Theme.Press(ui.ButtonNamed("Desequipar"));
+            Assert.IsNull(ui.career.garage.slots[1].head);
+            Assert.AreEqual(1, ui.career.Free(head));
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+        }
+    }
 }
