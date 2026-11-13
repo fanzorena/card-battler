@@ -16,24 +16,24 @@ namespace CardBattler.Combat
         public static BuildStats Of(Content c, RobotDef b)
         {
             var frame = c.Frame(b.frame);
-            var core = c.Part(b.core);
+            var core = string.IsNullOrEmpty(b.core) ? null : c.Part(b.core);
             var slots = new[] { (Slot.Cabeca, b.head), (Slot.Torso, b.torso), (Slot.BracoEsq, b.armL), (Slot.BracoDir, b.armR), (Slot.Pernas, b.legs) };
             var deck = c.Deck(b);
             var s = new BuildStats
             {
                 chassis = frame.chassis,
-                energy = core.energy,
-                heatPerTurn = core.heatPerTurn,
+                energy = core?.energy ?? 0,
+                heatPerTurn = core?.heatPerTurn ?? 0,
                 hand = frame.hand,
                 weight = c.Weight(b),
                 carry = frame.carry,
                 passive = frame.passiveText,
                 makers = c.ActiveMakers(b).Select(m => m.id).ToArray(),
-                elements = b.PartIds.Select(id => c.Part(id).element).Where(e => !string.IsNullOrEmpty(e)).Distinct().ToArray(),
+                elements = b.Equipped.Select(id => c.Part(id).element).Where(e => !string.IsNullOrEmpty(e)).Distinct().ToArray(),
                 deckSize = deck.Count,
                 avgCost = deck.Count == 0 ? 0 : (float)deck.Average(d => d.cost),
             };
-            foreach (var (slot, id) in slots) s.parts.Add((slot, c.Part(id).name, c.Part(id).integrity));
+            foreach (var (slot, id) in slots) s.parts.Add(string.IsNullOrEmpty(id) ? (slot, "(vazio)", 0) : (slot, c.Part(id).name, c.Part(id).integrity));
             s.totalIntegrity = s.parts.Sum(p => p.integrity);
             var statuses = new List<string>();
             if (deck.Any(d => d.targetHeat > 0)) statuses.Add("Calor");

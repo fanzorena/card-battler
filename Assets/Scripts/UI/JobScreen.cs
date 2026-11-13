@@ -136,6 +136,7 @@ namespace CardBattler.UI
             float ry = 48;
             foreach (var (icon, id) in rows)
             {
+                if (string.IsNullOrEmpty(id)) { Row(panel, ox, ry, icon, "(vazio)", 0, 0, null); ry += 52; continue; }
                 var part = C.Part(id);
                 int hp = K.HpOf(C, id);
                 Row(panel, ox, ry, icon, part.name, hp, part.integrity, hp < part.integrity ? id : null);
@@ -263,23 +264,23 @@ namespace CardBattler.UI
             var sell = Theme.Plate(root, "Sell");
             sell.Place(1120, 120, 760, 846);
             Theme.Title(sell, "VENDER", 24).At(24, 14);
-            Theme.Label(sell, "Peças em uso nos seus 3 robôs não podem ser vendidas.", 16, Theme.TextDim).Place(24, 48, 700, 24);
-            var list = Theme.Scroll(sell, "Parts").Place(12, 80, 736, 754);
-            foreach (var id in K.owned.Distinct().OrderBy(id => C.Part(id).slot))
+            Theme.Label(sell, "Só aparecem peças do estoque. Peças equipadas nos seus robôs não são vendidas: desequipe na garagem.", 16, Theme.TextDim).Place(24, 48, 712, 44);
+            var list = Theme.Scroll(sell, "Parts").Place(12, 100, 736, 734);
+            var sellable = K.owned.Distinct().Where(K.CanSell).OrderBy(id => C.Part(id).slot).ToList();
+            if (sellable.Count == 0) Theme.Label(list, "Nada para vender: todas as suas peças estão equipadas.", Theme.Body, Theme.TextDim).Classes("prose");
+            foreach (var id in sellable)
             {
                 var row = Theme.Row(list, "Sell:" + id, 10);
                 row.AddToClassList("list-row");
                 var pd = C.Part(id);
                 SlotIcons.Icon(row, pd.slot == "Braco" ? "BracoDir" : pd.slot, 32, Theme.Maker(pd.maker));
-                var nm = Theme.Label(row, $"{pd.name} <size=15><color=#9AA2BC>x{K.owned.Count(o => o == id)}</color></size>", 18, Theme.Ink, TextAnchor.MiddleLeft);
+                var nm = Theme.Label(row, $"{pd.name} <size=15><color=#9AA2BC>{K.Free(id)} no estoque</color></size>", 18, Theme.Ink, TextAnchor.MiddleLeft);
                 nm.style.flexGrow = 1;
                 var pid = id;
                 var b = Theme.Button(row, $"VENDER {K.SellPrice(C, id)} cr", () => { if (K.Sell(C, pid)) Changed(); }, null, 16, "btn-small");
                 b.name = "Vender:" + id;
-                b.SetEnabled(K.CanSell(id));
-                b.EnableInClassList("btn-good", K.CanSell(id));
+                b.AddToClassList("btn-good");
                 b.Size(200, 40);
-                if (!K.CanSell(id)) Theme.Hover(b, "Em uso num dos seus robôs.");
             }
         }
 

@@ -23,14 +23,10 @@ namespace CardBattler.UI
         GarageSave G => app.Garage;
         Career Car => app.careerMode ? app.career : null; // null in Treino livre (everything unlocked)
 
-        static readonly (string icon, string slot, Func<RobotDef, string> get, Action<RobotDef, string> set, float x, float y)[] Slots =
+        // Slot cards around the robot: (slot key, x, y).
+        static readonly (string key, float x, float y)[] PartSlots =
         {
-            ("Cabeca", "Cabeca", b => b.head, (b, v) => b.head = v, 400, 124),
-            (SlotIcons.Nucleo, "Nucleo", b => b.core, (b, v) => b.core = v, 740, 124),
-            ("BracoEsq", "Braco", b => b.armL, (b, v) => b.armL = v, 60, 316),
-            ("BracoDir", "Braco", b => b.armR, (b, v) => b.armR = v, 740, 316),
-            ("Torso", "Torso", b => b.torso, (b, v) => b.torso = v, 60, 508),
-            ("Pernas", "Pernas", b => b.legs, (b, v) => b.legs = v, 740, 508),
+            ("Cabeca", 400, 124), ("Nucleo", 740, 124), ("BracoEsq", 60, 316), ("BracoDir", 740, 316), ("Torso", 60, 508), ("Pernas", 740, 508),
         };
 
         // Why the build can't go on to the opponent selection (null = it can).
@@ -84,18 +80,7 @@ namespace CardBattler.UI
                 () => { b.frame = Cycle(frames, b.frame, -1); Changed(); }, () => { b.frame = Cycle(frames, b.frame, 1); Changed(); },
                 dir => With(b, x => x.frame = Cycle(frames, b.frame, dir)), frames.Length);
 
-            foreach (var (icon, slot, get, set, x, y) in Slots)
-            {
-                var ids = C.PartsFor(slot).Where(p => Car == null || Car.Owns(p)).Select(p => p.id).ToArray();
-                var part = C.Part(get(b));
-                string stats = slot == "Nucleo"
-                    ? $"{part.energy} energia/turno{(part.heatPerTurn > 0 ? $" · +{part.heatPerTurn} Calor/turno" : "")} · Peso {part.weight}"
-                    : $"Integridade {(Car != null && Car.HpOf(C, part.id) < part.integrity ? $"<color=#{Theme.HexOf(Theme.Bad)}>{Car.HpOf(C, part.id)}</color>/" : "")}{part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}{(string.IsNullOrEmpty(part.resist) ? "" : " · resiste " + part.resist)}{(string.IsNullOrEmpty(part.weakTo) ? "" : " · fraca a " + part.weakTo)}";
-                string cards = string.Join(", ", part.cards.GroupBy(id => id).Select(g => $"{g.Count()}x {C.Card(g.Key).name}"));
-                SlotWidget(x, y, icon, part.name, part.maker, stats, cards,
-                    () => { set(b, Cycle(ids, get(b), -1)); Changed(); }, () => { set(b, Cycle(ids, get(b), 1)); Changed(); },
-                    dir => With(b, r => set(r, Cycle(ids, get(b), dir))), ids.Length);
-            }
+            foreach (var (key, x, y) in PartSlots) PartCard(x, y, key);
 
             // Weight bar + what blocks the build
             int weight = C.Weight(b);
@@ -110,12 +95,17 @@ namespace CardBattler.UI
             // Right column: stats sheet or deck
             var deck = C.Deck(b);
             var tabRow = Theme.Row(root, "Tabs", 10).Place(1120, 110, 760, 56);
-            var tabSheet = Theme.Button(tabRow, "FICHA DO ROBÔ", () => { showDeck = false; Rebuild(); }, null, Theme.Body, "btn-tab").Size(300, 56);
-            tabSheet.EnableInClassList("selected", !showDeck);
-            var tabDeck = Theme.Button(tabRow, $"DECK ({deck.Count})", () => { showDeck = true; Rebuild(); }, null, Theme.Body, "btn-tab").Size(240, 56);
-            tabDeck.EnableInClassList("selected", showDeck);
+            var tabSheet = Theme.Button(tabRow, "FICHA DO ROBÔ", () => { showDeck = false; pick = null; Rebuild(); }, null, Theme.Body, "btn-tab").Size(260, 56);
+            tabSheet.EnableInClassList("selected", pick == null && !showDeck);
+            var tabDeck = Theme.Button(tabRow, $"DECK ({deck.Count})", () => { showDeck = true; pick = null; Rebuild(); }, null, Theme.Body, "btn-tab").Size(200, 56);
+            tabDeck.EnableInClassList("selected", pick == null && showDeck);
+            var tabParts = Theme.Button(tabRow, "PEÇAS", () => { pick ??= RobotDef.SlotKeys.FirstOrDefault(k => string.IsNullOrEmpty(b.Get(k))) ?? "Cabeca"; Rebuild(); }, null, Theme.Body, "btn-tab").Size(180, 56);
+            tabParts.name = "Pecas";
+            tabParts.EnableInClassList("selected", pick != null);
+            Theme.Hover(tabParts, "Equipar, trocar e desequipar peças. Também abre ao clicar num slot à esquerda.");
             var panel = Theme.Plate(root, "TabContent").Place(1120, 176, 760, 770);
-            if (showDeck) DeckGrid(Theme.Scroll(panel).Fill(12), deck);
+            if (pick != null) Inventory(panel, pick);
+            else if (showDeck) DeckGrid(Theme.Scroll(panel).Fill(12), deck);
             else { sheet = panel; DrawSheet(BuildStats.Of(C, b), null); }
 
             // Continue to the opponent selection
@@ -126,7 +116,7 @@ namespace CardBattler.UI
             if (blocker != null) Theme.Label(root, "Ajuste o robô para continuar", Theme.Small, Theme.Bad, TextAnchor.MiddleRight).Place(1120, 990, 390, 40);
 
             // Wheels skid on the Fosso scrap floor: point at the legs slot when the player owns other legs.
-            if (Car != null && C.Part(b.legs).wheels && Car.owned.Any(id => C.Part(id) is { slot: "Pernas", wheels: false }))
+            if (Car != null && !string.IsNullOrEmpty(b.legs) && C.Part(b.legs).wheels && Car.owned.Any(id => C.Part(id) is { slot: "Pernas", wheels: false }))
                 Theme.Label(root, "Dica: no piso de sucata do Fosso as rodas esquivam só metade. Troque as pernas (slot de baixo à direita).", Theme.Small, Theme.Exposed, TextAnchor.MiddleLeft)
                     .Place(340, 1004, 760, 50).Fit(15);
 
@@ -166,6 +156,157 @@ namespace CardBattler.UI
             }
         }
 
+        // ---- Parts: slot cards on the left, inventory with comparison on the right ----
+        static string pick; // slot key whose inventory is open (null = stats sheet / deck)
+
+        static string SlotTitle(string key) => key switch
+        {
+            "Cabeca" => "CABEÇA", "Torso" => "TORSO", "BracoEsq" => "BRAÇO ESQUERDO", "BracoDir" => "BRAÇO DIREITO", "Pernas" => "PERNAS", "Nucleo" => "NÚCLEO", _ => key,
+        };
+
+        string PartStats(PartDef part) => part.slot == "Nucleo"
+            ? $"{part.energy} energia/turno{(part.heatPerTurn > 0 ? $" · +{part.heatPerTurn} Calor/turno" : "")} · Peso {part.weight}"
+            : $"Integridade {(Car != null && Car.HpOf(C, part.id) < part.integrity ? $"<color=#{Theme.HexOf(Theme.Bad)}>{Car.HpOf(C, part.id)}</color>/" : "")}{part.integrity} · Peso {part.weight}{(string.IsNullOrEmpty(part.element) ? "" : " · " + part.element)}{(string.IsNullOrEmpty(part.resist) ? "" : " · resiste " + part.resist)}{(string.IsNullOrEmpty(part.weakTo) ? "" : " · fraca a " + part.weakTo)}";
+
+        string PartCards(PartDef part) => string.Join(", ", part.cards.GroupBy(id => id).Select(g => $"{g.Count()}x {C.Card(g.Key).name}"));
+
+        // A slot on the left: click it to open its inventory on the right.
+        void PartCard(float x, float y, string key)
+        {
+            var b = G.Current;
+            var id = b.Get(key);
+            var part = string.IsNullOrEmpty(id) ? null : C.Part(id);
+            var accent = part == null ? Theme.TextDim : Theme.Maker(part.maker);
+            var box = Theme.Plate(root, "Slot:" + key, "slot-card").Place(x, y, 300, 176).OnClick(() => { pick = pick == key ? null : key; Rebuild(); });
+            box.EnableInClassList("picked", pick == key);
+            box.EnableInClassList("empty", part == null);
+            Theme.Border(box, pick == key ? Theme.Warn : Theme.Alpha(accent, 0.55f), pick == key ? 3 : 2);
+            Theme.Solid(box, "Stripe", accent).Place(0, 12, 5, 150);
+            SlotIcons.Icon(box, key == "Nucleo" ? SlotIcons.Nucleo : key, 52, part == null ? Theme.TextDim : accent).Place(12, 10, 52, 52);
+            if (part == null)
+            {
+                Theme.Title(box, "VAZIO", 22, Theme.Bad).At(74, 12);
+                Theme.Label(box, SlotTitle(key).ToLowerInvariant(), Theme.Small, Theme.TextDim).At(74, 42);
+                Theme.Label(box, "Clique para equipar uma peça.", 17, Theme.Warn).Place(14, 84, 276, 60);
+                Theme.Hover(box, $"{SlotTitle(key)}: sem peça. O robô só luta com todas as peças.");
+                return;
+            }
+            Theme.Label(box, part.name, 22, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(72, 6, 220, 32).OneLine();
+            Theme.Chip(box, part.maker.ToUpperInvariant(), accent, 13).parent.At(72, 40);
+            Theme.Label(box, "TROCAR", 14, Theme.Warn, TextAnchor.MiddleRight, FontStyle.Bold).Place(196, 40, 92, 24);
+            var info = Theme.El(box, "Info").Place(14, 72, 278, 98);
+            info.style.overflow = Overflow.Hidden;
+            Theme.Label(info, PartStats(part), 17, Theme.Ink);
+            Theme.Label(info, PartCards(part), 17, Theme.TextDim).style.marginTop = 4;
+            Theme.Hover(box, part.name, PartStats(part), PartCards(part), "Clique para trocar ou desequipar.");
+        }
+
+        // Copies of a part this robot could take: free copies plus, in career, copies sitting on other robots.
+        (int free, string onRobot) Availability(string partId)
+        {
+            if (Car == null) return (99, null);
+            int free = Car.Free(partId);
+            var other = G.slots.FirstOrDefault(r => r != G.Current && r.Equipped.Contains(partId));
+            return (free, other?.name);
+        }
+
+        void Equip(string key, string partId)
+        {
+            var b = G.Current;
+            if (Car != null && Car.Free(partId) <= 0)
+            {
+                // take it from the other robot that has it
+                var other = G.slots.First(r => r != b && r.Equipped.Contains(partId));
+                other.Set(SlotOf(other, partId), null);
+            }
+            b.Set(key, partId);
+            Sfx.Play(s => s.repair, 0.5f, 1.2f);
+            Changed();
+        }
+
+        static string SlotOf(RobotDef r, string partId) => RobotDef.SlotKeys.First(k => r.Get(k) == partId);
+
+        // Number rows that change when the build changes (label, delta text, good?).
+        static List<(string label, string delta, bool good)> Deltas(BuildStats now, BuildStats then)
+        {
+            var a = SheetRows(now); var b = SheetRows(then);
+            var list = new List<(string, string, bool)>();
+            for (int i = 0; i < a.Count; i++)
+            {
+                if (a[i].icon.HasValue || !a[i].number.HasValue || !b[i].number.HasValue) continue; // per-part integrity rows: the total says it
+                float d = b[i].number.Value - a[i].number.Value;
+                if (Math.Abs(d) < 0.001f) continue;
+                string label = a[i].help == "peso" ? "folga de carga" : a[i].label.ToLowerInvariant();
+                string txt = (d > 0 ? "+" : "") + (Math.Abs(d % 1) > 0.001f ? d.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR")) : ((int)d).ToString());
+                list.Add((label, txt, a[i].higherIsBetter ? d > 0 : d < 0));
+            }
+            return list;
+        }
+
+        void Inventory(VisualElement panel, string key)
+        {
+            var b = G.Current;
+            var currentId = b.Get(key);
+            var current = string.IsNullOrEmpty(currentId) ? null : C.Part(currentId);
+            var head = Theme.El(panel, "Head").Place(20, 14, 720, 92);
+            SlotIcons.Icon(head, key == "Nucleo" ? SlotIcons.Nucleo : key, 48, Theme.Warn).At(0, 4);
+            Theme.Title(head, SlotTitle(key), 26).At(62, 0);
+            Theme.Label(head, current == null ? "Vazio: escolha uma peça abaixo." : $"Equipada: <b>{current.name}</b>", Theme.Small, current == null ? Theme.Bad : Theme.Ink).Place(62, 34, 420, 26).OneLine();
+            Theme.Label(head, "Os números mostram o que muda no robô.", 16, Theme.TextDim).Place(62, 62, 440, 24).OneLine();
+            if (current != null)
+            {
+                var off = Theme.Button(head, "DESEQUIPAR", () => { b.Set(key, null); Sfx.Play(s => s.back, 0.5f); Changed(); }, null, 18, "btn-danger");
+                off.name = "Desequipar";
+                off.Place(520, 8, 200, 50);
+                Theme.Hover(off, "Tira a peça do robô e devolve ao estoque. Robô incompleto não luta.");
+            }
+
+            var list = Theme.Scroll(panel, "Parts").Place(12, 114, 736, 644);
+            var now = BuildStats.Of(C, b);
+            var candidates = C.PartsFor(RobotDef.PartSlot(key)).Where(p => Car == null || Car.Owns(p))
+                .OrderByDescending(p => p.id == currentId).ThenBy(p => p.name).ToList();
+            if (candidates.Count == 0) Theme.Label(list, "Nenhuma peça desse tipo no estoque. O Ferro-velho vende peças.", Theme.Body, Theme.TextDim).Classes("prose");
+            int i = 0;
+            foreach (var p in candidates)
+            {
+                bool on = p.id == currentId;
+                var (free, onRobot) = Availability(p.id);
+                bool available = on || free > 0 || onRobot != null;
+                var row = Theme.El(list, "Part:" + p.id, "inventory-row");
+                row.EnableInClassList("equipped", on);
+                var accent = Theme.Maker(p.maker);
+                Theme.Border(row, on ? Theme.Warn : Theme.Alpha(accent, 0.35f), on ? 2 : 1);
+                var top = Theme.Row(row, "Top", 10);
+                top.style.alignItems = Align.Center;
+                SlotIcons.Icon(top, key == "Nucleo" ? SlotIcons.Nucleo : key, 40, accent);
+                var nm = Theme.Label(top, p.name, 22, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).OneLine();
+                nm.style.flexShrink = 1;
+                Theme.Chip(top, p.maker.ToUpperInvariant(), accent, 13);
+                var spacer = Theme.El(top, "Spacer"); spacer.style.flexGrow = 1;
+                string where = on ? "EQUIPADA" : Car == null ? "" : free > 0 ? $"{free} no estoque" : onRobot != null ? $"no {onRobot}" : "";
+                Theme.Label(top, where, 16, on ? Theme.Warn : free > 0 ? Theme.Good : Theme.TextDim, TextAnchor.MiddleRight, FontStyle.Bold);
+                if (!on)
+                {
+                    var eq = Theme.Button(top, free > 0 || Car == null ? "EQUIPAR" : "PEGAR", () => Equip(key, p.id), null, 18, "btn-good").Size(150, 46);
+                    eq.name = "Equipar:" + p.id;
+                    eq.SetEnabled(available);
+                    if (onRobot != null && free <= 0) Theme.Hover(eq, $"Tira a peça do {onRobot} e coloca neste robô.");
+                }
+                Theme.Label(row, PartStats(p), 17, Theme.Ink).style.marginTop = 6;
+                Theme.Label(row, PartCards(p), 17, Theme.TextDim);
+                if (!on)
+                {
+                    var chips = Theme.El(row, "Deltas", "delta-row");
+                    var then = BuildStats.Of(C, With(b, r => r.Set(key, p.id)));
+                    var deltas = Deltas(now, then);
+                    if (deltas.Count == 0) Theme.Label(chips, "sem mudança nos números", 16, Theme.TextDim);
+                    foreach (var (label, delta, good) in deltas) Theme.Chip(chips, $"{delta} {label}", good ? Theme.Good : Theme.Bad, 15);
+                    if (C.Weight(With(b, r => r.Set(key, p.id))) > C.Frame(b.frame).carry) Theme.Chip(chips, "PASSA DA CARGA", Theme.Bad, 15);
+                }
+                Fx.Enter(row, i++);
+            }
+        }
+
         // ---- Stats sheet ----
         // Each row: glossary id (the "?" text), label, value, number for deltas, whether higher is better, optional slot icon.
         public static List<(string help, string label, string value, float? number, bool higherIsBetter, Slot? icon)> SheetRows(BuildStats s)
@@ -196,7 +337,7 @@ namespace CardBattler.UI
             sheet.Clear();
             var rows = SheetRows(s);
             var prev = preview == null ? null : SheetRows(preview);
-            Theme.Label(sheet, preview == null ? "Passe o mouse em ◀ ou ▶ de um slot para comparar a peça." : "Comparando com a peça do botão sob o mouse.",
+            Theme.Label(sheet, preview == null ? "Clique num slot à esquerda para trocar a peça e comparar. Passe o mouse no ? para ver o que cada número significa." : "Comparando com o frame do botão sob o mouse.",
                 Theme.Small, preview == null ? Theme.TextDim : Theme.Warn, TextAnchor.MiddleLeft).Place(20, 10, 720, 30);
             var list = Theme.Scroll(sheet, "Rows").Place(8, 44, 744, 716);
             for (int i = 0; i < rows.Count; i++)
@@ -230,7 +371,7 @@ namespace CardBattler.UI
             var srcs = new[] { (G.Current.head, "Cabeca"), (G.Current.torso, "Torso"), (G.Current.armL, "BracoEsq"), (G.Current.armR, "BracoDir"), (G.Current.legs, "Pernas") };
             foreach (var d in deck)
             {
-                var src = srcs.FirstOrDefault(p => C.Part(p.Item1).cards.Contains(d.id));
+                var src = srcs.FirstOrDefault(p => !string.IsNullOrEmpty(p.Item1) && C.Part(p.Item1).cards.Contains(d.id));
                 string maker = src.Item1 != null ? C.Part(src.Item1).maker : null;
                 var slot = Theme.El(grid, "CardSlot", "card-slot").Size(CardView.W * s, CardView.H * s);
                 var card = CardView.Create(slot, d, maker, src.Item2 ?? "Frame", null, src.Item1 != null ? C.Part(src.Item1).element : null);

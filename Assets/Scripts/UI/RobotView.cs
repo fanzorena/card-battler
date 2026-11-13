@@ -62,23 +62,24 @@ namespace CardBattler.UI
             figure = Theme.El(Root, "Figure").Place(0, 0, W, H);
             if (facingLeft) figure.style.scale = new Scale(new Vector3(-1, 1, 1));
 
-            var legs = c.Part(def.legs); var torso = c.Part(def.torso); var head = c.Part(def.head);
-            Part(Slot.Pernas, legs, 80, 280, 200, 140, DrawLegs);
-            Part(Slot.BracoEsq, c.Part(def.armL), 0, 110, 90, 210, DrawArm);
-            Part(Slot.Torso, torso, 90, 110, 180, 165, DrawTorso);
-            Part(Slot.BracoDir, c.Part(def.armR), 270, 110, 90, 210, DrawArm, mirror: true);
-            Part(Slot.Cabeca, head, 120, 10, 120, 100, DrawHead);
+            // empty garage slots (null) are drawn as a dashed ghost of the part box
+            PartDef P(string id) => string.IsNullOrEmpty(id) ? null : c.Part(id);
+            Part(Slot.Pernas, P(def.legs), 80, 280, 200, 140, DrawLegs);
+            Part(Slot.BracoEsq, P(def.armL), 0, 110, 90, 210, DrawArm);
+            Part(Slot.Torso, P(def.torso), 90, 110, 180, 165, DrawTorso);
+            Part(Slot.BracoDir, P(def.armR), 270, 110, 90, 210, DrawArm, mirror: true);
+            Part(Slot.Cabeca, P(def.head), 120, 10, 120, 100, DrawHead);
 
             // Slot icon next to each part: the same icon the cards and panels use.
             foreach (var (slot, x, y) in new[] { (Slot.Cabeca, 262f, 30f), (Slot.BracoEsq, -18f, 190f), (Slot.BracoDir, 378f, 190f), (Slot.Torso, 112f, 252f), (Slot.Pernas, 300f, 410f) })
             {
                 var id = slot == Slot.Cabeca ? def.head : slot == Slot.Torso ? def.torso : slot == Slot.BracoEsq ? def.armL : slot == Slot.BracoDir ? def.armR : def.legs;
-                SlotIcons.Icon(figure, slot, 48, Theme.Maker(c.Part(id).maker)).Center(x, y, 48, 48);
+                SlotIcons.Icon(figure, slot, 48, string.IsNullOrEmpty(id) ? Theme.Bad : Theme.Maker(c.Part(id).maker)).Center(x, y, 48, 48);
             }
 
             // Core + chassis ring (protected/exposed).
-            var core = c.Part(def.core);
-            var coreColor = core.heatPerTurn > 0 ? Theme.Hex("FF5A3D") : Theme.Energy;
+            var core = P(def.core);
+            var coreColor = core == null ? Theme.Alpha(Theme.TextDim, 0.4f) : core.heatPerTurn > 0 ? Theme.Hex("FF5A3D") : Theme.Energy;
             coreGlow = Theme.Box(figure, "CoreGlow", Theme.Alpha(coreColor, 0.35f), Shape.Circle).Center(180, 195, 80, 80);
             Theme.Box(figure, "Core", coreColor, Shape.Circle).Center(180, 195, 42, 42);
             coreRing = Theme.Box(figure, "ChassisRing", Theme.Alpha(Theme.TextDim, 0.6f), Shape.Ring).Center(180, 195, 92, 92);
@@ -105,8 +106,9 @@ namespace CardBattler.UI
             pv.glow.AddToClassList("target-glow");
             pv.glow.RegisterCallback<ClickEvent>(_ => onClick?.Invoke(slot));
             // Art from Resources/RobotParts/<id>.svg (viewBox = part box); procedural shapes for parts without art.
-            var art = Resources.Load<Sprite>("RobotParts/" + def.id);
-            if (art) ArtBody(pv, art, w, h);
+            var art = def == null ? null : Resources.Load<Sprite>("RobotParts/" + def.id);
+            if (def == null) Theme.El(pv.rt, "Ghost", "part-ghost").Fill(4);
+            else if (art) ArtBody(pv, art, w, h);
             else draw(pv, def, w, h);
             if (pv.body.Count > 0 && !pv.body[0].image) Detail(pv.body.OrderByDescending(b => b.g.style.width.value.value * b.g.style.height.value.value).First().g);
             pv.crackA = Piece(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);

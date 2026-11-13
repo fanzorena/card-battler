@@ -89,7 +89,7 @@ namespace CardBattler.Combat
         {
             var starter = c.Robot("player");
             var career = new Career { owned = starter.PartIds.ToArray(), frames = new[] { starter.frame } };
-            career.garage = GarageSave.Load(null, c); // three starter slots
+            career.garage = GarageSave.Load(null, c); // robot 1 equipped, robots 2 and 3 empty
             return career;
         }
 
@@ -99,15 +99,24 @@ namespace CardBattler.Combat
         public int MissingIntegrity(Content c) => damaged.Sum(d => c.Part(d.part).integrity - d.hp) + chassisDamage;
         public int FullRepairCost(Content c) => MissingIntegrity(c) * CreditsPerPoint;
 
-        // Builds may only use owned parts and frames.
+        // Copies of a part equipped across the 3 garage robots (a copy can only be on one robot).
+        public int Equipped(string partId) => garage.slots.Sum(r => r.Equipped.Count(id => id == partId));
+        // Copies in stock, free to equip or sell.
+        public int Free(string partId) => owned.Count(o => o == partId) - Equipped(partId);
+
+        // Builds may only use owned parts and frames; each copy sits on one robot only.
         public List<string> Validate(Content c, RobotDef b = null)
         {
             b ??= Build;
             var errors = c.Validate(b);
             if (!frames.Contains(b.frame)) errors.Add($"Você não tem o frame {c.Frame(b.frame).name}.");
-            foreach (var g in b.PartIds.GroupBy(id => id))
-                if (owned.Count(o => o == g.Key) < g.Count())
-                    errors.Add(owned.Contains(g.Key) ? $"Você só tem {owned.Count(o => o == g.Key)} {c.Part(g.Key).name}." : $"Você não tem a peça {c.Part(g.Key).name}.");
+            var mine = garage.slots.Contains(b) ? b : Build; // a changed copy of a robot (simulator, previews) stands in for it
+            foreach (var g in b.Equipped.GroupBy(id => id))
+            {
+                int have = owned.Count(o => o == g.Key), others = garage.slots.Where(r => r != mine).Sum(r => r.Equipped.Count(id => id == g.Key));
+                if (have < g.Count()) errors.Add(have > 0 ? $"Você só tem {have} {c.Part(g.Key).name}." : $"Você não tem a peça {c.Part(g.Key).name}.");
+                else if (have < g.Count() + others) errors.Add($"{c.Part(g.Key).name} está em outro robô.");
+            }
             return errors;
         }
 
@@ -234,8 +243,8 @@ namespace CardBattler.Combat
         public int SellPrice(Content c, string partId) => c.shop.FirstOrDefault(s => s.part == partId) is ShopItem s ? s.price / 2 : SellOffPrice;
 
         // A part can be sold only if every saved build still has the copies it uses.
-        public bool CanSell(string partId) =>
-            owned.Count(o => o == partId) - 1 >= garage.slots.Max(b => b.PartIds.Count(id => id == partId));
+        // Only copies that aren't equipped on any robot can be sold.
+        public bool CanSell(string partId) => Free(partId) > 0;
 
         public bool Sell(Content c, string partId)
         {

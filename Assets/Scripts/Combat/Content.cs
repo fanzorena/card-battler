@@ -89,6 +89,28 @@ namespace CardBattler.Combat
         public RobotDef Clone() => (RobotDef)MemberwiseClone();
         public static readonly string[] Tiers = { "Fácil", "Moderado", "Difícil", "Chefe" };
         public string[] PartIds => new[] { head, torso, armL, armR, legs, core };
+        // Parts actually on the robot (a garage robot can have empty slots; it only fights when complete).
+        public IEnumerable<string> Equipped => PartIds.Where(id => !string.IsNullOrEmpty(id));
+        public bool Complete => PartIds.All(id => !string.IsNullOrEmpty(id));
+
+        // Slot field by key: "Cabeca", "Torso", "BracoEsq", "BracoDir", "Pernas", "Nucleo".
+        public string Get(string key) => key switch
+        {
+            "Cabeca" => head, "Torso" => torso, "BracoEsq" => armL, "BracoDir" => armR, "Pernas" => legs, "Nucleo" => core, _ => null,
+        };
+        public void Set(string key, string id)
+        {
+            switch (key)
+            {
+                case "Cabeca": head = id; break; case "Torso": torso = id; break; case "BracoEsq": armL = id; break;
+                case "BracoDir": armR = id; break; case "Pernas": legs = id; break; case "Nucleo": core = id; break;
+            }
+        }
+        public static readonly string[] SlotKeys = { "Cabeca", "Torso", "BracoEsq", "BracoDir", "Pernas", "Nucleo" };
+        public static string PartSlot(string key) => key == "BracoEsq" || key == "BracoDir" ? "Braco" : key;
+
+        // Robot with only a frame (new garage slots).
+        public static RobotDef Empty(string frame) => new RobotDef { frame = frame };
     }
 
     [Serializable]
@@ -123,11 +145,11 @@ namespace CardBattler.Combat
         public RobotDef Robot(string id) => robots.FirstOrDefault(r => r.id == id) ?? throw new ArgumentException("Robô desconhecido: " + id);
         public PartDef[] PartsFor(string slot) => parts.Where(p => p.slot == slot).ToArray();
 
-        public int Weight(RobotDef b) => b.PartIds.Sum(id => Part(id).weight);
+        public int Weight(RobotDef b) => b.Equipped.Sum(id => Part(id).weight);
 
         // Every manufacturer with 3+ equipped parts (core included); a 3+3 build gets both bonuses.
         public MakerDef[] ActiveMakers(RobotDef b) =>
-            b.PartIds.Select(id => Part(id).maker).Where(m => !string.IsNullOrEmpty(m))
+            b.Equipped.Select(id => Part(id).maker).Where(m => !string.IsNullOrEmpty(m))
                 .GroupBy(m => m).Where(g => g.Count() >= MakerBonusParts)
                 .Select(g => makers.FirstOrDefault(m => m.id == g.Key)).Where(m => m != null).ToArray();
 
@@ -138,10 +160,13 @@ namespace CardBattler.Combat
         {
             var errors = new List<string>();
             var slots = new[] { ("Cabeca", b.head), ("Torso", b.torso), ("Braco", b.armL), ("Braco", b.armR), ("Pernas", b.legs), ("Nucleo", b.core) };
+            var missing = slots.Where(x => string.IsNullOrEmpty(x.Item2)).Select(x => SlotLabel(x.Item1)).Distinct().ToList();
+            if (missing.Count > 0) errors.Add("Equipe " + (missing.Count == 1 ? missing[0] : string.Join(", ", missing.Take(missing.Count - 1)) + " e " + missing.Last()) + ".");
             foreach (var (slot, id) in slots)
             {
                 var p = parts.FirstOrDefault(x => x.id == id);
-                if (p == null) errors.Add($"Slot {slot} vazio ou parte desconhecida.");
+                if (string.IsNullOrEmpty(id)) continue;
+                else if (p == null) errors.Add($"Parte desconhecida em {SlotLabel(slot)}.");
                 else if (p.slot != slot) errors.Add($"{p.name} não encaixa em {slot}.");
             }
             if (frames.All(f => f.id != b.frame)) errors.Add("Frame desconhecido.");
@@ -153,7 +178,12 @@ namespace CardBattler.Combat
 
         // Signature card first, then the part packs in slot order.
         public List<CardDef> Deck(RobotDef b) =>
-            new[] { Card(Frame(b.frame).signature) }.Concat(new[] { b.head, b.torso, b.armL, b.armR, b.legs }.SelectMany(id => Part(id).cards.Select(Card))).ToList();
+            new[] { Card(Frame(b.frame).signature) }.Concat(new[] { b.head, b.torso, b.armL, b.armR, b.legs }.Where(id => !string.IsNullOrEmpty(id)).SelectMany(id => Part(id).cards.Select(Card))).ToList();
+
+        static string SlotLabel(string slot) => slot switch
+        {
+            "Cabeca" => "uma cabeça", "Torso" => "um torso", "Braco" => "os dois braços", "Pernas" => "as pernas", "Nucleo" => "um núcleo", _ => slot,
+        };
 
         static readonly Dictionary<string, string> StrategyText = new Dictionary<string, string>
         {
@@ -175,8 +205,8 @@ namespace CardBattler.Combat
         }
 
         // Manufacturer with most parts on a build (core included).
-        public string MainMaker(RobotDef b) => b.PartIds.Select(id => Part(id).maker).Where(m => !string.IsNullOrEmpty(m))
-            .GroupBy(m => m).OrderByDescending(g => g.Count()).First().Key;
+        public string MainMaker(RobotDef b) => b.Equipped.Select(id => Part(id).maker).Where(m => !string.IsNullOrEmpty(m))
+            .GroupBy(m => m).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key;
 
         public static Content Load() => JsonUtility.FromJson<Content>(Resources.Load<TextAsset>("content").text);
     }

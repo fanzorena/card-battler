@@ -567,3 +567,43 @@
 .spark-dot { background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/circle_05.png"); }
 .spark-star { background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/star_06.png"); }
 .spark-shot { background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/light_03.png"); }
+
+/* ---------- Garage inventory ---------- */
+.slot-card.picked {
+    background-color: rgba(60, 50, 24, 0.95);
+}
+.slot-card.empty {
+    background-color: rgba(40, 20, 26, 0.85);
+}
+.part-ghost {
+    border-width: 2px;
+    border-color: rgba(255, 90, 106, 0.6);
+    background-color: rgba(255, 90, 106, 0.08);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.inventory-row {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background-color: rgba(24, 29, 44, 0.9);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.inventory-row:hover {
+    background-color: rgba(40, 48, 74, 0.95);
+}
+.inventory-row.equipped {
+    background-color: rgba(60, 50, 24, 0.9);
+}
+.delta-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+.delta-row > .chip {
+    margin: 0 6px 6px 0;
+}

@@ -86,7 +86,7 @@ public class GarageTests
             Assert.AreEqual("pulso_tesla", loaded.Current.armR);
 
             File.WriteAllText(path, File.ReadAllText(path).Replace("pulso_tesla", "parte_removida"));
-            Assert.AreEqual("punho_hidraulico", GarageSave.Load(path, content).Current.armL); // back to starter
+            Assert.IsNull(GarageSave.Load(path, content).Current.armL); // unknown part: robot 2 goes back to its default, empty
         }
         finally { File.Delete(path); }
     }
