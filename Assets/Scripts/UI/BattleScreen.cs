@@ -79,7 +79,7 @@ namespace CardBattler.UI
             Theme.El(root, "Floor", "battle-floor").Place(0, 640, 1920, 440);
 
             enemyPanel = Theme.El(root, "EnemyPanel").Place(40, 30, 640, 330);
-            playerPanel = Theme.El(root, "PlayerPanel").Place(1240, 545, 640, 330);
+            playerPanel = Theme.El(root, "PlayerPanel").Place(1266, 545, 624, 330);
 
             // not mirrored: the left arm is always on the left, like its icon
             enemyBot = RobotView.Create(root, false, true).At(EnemyPos.x, EnemyPos.y, RobotScale);
@@ -167,12 +167,12 @@ namespace CardBattler.UI
             parent.Clear();
             var bg = Theme.Plate(parent, "Bg").Fill();
             string tier = enemy ? $"  <color=#{Theme.HexOf(GarageScreen.TierColor(r.tier))}>{r.tier?.ToUpperInvariant()}</color>" : "";
-            Theme.Label(bg, $"<b>{r.name}</b>{tier}", 26).Place(18, 8, 604, 34).OneLine();
+            Theme.Label(bg, $"<b>{r.name}</b>{tier}", 26).Place(18, 8, 588, 34).OneLine();
             var makers = r.makers.Length == 0 ? "" : " · bônus " + Content.MakerNames(r.makers);
-            Theme.Label(bg, $"{r.frame.name}{makers}", 17, Theme.TextDim).Place(18, 42, 604, 24).OneLine();
+            Theme.Label(bg, $"{r.frame.name}{makers}", 17, Theme.TextDim).Place(18, 42, 588, 24).OneLine();
 
             var (cf, cl) = Theme.Bar(bg, r.ChassisOpen ? Theme.Exposed : Theme.Hex("7C86A6"), Theme.Body);
-            cf.parent.Place(18, 72, 604, 40);
+            cf.parent.Place(18, 72, 588, 40);
             cf.parent.EnableInClassList("exposed", r.ChassisOpen);
             Theme.SetFill(cf, (float)r.chassis / Mathf.Max(1, r.chassisMax));
             cl.text = $"{r.chassis}/{r.chassisMax} · {(r.ChassisOpen ? "EXPOSTO" : "PROTEGIDO")}";
@@ -185,7 +185,7 @@ namespace CardBattler.UI
             {
                 var color = p.Broken ? Theme.Hex("4A4E5C") : Theme.Maker(p.def.maker);
                 var (f, l) = Theme.Bar(bg, Theme.Mix(Theme.Panel, color, p.Broken ? 1 : 0.55f), 17);
-                f.parent.Place(18, y, 604, 34);
+                f.parent.Place(18, y, 588, 34);
                 f.parent.EnableInClassList("broken", p.Broken);
                 Theme.SetFill(f, (float)Mathf.Max(0, p.hp) / p.Max);
                 l.text = $"{p.def.name}  {(p.Broken ? "— AVARIADA" : $"{p.hp}/{p.Max}")}";
@@ -243,8 +243,8 @@ namespace CardBattler.UI
             }
             var p = b.player;
             int n = p.hand.Count;
-            float spacing = Mathf.Min(CardView.W + 16, 1000f / Mathf.Max(1, n));
-            float start = 790 - spacing * (n - 1) / 2;
+            float spacing = Mathf.Min(CardView.W + 8, 980f / Mathf.Max(1, n));
+            float start = 752 - spacing * (n - 1) / 2;
             int i = 0;
             foreach (var c in p.hand)
             {
@@ -560,7 +560,7 @@ namespace CardBattler.UI
             var shade = Theme.El(overlayLayer, "Result", "shade").Fill();
             shade.pickingMode = PickingMode.Position;
             Theme.Title(shade, win ? "VITÓRIA" : "DERROTA", 110, win ? Theme.Good : Theme.Bad, TextAnchor.MiddleCenter).Classes("outlined").Center(960, 380, 1400, 150);
-            Theme.Label(shade, $"{b.enemy.name} · turno {b.turn}", Theme.Title, Theme.TextDim, TextAnchor.MiddleCenter).Center(960, 480, 1200, 50);
+            Theme.Label(shade, $"{b.enemy.name} · turno {b.turn}", Theme.Heading, Theme.TextDim, TextAnchor.MiddleCenter).Center(960, 480, 1200, 50);
             Fx.Enter(shade, 0, 0);
             if (app.afterBattle != null)
             {

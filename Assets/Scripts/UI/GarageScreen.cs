@@ -77,7 +77,7 @@ namespace CardBattler.UI
             // Robot area
             Theme.Plate(root, "Area", "panel-glass").Place(40, 110, 1040, 880);
             Theme.El(root, "Pedestal", "pedestal").Center(560, 836, 520, 90);
-            RobotView.Create(root, false, true).At(560, 590, 1.1f).Build(C, b);
+            RobotView.Create(root, false, true).At(560, 600, 0.98f).Build(C, b);
 
             var frames = C.frames.Where(f => Car == null || Car.OwnsFrame(f)).Select(f => f.id).ToArray();
             SlotWidget(60, 124, "Frame", frame.name, null, $"Chassi {frame.chassis} · Mão {frame.hand} · Carga {frame.carry}", frame.passiveText,
@@ -149,14 +149,14 @@ namespace CardBattler.UI
             Theme.Border(box, Theme.Alpha(accent, 0.55f), 2);
             Theme.Solid(box, "Stripe", accent).Place(0, 12, 5, 150);
             SlotIcons.Icon(box, iconKey, 52, maker == null ? Theme.Warn : accent).Place(12, 10, 52, 52);
-            Theme.Label(box, name, 22, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(72, 6, 152, 32).OneLine();
+            Theme.Label(box, name, 22, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(72, 6, 220, 32).OneLine();
             if (maker != null) Theme.Chip(box, maker.ToUpperInvariant(), accent, 13).parent.At(72, 40);
             var info = Theme.Scroll(box, "Info").Place(14, 70, 278, 100);
-            Theme.Label(info, stats, 16, Theme.Ink);
-            Theme.Label(info, cards, 16, Theme.TextDim).style.marginTop = 4;
+            Theme.Label(info, stats, 17, Theme.Ink);
+            Theme.Label(info, cards, 17, Theme.TextDim).style.marginTop = 4;
             Theme.Hover(info, $"{name}", stats, cards);
-            var l = Theme.Button(box, "◀", prev, null, 18, "btn-arrow").Place(228, 8, 32, 34);
-            var r = Theme.Button(box, "▶", next, null, 18, "btn-arrow").Place(262, 8, 32, 34);
+            var l = Theme.Button(box, "◀", prev, null, 18, "btn-arrow").Place(222, 36, 34, 32);
+            var r = Theme.Button(box, "▶", next, null, 18, "btn-arrow").Place(258, 36, 34, 32);
             l.SetEnabled(options > 1); r.SetEnabled(options > 1);
             // Hovering an arrow previews the part it would switch to on the stats sheet.
             foreach (var (btn, dir) in new[] { (l, -1), (r, 1) })

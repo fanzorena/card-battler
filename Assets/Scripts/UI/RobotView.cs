@@ -109,10 +109,10 @@ namespace CardBattler.UI
             if (art) ArtBody(pv, art, w, h);
             else draw(pv, def, w, h);
             if (pv.body.Count > 0 && !pv.body[0].image) Detail(pv.body.OrderByDescending(b => b.g.style.width.value.value * b.g.style.height.value.value).First().g);
-            pv.crackA = Shape(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);
-            pv.crackB = Shape(pv.rt, w * 0.6f, h * 0.6f, w * 0.45f, 3, Theme.Alpha(Color.black, 0), rot: -35);
-            pv.brokenA = Shape(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: 45);
-            pv.brokenB = Shape(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: -45);
+            pv.crackA = Piece(pv.rt, w * 0.45f, h * 0.42f, w * 0.7f, 4, Theme.Alpha(Color.black, 0), rot: 28);
+            pv.crackB = Piece(pv.rt, w * 0.6f, h * 0.6f, w * 0.45f, 3, Theme.Alpha(Color.black, 0), rot: -35);
+            pv.brokenA = Piece(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: 45);
+            pv.brokenB = Piece(pv.rt, w / 2, h / 2, Mathf.Min(w, h) * 0.8f, 8, Theme.Alpha(Theme.Bad, 0), rot: -45);
             parts[slot] = pv;
         }
 
@@ -144,12 +144,12 @@ namespace CardBattler.UI
         // Adds a body shape (tinted by state later). Coordinates are centers inside the part box.
         VisualElement Body(PartView pv, float x, float y, float w, float h, Color color, Shape shape = global::CardBattler.UI.Shape.Rounded, float rot = 0)
         {
-            var e = Shape(pv.rt, x, y, w, h, color, shape, rot);
+            var e = Piece(pv.rt, x, y, w, h, color, shape, rot);
             pv.body.Add((e, color, false));
             return e;
         }
 
-        static VisualElement Shape(VisualElement parent, float x, float y, float w, float h, Color color, Shape shape = global::CardBattler.UI.Shape.Rounded, float rot = 0)
+        static VisualElement Piece(VisualElement parent, float x, float y, float w, float h, Color color, Shape shape = global::CardBattler.UI.Shape.Rounded, float rot = 0)
         {
             var e = Theme.Box(parent, "Shape", color, shape).Center(x, y, w, h).Rotate(rot);
             if (shape == global::CardBattler.UI.Shape.Rounded) { var s = e.style; s.borderTopLeftRadius = s.borderTopRightRadius = s.borderBottomLeftRadius = s.borderBottomRightRadius = Mathf.Min(10, Mathf.Min(w, h) / 3); }

@@ -21,7 +21,7 @@ namespace CardBattler.UI
             Warn = Hex("FFC24A"), Armor = Hex("5AA8FF"), Exposed = Hex("FF8A3D"), Energy = Hex("FFE066"), Paper = Hex("1D1A16");
 
         // Minimum readable sizes at 1080p: nothing below Small.
-        public const int Small = 18, Body = 22, Title = 30, Huge = 64;
+        public const int Small = 18, Body = 22, Heading = 30, Huge = 64;
 
         static readonly Dictionary<string, Color> Makers = new Dictionary<string, Color>
         {
@@ -294,20 +294,50 @@ namespace CardBattler.UI
         public static Label Fit(this Label t, int min)
         {
             int max = (int)t.style.fontSize.value.value;
-            void Shrink()
+            // One step per frame: the measurement uses the resolved size, which updates between frames.
+            bool Step()
             {
                 var box = t.contentRect.size;
-                if (box.x <= 0 || box.y <= 0) return;
-                int size = max;
-                while (size > min)
-                {
-                    var need = t.MeasureTextSize(t.text, box.x, VisualElement.MeasureMode.Exactly, 0, VisualElement.MeasureMode.Undefined);
-                    if (need.y <= box.y + 1) break;
-                    t.style.fontSize = --size;
-                }
-                if (size != max) t.style.fontSize = size;
+                int cur = (int)t.resolvedStyle.fontSize;
+                if (box.x <= 0 || box.y <= 0 || cur <= min) return true;
+                var need = t.MeasureTextSize(t.text, box.x, VisualElement.MeasureMode.Exactly, 0, VisualElement.MeasureMode.Undefined);
+                if (need.y <= box.y + 1) return true;
+                t.style.fontSize = Mathf.Max(min, Mathf.Min(cur - 1, Mathf.FloorToInt(cur * Mathf.Sqrt(box.y / need.y))));
+                return false;
             }
-            t.RegisterCallback<GeometryChangedEvent>(_ => { t.style.fontSize = max; t.schedule.Execute(Shrink); });
+            t.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                if (e.oldRect.size == e.newRect.size) return;
+                t.style.fontSize = max;
+                bool done = false;
+                t.schedule.Execute(() => done = Step()).Every(16).Until(() => done);
+            });
+            return t;
+        }
+
+        // One line, shrinking the font (down to min) until it fits the box width; ellipsis below that.
+        public static Label FitLine(this Label t, int min)
+        {
+            t.OneLine();
+            int max = (int)t.style.fontSize.value.value;
+            // text width scales linearly with the font size: measure at the resolved size, scale down, re-check next frame
+            bool Step()
+            {
+                float w = t.contentRect.width;
+                int cur = (int)t.resolvedStyle.fontSize;
+                if (w <= 0 || cur <= min) return true;
+                float need = t.MeasureTextSize(t.text, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+                if (need <= w + 1) return true;
+                t.style.fontSize = Mathf.Max(min, Mathf.Min(cur - 1, Mathf.FloorToInt(cur * w / need)));
+                return false;
+            }
+            t.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                if (e.oldRect.size == e.newRect.size) return;
+                t.style.fontSize = max;
+                bool done = false;
+                t.schedule.Execute(() => done = Step()).Every(16).Until(() => done);
+            });
             return t;
         }
 

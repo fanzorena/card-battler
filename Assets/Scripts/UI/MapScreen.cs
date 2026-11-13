@@ -201,10 +201,10 @@ namespace CardBattler.UI
             row.style.justifyContent = Justify.FlexEnd;
             row.style.alignItems = Align.Center;
             Theme.Icon(row, "coin", 30, Theme.Warn);
-            Theme.Title(row, $"{k.credits}", 28, Theme.Warn);
+            Theme.Label(row, $"{k.credits}", 28, Theme.Warn, style: FontStyle.Bold);
             Theme.Label(row, "créditos", Theme.Small, Theme.TextDim).style.marginRight = 16;
             Theme.Icon(row, "wrench", 30, Theme.Hex("C8A27A"));
-            Theme.Title(row, $"{k.scrap}", 28, Theme.Hex("C8A27A"));
+            Theme.Label(row, $"{k.scrap}", 28, Theme.Hex("C8A27A"), style: FontStyle.Bold);
             Theme.Label(row, "sucata", Theme.Small, Theme.TextDim);
         }
 

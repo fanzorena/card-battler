@@ -73,7 +73,7 @@ namespace CardBattler.UI
                 $"{stats.attacks} ataques ({stats.choose} escolhem a parte) · bônus {(stats.makers.Length == 0 ? "nenhum" : string.Join(" + ", stats.makers))}",
                 Theme.Small, Theme.Ink).Place(160, 80, 530, 90).Fit(15);
 
-            Theme.Button(root, "←  VOLTAR À GARAGEM", app.ShowGarage, null, 24).Place(770, 978, 360, 76);
+            Theme.Button(root, "←  GARAGEM", app.ShowGarage, null, 24).Place(770, 978, 300, 76);
             var fight = Theme.Primary(root, "LUTAR", () => app.StartBattle(build, selected), 36);
             fight.name = "Lutar";
             fight.Place(1520, 966, 360, 88);

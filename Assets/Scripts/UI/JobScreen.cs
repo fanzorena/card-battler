@@ -255,6 +255,7 @@ namespace CardBattler.UI
                 var b = Theme.Button(grid, $"{item.price} cr", () => { if (K.Buy(C, it)) Changed(); }, null, 18, "btn-small");
                 b.name = "Comprar:" + (item.part ?? item.frame ?? item.blueprint);
                 b.SetEnabled(K.CanBuy(C, item));
+                b.EnableInClassList("btn-good", K.CanBuy(C, item));
                 b.Place(x + 340, y + 4, 120, 38);
             }
 
@@ -276,6 +277,7 @@ namespace CardBattler.UI
                 var b = Theme.Button(row, $"VENDER {K.SellPrice(C, id)} cr", () => { if (K.Sell(C, pid)) Changed(); }, null, 16, "btn-small");
                 b.name = "Vender:" + id;
                 b.SetEnabled(K.CanSell(id));
+                b.EnableInClassList("btn-good", K.CanSell(id));
                 b.Size(200, 40);
                 if (!K.CanSell(id)) Theme.Hover(b, "Em uso num dos seus robôs.");
             }

@@ -1,0 +1,569 @@
+/* Card Battler look: Kenney UI Pack Sci-Fi panels and buttons, Kenney Future for display text.
+   Data-driven colors (makers, elements, tiers) are set from code; everything static lives here. */
+
+.app {
+    color: #E6E9F2;
+    font-size: 22px;
+}
+
+/* ---------- Background ---------- */
+.bg {
+    background-color: #0B0D14;
+}
+.bg-grid {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/Patterns/pattern_01.svg");
+    background-repeat: repeat repeat;
+    background-size: 160px 160px;
+    -unity-background-image-tint-color: rgba(46, 55, 86, 0.35);
+    opacity: 0.22;
+}
+.bg-glow {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/light_01.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-background-image-tint-color: rgba(84, 56, 148, 0.5);
+}
+
+.stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1920px;
+    height: 1080px;
+    translate: -50% -50%;
+}
+
+/* ---------- Text ---------- */
+.text {
+    margin: 0;
+    padding: 0;
+}
+.display {
+    -unity-font: url("project://database/Assets/ThirdParty/Kenney/Fonts/Kenney Future.ttf");
+    -unity-font-definition: initial;
+    -unity-font-style: normal;
+    letter-spacing: 1px;
+}
+.logo {
+    color: #E6E9F2;
+    text-shadow: 0 6px 0 rgba(255, 138, 61, 0.55);
+    letter-spacing: 4px;
+}
+.outlined {
+    -unity-text-outline-width: 1.2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+    text-shadow: 0 3px 2px rgba(0, 0, 0, 0.6);
+}
+.prose {
+    white-space: normal;
+    padding-right: 14px;
+    -unity-paragraph-spacing: 6px;
+}
+.selectable {
+    color: #9AA2BC;
+}
+
+/* ---------- Panels (Kenney 9-slice) ---------- */
+.panel, .panel-glass, .paper, .slot-card, .opponent, .dialogue, .reward-card, .poi-plate {
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-slice-left: 16;
+    -unity-slice-right: 16;
+    -unity-slice-top: 16;
+    -unity-slice-bottom: 16;
+}
+.panel, .slot-card, .opponent, .reward-card, .poi-plate {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/UIPackSciFi/Legacy/glassPanel_corners.png");
+    -unity-background-image-tint-color: rgba(64, 80, 124, 0.55);
+    background-color: rgba(18, 22, 34, 0.86);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+.panel-glass {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/UIPackSciFi/Legacy/glassPanel_cornerBR.png");
+    -unity-background-image-tint-color: rgba(70, 86, 130, 0.45);
+    background-color: rgba(20, 24, 38, 0.55);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+.paper {
+    background-color: #1D1A16;
+    border-width: 2px;
+    border-color: rgba(107, 90, 62, 0.8);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    overflow: hidden;
+}
+.paper-header {
+    background-color: #2B251D;
+    border-bottom-width: 2px;
+    border-bottom-color: rgba(107, 90, 62, 0.8);
+}
+.stamp {
+    padding: 4px 12px;
+}
+.dialogue {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/UIPackSciFi/Legacy/glassPanel_corners.png");
+    -unity-background-image-tint-color: rgb(34, 40, 60);
+    background-color: rgba(18, 22, 34, 0.97);
+    border-width: 2px;
+    border-color: rgba(255, 194, 74, 0.6);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+.shade {
+    background-color: rgba(0, 0, 0, 0.62);
+}
+
+/* ---------- Buttons (Kenney rectangle with depth) ---------- */
+.btn {
+    margin: 0;
+    padding: 0 16px 6px 16px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/ThirdParty/Kenney/UIPackSciFi/Vector/Extra/button_rectangle_depth.svg");
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-slice-left: 14;
+    -unity-slice-right: 14;
+    -unity-slice-top: 14;
+    -unity-slice-bottom: 18;
+    -unity-background-image-tint-color: rgb(58, 69, 104);
+    border-width: 0;
+    color: #E6E9F2;
+    transition-property: scale, translate, -unity-background-image-tint-color, opacity;
+    transition-duration: 0.12s, 0.12s, 0.12s, 0.2s;
+    transition-timing-function: ease-out-cubic;
+}
+.btn-text {
+    -unity-font: url("project://database/Assets/ThirdParty/Kenney/Fonts/Kenney Future.ttf");
+    -unity-font-definition: initial;
+    font-size: 100%;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: #E6E9F2;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 1;
+}
+.btn-icon {
+    margin: 0 10px;
+    flex-shrink: 0;
+}
+.btn:hover {
+    scale: 1.03 1.03;
+    -unity-background-image-tint-color: rgb(82, 98, 146);
+}
+.btn:active {
+    scale: 0.97 0.97;
+    translate: 0 2px;
+}
+.btn:disabled {
+    opacity: 0.4;
+    scale: 1 1;
+}
+.btn.btn-primary {
+    -unity-background-image-tint-color: rgb(230, 116, 44);
+}
+.btn.btn-primary:hover {
+    -unity-background-image-tint-color: rgb(255, 146, 70);
+}
+.btn.btn-primary .btn-text {
+    color: #FFF6EA;
+    -unity-text-outline-width: 0.6px;
+    -unity-text-outline-color: rgba(80, 30, 0, 0.6);
+}
+.btn.btn-good {
+    -unity-background-image-tint-color: rgb(46, 140, 86);
+}
+.btn.btn-good:hover {
+    -unity-background-image-tint-color: rgb(70, 180, 110);
+}
+.btn.btn-danger {
+    -unity-background-image-tint-color: rgb(170, 48, 60);
+}
+.btn.btn-danger:hover {
+    -unity-background-image-tint-color: rgb(210, 70, 84);
+}
+.btn.btn-highlight {
+    -unity-background-image-tint-color: rgb(150, 112, 40);
+}
+.btn-small {
+    padding: 0 10px 4px 10px;
+    -unity-background-image-tint-color: rgb(42, 50, 76);
+}
+.btn-small .btn-text {
+    letter-spacing: 0.5px;
+}
+.btn-tab {
+    -unity-background-image-tint-color: rgb(36, 43, 66);
+}
+.btn-tab.selected {
+    -unity-background-image-tint-color: rgb(150, 112, 40);
+}
+.btn-tab.selected .btn-text {
+    color: #FFF1D0;
+}
+.btn-arrow {
+    padding: 0 0 4px 0;
+}
+.btn-arrow .btn-icon {
+    margin: 0;
+}
+.nudge {
+    scale: 1.04 1.04;
+    -unity-background-image-tint-color: rgb(255, 160, 80);
+}
+
+/* Clickable non-button elements (map places, opponents) */
+.clickable {
+    transition-property: scale, translate;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out-cubic;
+}
+.clickable:hover {
+    scale: 1.04 1.04;
+}
+.clickable:active {
+    scale: 0.98 0.98;
+}
+
+/* ---------- Bars, chips, help ---------- */
+.bar {
+    background-color: #0E1220;
+    border-width: 1px;
+    border-color: rgba(46, 55, 86, 0.9);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    overflow: hidden;
+}
+.bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    transition-property: width, background-color;
+    transition-duration: 0.35s;
+    transition-timing-function: ease-out-cubic;
+}
+.bar-label {
+    -unity-text-outline-width: 0.8px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.7);
+}
+.bar.exposed {
+    border-color: #FF8A3D;
+}
+.bar.broken {
+    opacity: 0.7;
+}
+.chip {
+    padding: 2px 10px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+}
+.help {
+    transition-property: scale;
+    transition-duration: 0.1s;
+}
+.help:hover {
+    scale: 1.2 1.2;
+}
+.tooltip {
+    position: absolute;
+    max-width: 500px;
+    padding: 12px 16px;
+    background-color: rgba(11, 13, 20, 0.97);
+    border-width: 2px;
+    border-color: #2E3756;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.tooltip > .text {
+    white-space: normal;
+}
+
+/* ---------- Icons ---------- */
+.icon {
+    -unity-background-scale-mode: scale-to-fit;
+    flex-shrink: 0;
+}
+.icon-arrowLeft { background-image: url("project://database/Assets/ThirdParty/Kenney/GameIcons/arrowLeft.png"); }
+.icon-arrowRight { background-image: url("project://database/Assets/ThirdParty/Kenney/GameIcons/arrowRight.png"); }
+.icon-trashcan { background-image: url("project://database/Assets/ThirdParty/Kenney/GameIcons/trashcan.png"); }
+.icon-information { background-image: url("project://database/Assets/ThirdParty/Kenney/GameIcons/information.png"); }
+.icon-wrench { background-image: url("project://database/Assets/ThirdParty/Kenney/GameIcons/wrench.png"); }
+.icon-coin { background-image: url("project://database/Assets/ThirdParty/Kenney/BoardGameIcons/token.svg"); }
+.icon-book { background-image: url("project://database/Assets/ThirdParty/Kenney/BoardGameIcons/book_open.svg"); }
+.icon-cards { background-image: url("project://database/Assets/ThirdParty/Kenney/BoardGameIcons/cards_stack.svg"); }
+
+/* ---------- Scroll views ---------- */
+.scroll {
+    flex-grow: 1;
+}
+.scroll .unity-scroller--vertical {
+    width: 8px;
+    margin-left: 4px;
+    opacity: 0.8;
+}
+.scroll .unity-scroller--vertical .unity-base-slider__tracker {
+    background-color: rgba(46, 55, 86, 0.5);
+    border-width: 0;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+.scroll .unity-scroller--vertical .unity-base-slider__dragger {
+    background-color: rgba(255, 194, 74, 0.55);
+    border-width: 0;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+.scroll .unity-scroller--vertical .unity-repeat-button {
+    display: none;
+}
+.scroll .unity-scroller--vertical .unity-base-slider__drag-container {
+    margin: 0;
+}
+
+/* ---------- Robot / pedestal ---------- */
+.pedestal {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/light_01.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-background-image-tint-color: rgba(255, 138, 61, 0.35);
+}
+.robot .target-glow {
+    border-width: 0;
+    border-color: #FFC24A;
+    transition-property: background-color, border-width;
+    transition-duration: 0.15s;
+}
+.robot .target-glow.on {
+    background-color: rgba(255, 194, 74, 0.22);
+    border-width: 3px;
+}
+.robot .target-glow.on:hover {
+    background-color: rgba(255, 194, 74, 0.45);
+}
+.robot .shield {
+    border-width: 0;
+    border-color: rgba(90, 168, 255, 0.85);
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    transition-property: background-color, border-width;
+    transition-duration: 0.3s;
+}
+.robot .shield.on {
+    background-color: rgba(90, 168, 255, 0.07);
+    border-width: 3px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+    transition-property: translate, scale, opacity;
+    transition-duration: 0.12s, 0.12s, 0.2s;
+    transition-timing-function: ease-out-cubic;
+}
+.card-face {
+    background-color: #181D2C;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+.card-art {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+.cost {
+    border-width: 3px;
+    border-color: #FFE066;
+}
+.card.lifted {
+    translate: 0 -46px;
+    scale: 1.1 1.1;
+}
+.card.dragging {
+    scale: 0.85 0.85;
+    opacity: 0.92;
+    transition-duration: 0s;
+}
+.card.unplayable .card-face {
+    opacity: 0.55;
+}
+.chain-glow {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    background-color: rgba(255, 211, 77, 0);
+    transition-property: background-color;
+    transition-duration: 0.3s;
+}
+.chain-glow.on {
+    background-color: rgba(255, 211, 77, 0.5);
+}
+.card.mini {
+    transform-origin: left top;
+}
+.card-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+.card-slot {
+    margin: 0 10px 10px 0;
+}
+
+/* ---------- Battle ---------- */
+.battle-floor {
+    background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/light_01.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-background-image-tint-color: rgba(46, 55, 86, 0.6);
+}
+.intent {
+    height: 48px;
+    padding: 0 10px;
+    align-items: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.pile {
+    background-color: rgba(20, 24, 38, 0.85);
+    border-width: 2px;
+    border-color: #2E3756;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+.energy-orb {
+    transition-property: scale;
+    transition-duration: 0.2s;
+}
+.scrap-zone {
+    background-color: rgba(40, 34, 28, 0.95);
+    border-width: 2px;
+    border-color: rgba(200, 162, 122, 0.5);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    transition-property: scale, border-color, background-color;
+    transition-duration: 0.15s;
+}
+.scrap-zone.armed {
+    border-color: rgba(255, 217, 160, 0.95);
+    border-width: 3px;
+}
+.scrap-zone.hot {
+    scale: 1.07 1.07;
+    background-color: rgba(80, 60, 36, 0.98);
+}
+.log-line {
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+.log-line.old {
+    opacity: 0.6;
+}
+.banner {
+    background-color: rgba(11, 13, 20, 0.85);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- Garage / lists ---------- */
+.slot-card {
+    background-color: rgba(24, 29, 44, 0.95);
+}
+.sheet-row {
+    align-items: center;
+    min-height: 40px;
+    padding: 2px 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(46, 55, 86, 0.5);
+}
+.sheet-row:hover {
+    background-color: rgba(46, 55, 86, 0.35);
+}
+.list-row {
+    align-items: center;
+    min-height: 46px;
+    padding: 2px 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(46, 55, 86, 0.5);
+}
+.list-row:hover {
+    background-color: rgba(46, 55, 86, 0.35);
+}
+.delta {
+    margin-left: 6px;
+}
+.opponent.selected {
+    background-color: rgba(40, 46, 70, 0.95);
+}
+.stage-card.done {
+    opacity: 0.7;
+}
+.row {
+    flex-direction: row;
+}
+.col {
+    flex-direction: column;
+}
+
+/* ---------- Map ---------- */
+.poi .poi-pin {
+    transition-property: scale;
+    transition-duration: 0.2s;
+}
+.poi:hover .poi-pin {
+    scale: 1.08 1.08;
+}
+.poi.locked {
+    opacity: 0.85;
+}
+.alert {
+    border-width: 2px;
+}
+
+/* ---------- Effects ---------- */
+.float {
+    position: absolute;
+}
+.spark {
+    position: absolute;
+    -unity-background-scale-mode: scale-to-fit;
+}
+.spark-dot { background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/circle_05.png"); }
+.spark-star { background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/star_06.png"); }
+.spark-shot { background-image: url("project://database/Assets/ThirdParty/Kenney/Particles/light_03.png"); }

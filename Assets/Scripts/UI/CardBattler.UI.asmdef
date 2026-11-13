@@ -3,7 +3,6 @@
     "rootNamespace": "CardBattler.UI",
     "references": [
         "CardBattler.Combat",
-        "UnityEngine.UI",
         "Unity.InputSystem"
     ],
     "autoReferenced": true

@@ -3,6 +3,7 @@ using CardBattler.Combat;
 using CardBattler.UI;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class AnimationTests
 {
@@ -17,11 +18,10 @@ public class AnimationTests
             var ui = go.AddComponent<GameUI>();
             ui.logBattles = false;
             ui.Init();
-            var toggle = ui.GetComponentsInChildren<UnityEngine.UI.Button>().First(b => b.name == "ReduzirAnimacoes");
-            toggle.onClick.Invoke();
+            Theme.Press(ui.ButtonNamed("ReduzirAnimacoes"));
             Assert.IsTrue(Fx.Reduced);
             Assert.AreEqual(1, PlayerPrefs.GetInt("reduzirAnimacoes"));
-            StringAssert.StartsWith("[x]", ui.GetComponentsInChildren<UnityEngine.UI.Button>().First(b => b.name == "ReduzirAnimacoes").GetComponentInChildren<UnityEngine.UI.Text>().text);
+            StringAssert.StartsWith("[x]", Theme.LabelOf(ui.ButtonNamed("ReduzirAnimacoes")));
         }
         finally
         {
@@ -33,18 +33,16 @@ public class AnimationTests
     [Test]
     public void Portraits_KnownCharactersAndFallback()
     {
-        var go = new GameObject("PortraitTest", typeof(RectTransform));
-        try
+        var parent = new UnityEngine.UIElements.VisualElement();
         {
             foreach (var who in new[] { "Celeste", "Kiro Sato (rival)", "Mandíbula, Campeão dos Fossos", "Apostador velho", "Mecânica", "Locutor" })
             {
                 Assert.IsTrue(Portraits.Has(who), who);
-                Assert.Greater(Portraits.Create(go.transform, who, 100).GetComponentsInChildren<UnityEngine.UI.Image>().Length, 6, who);
+                Assert.Greater(Portraits.Create(parent, who, 100).Query().ToList().Count, 6, who);
             }
             Assert.IsFalse(Portraits.Has("Placa"));
-            Assert.AreEqual("P", Portraits.Create(go.transform, "Placa", 100).GetComponentInChildren<UnityEngine.UI.Text>().text);
+            Assert.AreEqual("P", Portraits.Create(parent, "Placa", 100).Q<UnityEngine.UIElements.Label>().text);
         }
-        finally { Object.DestroyImmediate(go); }
     }
 
     [Test]

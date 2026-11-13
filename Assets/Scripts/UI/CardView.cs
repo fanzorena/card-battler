@@ -104,7 +104,7 @@ namespace CardBattler.UI
             Theme.Border(face, Theme.Alpha(accent, 0.9f), 3);
 
             var band = Theme.Box(face, "Band", Theme.Mix(Theme.Panel, accent, 0.35f)).Place(4, 4, W - 14, 46);
-            Theme.Label(band, def.name, 21, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(56, 0, W - 112, 46).Fit(14);
+            Theme.Label(band, def.name, 21, Theme.Ink, TextAnchor.MiddleLeft, FontStyle.Bold).Place(52, 0, W - 106, 46).FitLine(13);
             SlotIcons.Icon(face, sourceKey, 40, accent).Place(W - 52, 7, 40, 40);
 
             var costBg = Theme.Box(rt, "Cost", Theme.Bg, Shape.Circle).Center(26, 26, 58, 58);
@@ -116,7 +116,7 @@ namespace CardBattler.UI
             var art = Theme.Box(face, "Art", Theme.Mix(Theme.Bg, Kinds.ColorOf(kind), 0.14f)).Place(10, 60, W - 26, 92);
             art.AddToClassList("card-art");
             Kinds.Icon(art, kind, 66).Place(12, 13, 66, 66);
-            Theme.Title(art, Kinds.Value(def), 38, Kinds.ColorOf(kind), TextAnchor.MiddleRight).Classes("outlined").Place(80, 0, W - 26 - 92, 92);
+            Theme.Title(art, Kinds.Value(def), 38, Kinds.ColorOf(kind), TextAnchor.MiddleRight).Classes("outlined").Place(80, 0, W - 26 - 90, 92).FitLine(22);
             if (!string.IsNullOrEmpty(v.element))
                 Theme.Chip(art, v.element.ToUpperInvariant(), Theme.Element(v.element), 13).parent.At(6, 64);
 

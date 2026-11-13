@@ -212,5 +212,5 @@ public class CareerTests
     }
 
     static void Click(GameUI ui, string name) =>
-        ui.GetComponentsInChildren<UnityEngine.UI.Button>().First(b => b.name == name).onClick.Invoke();
+        Theme.Press(ui.ButtonNamed(name));
 }

@@ -3,6 +3,7 @@ using CardBattler.Combat;
 using CardBattler.UI;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class UITests
 {
@@ -58,15 +59,11 @@ public class UITests
     {
         var keys = new[] { Slot.Cabeca, Slot.Torso, Slot.BracoEsq, Slot.BracoDir, Slot.Pernas, Slot.Frame, Slot.Chassi }.Select(SlotIcons.Key).Append(SlotIcons.Nucleo).ToList();
         Assert.AreEqual(keys.Count, keys.Select(SlotIcons.Name).Distinct().Count());
-        var go = new GameObject("TestCanvas", typeof(RectTransform));
-        try
-        {
-            string Mark(string key) => SlotIcons.Icon(go.transform, key, 40).GetComponentsInChildren<UnityEngine.UI.Text>().Select(t => t.text).SingleOrDefault();
-            Assert.AreEqual("E", Mark("BracoEsq"));
-            Assert.AreEqual("D", Mark("BracoDir"));
-            Assert.IsNull(Mark("Cabeca"));
-        }
-        finally { Object.DestroyImmediate(go); }
+        var parent = new UnityEngine.UIElements.VisualElement();
+        string Mark(string key) => SlotIcons.Marks(SlotIcons.Icon(parent, key, 40)).SingleOrDefault();
+        Assert.AreEqual("E", Mark("BracoEsq"));
+        Assert.AreEqual("D", Mark("BracoDir"));
+        Assert.IsNull(Mark("Cabeca"));
     }
 
     [Test]
@@ -93,8 +90,7 @@ public class UITests
     [Test]
     public void RobotView_BuildsEveryPartOfTheCatalog()
     {
-        var go = new GameObject("TestCanvas", typeof(RectTransform));
-        try
+        var parent = new UnityEngine.UIElements.VisualElement();
         {
             foreach (var head in content.PartsFor("Cabeca"))
             foreach (var torso in content.PartsFor("Torso"))
@@ -102,7 +98,7 @@ public class UITests
                 var arms = content.PartsFor("Braco");
                 var legs = content.PartsFor("Pernas");
                 var def = new RobotDef { frame = "vira_lata", head = head.id, torso = torso.id, armL = arms[0].id, armR = arms[arms.Length - 1].id, legs = legs[0].id, core = "bateria_reciclada" };
-                var v = RobotView.Create(go.transform, false, false);
+                var v = RobotView.Create(parent, false, false);
                 v.Build(content, def);
                 Assert.AreEqual(5, v.parts.Count);
             }
@@ -110,31 +106,28 @@ public class UITests
             foreach (var leg in content.PartsFor("Pernas"))
             {
                 var def = new RobotDef { frame = "bastiao", head = "otica_sucata", torso = "placa_m2", armL = arm.id, armR = arm.id, legs = leg.id, core = "reator_k" };
-                var v = RobotView.Create(go.transform, true, false);
+                var v = RobotView.Create(parent, true, false);
                 v.Build(content, def);
                 Assert.IsTrue(v.parts.Values.All(p => p.body.Count > 0), arm.id + "/" + leg.id);
             }
         }
-        finally { Object.DestroyImmediate(go); }
     }
 
     [Test]
     public void RobotView_ShowsBrokenPartsExposedChassisAndArmor()
     {
-        var go = new GameObject("TestCanvas", typeof(RectTransform));
-        try
+        var parent = new UnityEngine.UIElements.VisualElement();
         {
             var b = new Battle(content, 1);
-            var v = RobotView.Create(go.transform, false, false);
+            var v = RobotView.Create(parent, false, false);
             v.Build(content, content.Robot("player"));
             b.player.parts[Slot.Cabeca].hp = 0;
             b.player.armor = 5;
             v.Show(b.player);
-            Assert.Greater(v.parts[Slot.Cabeca].brokenA.color.a, 0.5f);
-            Assert.AreEqual(0, v.parts[Slot.Torso].brokenA.color.a);
-            Assert.IsTrue(v.GetComponentsInChildren<UnityEngine.UI.Text>().Any(t => t.text == "BLINDAGEM 5"));
+            Assert.Greater(v.parts[Slot.Cabeca].brokenA.style.backgroundColor.value.a, 0.5f);
+            Assert.AreEqual(0, v.parts[Slot.Torso].brokenA.style.backgroundColor.value.a);
+            Assert.IsTrue(v.Root.Query<UnityEngine.UIElements.Label>().ToList().Any(t => t.text == "BLINDAGEM 5"));
         }
-        finally { Object.DestroyImmediate(go); }
     }
 }
 
@@ -202,14 +195,13 @@ public class GarageFlowTests
     public void Navigation_GarageToOpponentsToBattleAndBack()
     {
         var go = new GameObject("GameUITest");
-        var es = UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>();
         try
         {
             var ui = go.AddComponent<GameUI>();
             ui.logBattles = false;
             ui.Init();
             Assert.AreEqual("title", ui.screen);
-            Assert.IsTrue(ui.GetComponentsInChildren<UnityEngine.UI.Button>().Any(b => b.name == "Menu:HISTÓRICO"));
+            Assert.IsTrue(ui.Buttons.Any(b => b.name == "Menu:HISTÓRICO"));
             ui.ShowTitle("about");
             Assert.AreEqual("about", ui.screen);
             ui.Back();
@@ -220,8 +212,7 @@ public class GarageFlowTests
             ui.garage.slots[ui.garage.selected] = content.Robot("player").Clone(); // in memory only
             ui.ShowGarage();
             Assert.AreEqual("garage", ui.screen);
-            var cont = ui.GetComponentsInChildren<UnityEngine.UI.Button>().Single(b => b.name == "Continuar");
-            Assert.IsTrue(cont.interactable);
+            Assert.IsTrue(ui.ButtonNamed("Continuar").enabledSelf);
 
             ui.ShowOpponents();
             Assert.AreEqual("opponents", ui.screen);
@@ -230,7 +221,7 @@ public class GarageFlowTests
             ui.Back();
             Assert.AreEqual("title", ui.screen);
             ui.ShowOpponents();
-            Assert.AreEqual(OpponentScreen.Opponents(content).Length, ui.GetComponentsInChildren<Clicker>().Count(c => c.name.StartsWith("Opponent:")));
+            Assert.AreEqual(OpponentScreen.Opponents(content).Length, ui.Root.Query(className: "opponent").ToList().Count);
 
             ui.StartBattle(ui.garage.Current, "enemy_sucata");
             Assert.AreEqual("battle", ui.screen);
@@ -244,14 +235,13 @@ public class GarageFlowTests
             // An invalid build can't reach the opponent screen.
             ui.garage.slots[ui.garage.selected] = content.Robot("enemy").Clone();
             ui.ShowGarage();
-            Assert.IsFalse(ui.GetComponentsInChildren<UnityEngine.UI.Button>().Single(b => b.name == "Continuar").interactable);
+            Assert.IsFalse(ui.ButtonNamed("Continuar").enabledSelf);
             ui.ShowOpponents();
             Assert.AreEqual("garage", ui.screen);
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(go);
-            if (!es) { var created = UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>(); if (created) UnityEngine.Object.DestroyImmediate(created.gameObject); }
         }
     }
 
